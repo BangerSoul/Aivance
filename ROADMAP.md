@@ -134,7 +134,7 @@ Before implementing ad-hoc features, repository velocity aligns around these fiv
 * **Domain Engine**: `CareerGraphRepository` with `GetSkillGapGraphUseCase` and `GetCareerNetworkUseCase`. *(traversal use cases still planned)*
 
 ### Phase 2: Event-Driven Career State Engine (`:core:events`)
-* **Event Bus**: In-memory `SharedFlow` coupled with SQLite event logging. ✅ **Durable log landed** (`career_event_log`, idempotent on `eventId`; each row carries an explicit payload `schemaVersion` — M04-A). ⚠️ **Replay engine: not yet implemented** — the log is append-only audit persistence; nothing consumes it for replay.
+* **Event Bus**: In-memory `SharedFlow` coupled with SQLite event logging. ✅ **Durable log landed** (`career_event_log`, idempotent on `eventId`; each row carries an explicit payload `schemaVersion` — M04-A). ✅ **Replay engine landed (projection-only, M04-B)** — `CareerEventReplayEngine` deterministically rebuilds the graph's `CAREER_EVENT` provenance slice from the log; entity-graph + memory rehydration remain deferred. The log remains append-only audit persistence and the Room DB stays authoritative.
 * **State Decoupling**: Refactor `CareerStateEngine.kt` to subscribe reactively to events rather than polling 5 repositories. ✅ Reactive event subscription + graph projection (saved jobs + interview sessions) landed.
 * **Emission Pipeline**: Instrument `:feature:resume`, `:feature:ats`, `:feature:jobs`, `:feature:tracker`, and `:feature:interview`. *(resume + interview + workflow emit today; remaining producers planned)*
 
@@ -165,9 +165,21 @@ Prerequisite for replay: the persisted event contract now carries an explicit pa
 * **Room v26 → v27** — strictly-additive `MIGRATION_26_27` adds `career_event_log.schemaVersion` (default `1`, backfilling legacy rows); `27.json` exported.
 * **Still out of scope**: replay, rehydration, and making the log the source of truth — those are M04-B.
 
-#### M04-B — Durable Replay & Rehydration (next)
+#### M04-B — Durable Replay & Rehydration ✅ (landed 2026-09-24, projection-only)
 
-With the contract hardened, implement the replay engine that deterministically rehydrates the graph + memory projections from `career_event_log`, honoring all seven invariants above. The DB remains authoritative; replay is a rehydration/repair path.
+`CareerEventReplayEngine.replayAll()` reads `career_event_log`, decodes each row against the M04-A contract, and deterministically rebuilds the graph's event-provenance layer. It honors the seven invariants:
+
+* **Idempotency** — each event maps to a stable `event_<eventId>` node id, so replaying N times converges to the same rows.
+* **Deterministic ordering** — events are projected in `(timestamp, eventId)` order, applied in the engine rather than trusting storage order.
+* **Payload versioning** — decoding is governed by `CareerEventContract`/`CareerEventCodec`; version is never inferred from payload shape.
+* **Checkpoint/rebuild** — **FULL REBUILD** each pass; no incremental checkpoint is implemented or claimed.
+* **Loud failure** — an unknown type / unsupported version / malformed payload aborts the whole pass with an explicit `CareerReplayFailure` and writes nothing; nothing is silently skipped or coerced.
+* **Transactional projection** — the slice is rewritten in one transaction (`GraphDao.replaceNodesOfType` → `CareerGraphRepository.replaceEventProjection`); a failed decode or write leaves no partial projection, and the relational-entity slice is untouched.
+* **DB stays authoritative** — replay is a pure projection/repair path: no command re-execution, no business-entity mutation, no AI/network/outreach side effects, no re-emission onto the live bus.
+
+**Replay mode: FULL REBUILD. API: `replayAll()`** (no `replayFrom`/checkpoint yet). **No Room schema change** (reuses v27).
+
+**Coverage (honest):** the event-provenance graph layer only. **Deferred:** entity-graph nodes (owned by `CareerGraphEngine.buildGraph`, fed by authoritative Room entities) and structured memory entries (owned by `CareerMemoryEngine`) — the flattened audit payloads omit the entity identities required to rebuild those without inventing historical data. Promoting them to replay targets requires first enriching persisted payloads with stable entity identifiers (a future contract evolution, i.e. a new payload version).
 
 ### Phase 3: Provider SDK 2.0 & Standalone Decoupling
 * **Pure Kotlin SDK**: Extract `core:sdk` into standalone multiplatform library `aivance-sdk`.

@@ -42,6 +42,12 @@ interface GraphDao {
     @Query("DELETE FROM graph_edges")
     suspend fun clearEdges()
 
+    @Query("DELETE FROM graph_nodes WHERE type = :type")
+    suspend fun clearNodesByType(type: String)
+
+    @Query("SELECT * FROM graph_nodes WHERE type = :type")
+    suspend fun getNodesOfType(type: String): List<GraphNodeEntity>
+
     /**
      * Atomically replaces the entire persisted graph with a freshly projected one.
      * Runs in a single transaction: partial failure rolls back, so readers never observe
@@ -53,5 +59,21 @@ interface GraphDao {
         clearNodes()
         upsertNodes(nodes)
         upsertEdges(edges)
+    }
+
+    /**
+     * Atomically rebuilds a single node-type slice of the graph, leaving every other type
+     * untouched. Used by the M04-B event replay engine to deterministically re-project the
+     * event-provenance layer (`CAREER_EVENT` nodes) from the durable log without wiping the
+     * relational entity projection written by [replaceGraph].
+     *
+     * Runs in one transaction: partial failure rolls back, so a malformed rebuild never leaves
+     * a half-projected slice. Node identities are the caller's deterministic ids, so repeated
+     * rebuilds converge to the same rows (idempotent).
+     */
+    @Transaction
+    suspend fun replaceNodesOfType(type: String, nodes: List<GraphNodeEntity>) {
+        clearNodesByType(type)
+        upsertNodes(nodes)
     }
 }

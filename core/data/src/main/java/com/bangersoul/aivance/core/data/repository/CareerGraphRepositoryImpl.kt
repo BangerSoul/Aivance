@@ -22,6 +22,8 @@ import javax.inject.Singleton
  * - Node/edge identities are the engine's deterministic IDs, so [persist] upserts the same rows
  *   rather than duplicating them across repeated event-driven projections.
  * - The projection is replaced atomically inside [GraphDao.replaceGraph] (single transaction).
+ * - [replaceEventProjection] atomically rebuilds ONLY the `CAREER_EVENT` provenance slice (M04-B
+ *   replay), leaving the relational-entity projection untouched.
  * - Unknown persisted type strings are skipped defensively on hydration so a forward-compatible
  *   row never crashes an older reader.
  */
@@ -34,16 +36,7 @@ class CareerGraphRepositoryImpl @Inject constructor(
     private val mapSerializer = MapSerializer(String.serializer(), String.serializer())
 
     override suspend fun persist(graph: CareerGraph) {
-        val nodeEntities = graph.nodes.values.map { node ->
-            GraphNodeEntity(
-                id = node.id,
-                type = node.type.name,
-                label = node.label,
-                propertiesJson = json.encodeToString(mapSerializer, node.properties),
-                createdAt = node.createdAt,
-                updatedAt = node.updatedAt
-            )
-        }
+        val nodeEntities = graph.nodes.values.map { it.toEntity() }
         val edgeEntities = graph.edges.map { edge ->
             GraphEdgeEntity(
                 // Deterministic identity so a re-projected relationship upserts the same row
@@ -89,6 +82,22 @@ class CareerGraphRepositoryImpl @Inject constructor(
 
         return CareerGraph(userId = userId, nodes = nodes, edges = edges)
     }
+
+    override suspend fun replaceEventProjection(eventNodes: List<CareerGraphNode>) {
+        graphDao.replaceNodesOfType(
+            type = CareerNodeType.CAREER_EVENT.name,
+            nodes = eventNodes.map { it.toEntity() }
+        )
+    }
+
+    private fun CareerGraphNode.toEntity(): GraphNodeEntity = GraphNodeEntity(
+        id = id,
+        type = type.name,
+        label = label,
+        propertiesJson = json.encodeToString(mapSerializer, properties),
+        createdAt = createdAt,
+        updatedAt = updatedAt
+    )
 
     private fun decodeMap(raw: String): Map<String, String> =
         runCatching { json.decodeFromString(mapSerializer, raw) }.getOrDefault(emptyMap())

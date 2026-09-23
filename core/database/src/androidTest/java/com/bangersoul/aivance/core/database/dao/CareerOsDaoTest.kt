@@ -102,6 +102,38 @@ class CareerOsDaoTest {
     }
 
     @Test
+    fun replaceNodesOfTypeRebuildsOnlyThatSliceAndIsIdempotent() = runTest {
+        // A relational-entity projection (PROFILE + SKILL) plus an initial CAREER_EVENT slice.
+        graphDao.replaceGraph(
+            nodes = listOf(
+                GraphNodeEntity("user_1", "PROFILE", "Alice", "{}", 1, 1),
+                GraphNodeEntity("skill_kotlin", "SKILL", "Kotlin", "{}", 1, 1)
+            ),
+            edges = emptyList()
+        )
+        graphDao.replaceNodesOfType(
+            "CAREER_EVENT",
+            listOf(
+                GraphNodeEntity("event_e1", "CAREER_EVENT", "ResumeCreated", "{}", 1, 1),
+                GraphNodeEntity("event_e2", "CAREER_EVENT", "JobSaved", "{}", 1, 1)
+            )
+        )
+
+        assertThat(graphDao.getNodesByType("CAREER_EVENT")).hasSize(2)
+        // Entity slice untouched by the event-slice rebuild.
+        assertThat(graphDao.getNodesByType("PROFILE")).hasSize(1)
+        assertThat(graphDao.getNodesByType("SKILL")).hasSize(1)
+
+        // Replaying a smaller event set replaces the whole slice with no stale/duplicate rows.
+        graphDao.replaceNodesOfType(
+            "CAREER_EVENT",
+            listOf(GraphNodeEntity("event_e1", "CAREER_EVENT", "ResumeCreated", "{}", 1, 1))
+        )
+        assertThat(graphDao.getNodesByType("CAREER_EVENT")).hasSize(1)
+        assertThat(graphDao.getNodesByType("PROFILE")).hasSize(1)
+    }
+
+    @Test
     fun memoryUpsertReplacesSameIdAndSurvivesReload() = runTest {
         val entry = CareerMemoryEntity(
             memoryId = "mem_1",

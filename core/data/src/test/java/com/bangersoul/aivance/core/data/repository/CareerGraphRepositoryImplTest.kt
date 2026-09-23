@@ -37,8 +37,16 @@ class CareerGraphRepositoryImplTest {
             nodes.values.filter { it.type == type }
         override suspend fun clearNodes() = nodes.clear()
         override suspend fun clearEdges() = edges.clear()
+        override suspend fun clearNodesByType(type: String) {
+            nodes.values.removeAll { it.type == type }
+        }
+        override suspend fun getNodesOfType(type: String): List<GraphNodeEntity> =
+            nodes.values.filter { it.type == type }
         override suspend fun replaceGraph(nodes: List<GraphNodeEntity>, edges: List<GraphEdgeEntity>) {
             clearEdges(); clearNodes(); upsertNodes(nodes); upsertEdges(edges)
+        }
+        override suspend fun replaceNodesOfType(type: String, nodes: List<GraphNodeEntity>) {
+            clearNodesByType(type); upsertNodes(nodes)
         }
     }
 
@@ -86,5 +94,32 @@ class CareerGraphRepositoryImplTest {
         val loaded = repository.loadGraph("u1")
         assertEquals(1, loaded.nodes.size)
         assertTrue(loaded.getNode("skill_kotlin") != null)
+    }
+
+    @Test
+    fun `replaceEventProjection rebuilds only the CAREER_EVENT slice and leaves entity nodes intact`() = runTest {
+        // Seed a relational-entity projection (profile + skill).
+        repository.persist(sampleGraph())
+
+        // Replay projects two event-provenance nodes; entity nodes must survive untouched.
+        repository.replaceEventProjection(
+            listOf(
+                CareerGraphNode("event_e1", CareerNodeType.CAREER_EVENT, "ResumeCreated"),
+                CareerGraphNode("event_e2", CareerNodeType.CAREER_EVENT, "JobSaved")
+            )
+        )
+
+        val afterFirst = repository.loadGraph("u1")
+        assertEquals(2, afterFirst.getNodesByType(CareerNodeType.CAREER_EVENT).size)
+        assertTrue(afterFirst.getNode("user_u1") != null)
+        assertTrue(afterFirst.getNode("skill_kotlin") != null)
+
+        // Re-projecting a smaller event set replaces the whole slice (idempotent, no stale rows).
+        repository.replaceEventProjection(
+            listOf(CareerGraphNode("event_e1", CareerNodeType.CAREER_EVENT, "ResumeCreated"))
+        )
+        val afterSecond = repository.loadGraph("u1")
+        assertEquals(1, afterSecond.getNodesByType(CareerNodeType.CAREER_EVENT).size)
+        assertTrue(afterSecond.getNode("user_u1") != null)
     }
 }

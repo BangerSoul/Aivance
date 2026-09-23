@@ -12,7 +12,10 @@ data class CareerState(
     val recommendations: List<CareerRecommendation> = emptyList(),
     val nextBestAction: CareerRecommendation? = null,
     val lifecycleStage: CareerLifecycleStage = CareerLifecycleStage.ONBOARDING,
-    val intelligenceHub: CareerIntelligence? = null
+    val intelligenceHub: CareerIntelligence? = null,
+    val graphNodeCount: Int = 0,
+    val graphEdgeCount: Int = 0,
+    val lastEventTimestamp: Long = 0L
 )
 
 @Serializable

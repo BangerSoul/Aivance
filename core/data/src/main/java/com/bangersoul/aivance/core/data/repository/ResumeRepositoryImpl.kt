@@ -14,6 +14,7 @@ import com.bangersoul.aivance.core.data.mapper.toEntity
 import com.bangersoul.aivance.core.data.resume.ResumeParser
 import com.bangersoul.aivance.core.data.source.ResumeLocalDataSource
 import com.bangersoul.aivance.core.database.dao.AtsDao
+import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import com.bangersoul.aivance.sdk.api.AIProvider
 import com.bangersoul.aivance.sdk.core.ProviderCapability
@@ -34,7 +35,8 @@ class ResumeRepositoryImpl @Inject constructor(
     private val localDataSource: ResumeLocalDataSource,
     private val providerManager: ProviderManager,
     private val resumeParser: ResumeParser,
-    private val atsDao: AtsDao
+    private val atsDao: AtsDao,
+    private val careerEventDispatcher: CareerEventDispatcher
 ) : ResumeRepository {
 
     override fun getResumes(): Flow<CoreResult<List<Resume>>> {
@@ -180,6 +182,20 @@ class ResumeRepositoryImpl @Inject constructor(
             optimizationTips = listOf(OptimizationTip("AI", aiResponse, "MEDIUM"))
         )
         val reportId = atsDao.insertReport(report.toEntity())
+
+        // The ATS report has been persisted (definitive success). Publish the
+        // real domain event so the reactive V2 pipeline (CareerEventBus ->
+        // CareerStateEngine) observes the completed analysis. Dispatch is
+        // fire-and-forget and non-suspending: it neither blocks nor folds a
+        // bus failure into this operation's success, and it is only reached on
+        // the success path (a failed AI call / missing version throws above and
+        // runCatchingCore returns Failure without emitting).
+        careerEventDispatcher.onResumeAnalysisCompleted(
+            resumeId = resumeId,
+            versionId = versionId,
+            atsScore = report.overallScore
+        )
+
         report.copy(id = reportId)
     }
 

@@ -17,6 +17,7 @@ import com.bangersoul.aivance.core.database.dao.InterviewDao
 import com.bangersoul.aivance.core.database.dao.JobDao
 import com.bangersoul.aivance.core.database.dao.ResumeDao
 import com.bangersoul.aivance.core.database.model.InterviewSessionWithMessages
+import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.core.domain.repository.InterviewRepository
 import com.bangersoul.aivance.core.domain.usecase.interview.STARAnswerScorer
 import com.bangersoul.aivance.core.domain.usecase.interview.STARCoachingPrompts
@@ -36,7 +37,8 @@ class InterviewRepositoryImpl @Inject constructor(
     private val interviewDao: InterviewDao,
     private val resumeDao: ResumeDao,
     private val jobDao: JobDao,
-    private val providerManager: ProviderManager
+    private val providerManager: ProviderManager,
+    private val careerEventDispatcher: CareerEventDispatcher
 ) : InterviewRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -173,6 +175,18 @@ class InterviewRepositoryImpl @Inject constructor(
         val feedback = generateSessionFeedback(entity)
         val updated = entity.session.copy(isCompleted = true, overallFeedback = feedback)
         interviewDao.insertSession(updated)
+
+        // The session is now persisted as completed (definitive success).
+        // Publish the real domain event onto the shared CareerEventBus that the
+        // V2 CareerStateEngine consumes. Dispatch is fire-and-forget and
+        // non-suspending, so it neither blocks nor folds a bus failure into this
+        // operation's success; it is only reached on the success path (a missing
+        // session throws above and runCatchingCore returns Failure).
+        careerEventDispatcher.onInterviewCompleted(
+            sessionId = sessionId,
+            score = feedback?.overallScore ?: 0,
+            weaknesses = feedback?.improvements ?: emptyList()
+        )
     }
 
     private suspend fun generateSessionFeedback(

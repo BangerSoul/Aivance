@@ -104,6 +104,87 @@ class JobRepositoryImplTest {
     }
 
     @Test
+    fun `searchJobs fails when every provider fails instead of masquerading cached DB as fresh`() = runTest {
+        val provider = mockk<JobProvider>()
+        every { provider.metadata } returns ProviderMetadata(
+            id = "flaky",
+            name = "Flaky",
+            type = ProviderType.JOB,
+            version = "1.0.0",
+            description = "Flaky provider",
+            author = "Test"
+        )
+        every { provider.status } returns ProviderStatus.Active
+        coEvery { provider.searchJobs(any(), any(), any()) } returns Result.Failure(
+            com.bangersoul.aivance.core.common.result.ProviderError("flaky", message = "network down")
+        )
+        every { providerRegistry.getAllProviders() } returns listOf(provider)
+        // A populated cache table MUST NOT be served as a successful search result
+        // when the only provider failed — that was the seed/cache deception.
+        coEvery { jobDao.getJobsWithDetails() } returns kotlinx.coroutines.flow.flowOf(
+            listOf(
+                JobWithDetails(
+                    job = JobEntity(
+                        id = 99L, companyId = 1L, title = "Stale Cached Job", location = "Remote",
+                        type = "FULL_TIME", remoteType = "REMOTE", experienceLevel = "SENIOR",
+                        salaryMin = null, salaryMax = null, currency = null, description = "d",
+                        descriptionHtml = null, url = "https://stale.com/1", sourceProviderId = "flaky",
+                        postedDate = System.currentTimeMillis()
+                    ),
+                    company = CompanyEntity(
+                        id = 1L, name = "Stale Co", domain = null, logoUrl = null,
+                        website = null, industry = null, headquarters = null
+                    )
+                )
+            )
+        )
+
+        val result = repository.searchJobs(JobSearchFilter(query = "engineer"), JobSortOrder.RELEVANCE)
+
+        assertTrue("all-provider failure must surface as Failure, not stale cache", result.isFailure)
+    }
+
+    @Test
+    fun `searchJobs returns empty success when a provider succeeds with no matches`() = runTest {
+        val provider = mockk<JobProvider>()
+        every { provider.metadata } returns ProviderMetadata(
+            id = "empty",
+            name = "Empty",
+            type = ProviderType.JOB,
+            version = "1.0.0",
+            description = "Empty provider",
+            author = "Test"
+        )
+        every { provider.status } returns ProviderStatus.Active
+        // A genuine "no matches" answer — the provider succeeded, just found nothing.
+        coEvery { provider.searchJobs(any(), any(), any()) } returns Result.Success(emptyList())
+        every { providerRegistry.getAllProviders() } returns listOf(provider)
+        // Even with a populated cache, a successful-but-empty search stays empty.
+        coEvery { jobDao.getJobsWithDetails() } returns kotlinx.coroutines.flow.flowOf(
+            listOf(
+                JobWithDetails(
+                    job = JobEntity(
+                        id = 99L, companyId = 1L, title = "Cached Job", location = "Remote",
+                        type = "FULL_TIME", remoteType = "REMOTE", experienceLevel = "SENIOR",
+                        salaryMin = null, salaryMax = null, currency = null, description = "d",
+                        descriptionHtml = null, url = "https://c.com/1", sourceProviderId = "empty",
+                        postedDate = System.currentTimeMillis()
+                    ),
+                    company = CompanyEntity(
+                        id = 1L, name = "Cached Co", domain = null, logoUrl = null,
+                        website = null, industry = null, headquarters = null
+                    )
+                )
+            )
+        )
+
+        val result = repository.searchJobs(JobSearchFilter(query = "engineer"), JobSortOrder.RELEVANCE)
+
+        assertTrue(result is Result.Success)
+        assertEquals(emptyList<JobListing>(), (result as Result.Success).data)
+    }
+
+    @Test
     fun `searchJobs applies remote-policy catalog filter to provider results`() = runTest {
         val provider = mockk<JobProvider>()
         every { provider.metadata } returns ProviderMetadata(
@@ -193,5 +274,52 @@ class JobRepositoryImplTest {
 
         assertTrue(result.isFailure)
         assertEquals("Job not found: 1", (result as Result.Failure).error.message)
+    }
+
+    @Test
+    fun `cacheJob returns the existing stable id, never the upsert update-path -1`() = runTest {
+        // jobDao.insertJob is @Upsert: it returns -1L on the ON CONFLICT DO UPDATE
+        // path. Re-caching a job already in the DB (matched here by URL) must hand
+        // back that job's real, stable id — JobDetailsViewModel uses it as the
+        // application / cover-letter foreign key, so -1L would corrupt the FK.
+        val existing = JobEntity(
+            id = 99L, companyId = 1L, title = "Cached", location = "Remote",
+            type = "FULL_TIME", remoteType = null, experienceLevel = null,
+            salaryMin = null, salaryMax = null, currency = null, description = "d",
+            descriptionHtml = null, url = "https://x.com/1", sourceProviderId = "p",
+            postedDate = 0L
+        )
+        coEvery { companyDao.insertCompany(any()) } returns 1L
+        coEvery { jobDao.getJobByUrl("https://x.com/1") } returns existing
+        coEvery { jobDao.insertJob(any()) } returns -1L // update path
+
+        val result = repository.cacheJob(
+            JobListing(
+                id = "external-ref", title = "Cached", company = "Tech",
+                location = "Remote", description = "d", url = "https://x.com/1",
+                sourceProvider = "p"
+            )
+        )
+
+        assertTrue(result is Result.Success)
+        assertEquals(99L, (result as Result.Success).data)
+    }
+
+    @Test
+    fun `cacheJob returns the fresh rowid for a job not previously cached`() = runTest {
+        coEvery { companyDao.insertCompany(any()) } returns 1L
+        coEvery { jobDao.getJobByUrl(any()) } returns null
+        coEvery { jobDao.insertJob(any()) } returns 7L // fresh insert path
+
+        val result = repository.cacheJob(
+            JobListing(
+                id = "external-ref", title = "New", company = "Tech",
+                location = "Remote", description = "d", url = "https://y.com/2",
+                sourceProvider = "p"
+            )
+        )
+
+        assertTrue(result is Result.Success)
+        assertEquals(7L, (result as Result.Success).data)
     }
 }

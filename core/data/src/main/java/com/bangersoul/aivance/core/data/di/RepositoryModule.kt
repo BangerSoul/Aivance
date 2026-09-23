@@ -74,6 +74,19 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindApplicationWorkflowRepository(impl: ApplicationWorkflowRepositoryImpl): ApplicationWorkflowRepository
 
+    // V2 Career Knowledge OS foundation (Room v26)
+    @Binds
+    @Singleton
+    abstract fun bindCareerGraphRepository(impl: CareerGraphRepositoryImpl): CareerGraphRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCareerMemoryRepository(impl: CareerMemoryRepositoryImpl): CareerMemoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCareerEventLogRepository(impl: CareerEventLogRepositoryImpl): CareerEventLogRepository
+
     // CRM / Networking Repositories
     @Binds
     @Singleton

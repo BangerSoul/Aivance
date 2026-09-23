@@ -10,6 +10,7 @@ import com.bangersoul.aivance.core.common.result.getOrNull
 import com.bangersoul.aivance.core.data.resume.ResumeParser
 import com.bangersoul.aivance.core.data.source.ResumeLocalDataSource
 import com.bangersoul.aivance.core.database.dao.AtsDao
+import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.sdk.api.AIProvider
 import com.bangersoul.aivance.sdk.core.ProviderCapability
 import com.bangersoul.aivance.sdk.infrastructure.ProviderManager
@@ -32,6 +33,7 @@ class ResumeRepositoryImplTest {
     private val providerManager: ProviderManager = mockk()
     private val resumeParser: ResumeParser = mockk()
     private val atsDao: AtsDao = mockk()
+    private val careerEventDispatcher: CareerEventDispatcher = mockk(relaxed = true)
     private val mockAIProvider: AIProvider = mockk()
 
     @Before
@@ -41,7 +43,8 @@ class ResumeRepositoryImplTest {
             localDataSource = localDataSource,
             providerManager = providerManager,
             resumeParser = resumeParser,
-            atsDao = atsDao
+            atsDao = atsDao,
+            careerEventDispatcher = careerEventDispatcher
         )
     }
 
@@ -154,6 +157,45 @@ class ResumeRepositoryImplTest {
         assertEquals("AI feedback", report?.optimizationTips?.single()?.description)
         coVerify { atsDao.insertJobDescription(any()) }
         coVerify { atsDao.insertReport(any()) }
+    }
+
+    @Test
+    fun `analyzeResume emits ResumeAnalysisCompleted with the persisted score on success`() = runTest {
+        val resumeId = 1L
+        val versionId = 1L
+        val version = ResumeVersion(id = versionId, resumeId = resumeId, versionName = "Original Import")
+        coEvery { localDataSource.getVersionsForResume(resumeId) } returns flowOf(listOf(version))
+        every { providerManager.getBestProviderFor(ProviderCapability.AI.Chat) } returns mockAIProvider
+        coEvery { mockAIProvider.generateText(any()) } returns Result.Success("The overall match score is 87/100.")
+        coEvery { atsDao.insertJobDescription(any()) } returns 1L
+        coEvery { atsDao.insertReport(any()) } returns 42L
+
+        val result = repository.analyzeResume(resumeId, versionId, "job description")
+
+        assertTrue(result.isSuccess)
+        // Success boundary is the persisted report; the event carries its score.
+        io.mockk.verify {
+            careerEventDispatcher.onResumeAnalysisCompleted(
+                resumeId = resumeId,
+                versionId = versionId,
+                atsScore = 87
+            )
+        }
+    }
+
+    @Test
+    fun `analyzeResume does not emit an event when the version is missing`() = runTest {
+        val resumeId = 1L
+        val versionId = 1L
+        // No matching version -> analyzeResume throws -> Result.Failure, no persist.
+        coEvery { localDataSource.getVersionsForResume(resumeId) } returns flowOf(emptyList())
+
+        val result = repository.analyzeResume(resumeId, versionId, "job description")
+
+        assertTrue(result.isFailure)
+        io.mockk.verify(exactly = 0) {
+            careerEventDispatcher.onResumeAnalysisCompleted(any(), any(), any(), any())
+        }
     }
 
     private suspend fun analyzeWithResponse(response: String): AtsReport? {

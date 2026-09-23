@@ -22,13 +22,21 @@ object EngineModule {
         resumeRepository: ResumeRepository,
         workflowRepository: ApplicationWorkflowRepository,
         analyticsRepository: AnalyticsRepository,
-        providerManager: ProviderManager
+        jobRepository: JobRepository,
+        interviewRepository: InterviewRepository,
+        providerManager: ProviderManager,
+        careerEventBus: com.bangersoul.aivance.core.common.events.CareerEventBus,
+        careerGraphEngine: com.bangersoul.aivance.core.domain.careergraph.CareerGraphEngine
     ): CareerStateEngine = CareerStateEngine(
         userRepository,
         resumeRepository,
         workflowRepository,
         analyticsRepository,
-        providerManager
+        jobRepository,
+        interviewRepository,
+        providerManager,
+        careerEventBus,
+        careerGraphEngine
     )
 
     @Provides
@@ -57,8 +65,9 @@ object EngineModule {
     fun provideWorkflowEngine(
         repository: ApplicationWorkflowRepository,
         analyticsRepository: AnalyticsRepository,
-        taskGenerator: com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase
-    ): WorkflowEngine = WorkflowEngine(repository, analyticsRepository, taskGenerator)
+        taskGenerator: com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase,
+        careerEventDispatcher: com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
+    ): WorkflowEngine = WorkflowEngine(repository, analyticsRepository, taskGenerator, careerEventDispatcher)
 
     @Provides
     @Singleton

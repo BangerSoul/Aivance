@@ -65,9 +65,6 @@ object UseCaseModule {
     fun provideSendMessageUseCase(repo: AiRepository): SendMessageUseCase = SendMessageUseCase(repo)
 
     @Provides @Singleton
-    fun provideStreamResponseUseCase(repo: AiRepository, manager: com.bangersoul.aivance.sdk.infrastructure.ProviderManager): StreamResponseUseCase = StreamResponseUseCase(repo, manager)
-
-    @Provides @Singleton
     fun provideStartInterviewSessionUseCase(repo: InterviewRepository): StartInterviewSessionUseCase = StartInterviewSessionUseCase(repo)
 
     @Provides @Singleton

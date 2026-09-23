@@ -3,6 +3,7 @@ package com.bangersoul.aivance.core.domain.workflow
 import com.bangersoul.aivance.core.common.model.*
 import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.runCatchingCore
+import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.core.domain.repository.AnalyticsRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import javax.inject.Inject
@@ -12,7 +13,8 @@ import javax.inject.Singleton
 class WorkflowEngine @Inject constructor(
     private val repository: ApplicationWorkflowRepository,
     private val analyticsRepository: AnalyticsRepository,
-    private val taskGenerator: com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase
+    private val taskGenerator: com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase,
+    private val careerEventDispatcher: CareerEventDispatcher
 ) {
     fun determineLifecycleStage(state: CareerState): CareerLifecycleStage {
         return when {
@@ -48,6 +50,18 @@ class WorkflowEngine @Inject constructor(
         taskGenerator(updated)
 
         analyticsRepository.createSnapshot()
+
+        // The stage transition has been persisted successfully. Publish the
+        // real domain event so the reactive V2 pipeline (CareerEventBus ->
+        // CareerStateEngine) observes the mutation. Dispatch is fire-and-forget
+        // and non-suspending, so it neither blocks nor swallows failures into
+        // this operation, and it is only reached when the stage actually
+        // changed (the no-op early return above emits nothing).
+        careerEventDispatcher.onApplicationStageChanged(
+            applicationId = application.id,
+            oldStage = application.currentStageId,
+            newStage = nextStageId
+        )
     }
 
     suspend fun transitionTo(application: Application, nextStageId: String): CoreResult<Unit> =

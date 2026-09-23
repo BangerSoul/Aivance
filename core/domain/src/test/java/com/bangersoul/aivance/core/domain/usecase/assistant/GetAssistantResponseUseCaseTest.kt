@@ -136,6 +136,93 @@ class GetAssistantResponseUseCaseTest {
         assertTrue(chunks.single().contains("AiVance Copilot"))
     }
 
+    // ── Mid-stream failure semantics (truthful, no fake completion) ─
+
+    @Test
+    fun `provider failing AFTER partial tokens ends in a terminal failure, not a completed answer`() = runTest {
+        // Emits two real tokens, then a failure chunk. This must NOT be presented
+        // as a completed response, and must NOT silently fall through to another
+        // provider that concatenates its own output.
+        val cloud = FakeAiProvider(
+            id = "cloud",
+            streamChunks = listOf(
+                Result.Success("partial "),
+                Result.Success("answer"),
+                Result.Failure(providerError("connection reset mid-stream"))
+            )
+        )
+        val onDevice = FakeAiProvider(
+            id = "gemma",
+            isOnDevice = true,
+            streamChunks = listOf(Result.Success("SHOULD-NOT-APPEAR"))
+        )
+        every { providerManager.getBestProviderFor(ProviderCapability.AI.Streaming) } returns cloud
+        every { providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Streaming) } returns onDevice
+        every { providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Chat) } returns onDevice
+
+        val collected = mutableListOf<String>()
+        var terminalError: Throwable? = null
+        try {
+            useCase.stream(AssistantRequest("c1", "help me with my career")).collect { collected.add(it) }
+        } catch (e: Exception) {
+            terminalError = e
+        }
+
+        // The partial tokens the user already saw are preserved...
+        assertEquals(listOf("partial ", "answer"), collected)
+        // ...and the flow ends in a truthful terminal failure (no fabricated completion).
+        assertTrue("expected a terminal failure after partial output", terminalError != null)
+        // The on-device provider's output must never be appended after partial cloud tokens.
+        assertTrue(collected.none { it.contains("SHOULD-NOT-APPEAR") })
+    }
+
+    @Test
+    fun `provider failing BEFORE the first token falls back safely to on-device`() = runTest {
+        // No token emitted before failure -> safe to fall back (Case A).
+        val cloud = FakeAiProvider(
+            id = "cloud",
+            streamChunks = listOf(Result.Failure(providerError("down before first token")))
+        )
+        val onDevice = FakeAiProvider(
+            id = "gemma",
+            isOnDevice = true,
+            streamChunks = listOf(Result.Success("offline-answer"))
+        )
+        every { providerManager.getBestProviderFor(ProviderCapability.AI.Streaming) } returns cloud
+        every { providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Streaming) } returns onDevice
+
+        val chunks = useCase.stream(AssistantRequest("c1", "help me with my career")).toList()
+
+        assertEquals(listOf("offline-answer"), chunks)
+    }
+
+    @Test
+    fun `user cancellation is propagated, not swallowed into fallback or error`() = runTest {
+        // A provider that throws CancellationException mid-stream (mirrors the
+        // user cancelling the coroutine). It must surface as cancellation, and
+        // must NOT trigger the on-device/Copilot fallback.
+        val cloud = FakeAiProvider(id = "cloud", cancelAfter = 1,
+            streamChunks = listOf(Result.Success("tok1"), Result.Success("tok2")))
+        val onDevice = FakeAiProvider(
+            id = "gemma", isOnDevice = true,
+            streamChunks = listOf(Result.Success("SHOULD-NOT-APPEAR"))
+        )
+        every { providerManager.getBestProviderFor(ProviderCapability.AI.Streaming) } returns cloud
+        every { providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Streaming) } returns onDevice
+        every { providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Chat) } returns onDevice
+
+        val collected = mutableListOf<String>()
+        var cancelled = false
+        try {
+            useCase.stream(AssistantRequest("c1", "help me with my career")).collect { collected.add(it) }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            cancelled = true
+        }
+
+        assertTrue("cancellation must propagate", cancelled)
+        assertTrue(collected.none { it.contains("SHOULD-NOT-APPEAR") })
+    }
+
     // ── Intent routing keys off the raw user message ────────────────
 
     @Test
@@ -222,7 +309,13 @@ class GetAssistantResponseUseCaseTest {
         id: String,
         private val chatResult: Result<String> = Result.Success("chat-answer"),
         private val streamChunks: List<Result<String>> = listOf(Result.Success("stream-answer")),
-        val isOnDevice: Boolean = false
+        val isOnDevice: Boolean = false,
+        /**
+         * When set, the stream emits [cancelAfter] chunks and then throws a
+         * [kotlinx.coroutines.CancellationException], simulating the user
+         * cancelling the collecting coroutine mid-stream.
+         */
+        private val cancelAfter: Int? = null
     ) : AIProvider(
         metadata = ProviderMetadata(
             id = id,
@@ -243,7 +336,14 @@ class GetAssistantResponseUseCaseTest {
         override suspend fun chat(messages: List<AiMessage>): Result<String> = chatResult
         override fun streamText(prompt: String): Flow<String> = flowOf("stream-answer")
         override fun streamChat(messages: List<AiMessage>): Flow<Result<String>> =
-            streamChunks.asFlow()
+            if (cancelAfter != null) {
+                kotlinx.coroutines.flow.flow {
+                    streamChunks.take(cancelAfter).forEach { emit(it) }
+                    throw kotlinx.coroutines.CancellationException("user cancelled")
+                }
+            } else {
+                streamChunks.asFlow()
+            }
 
         override suspend fun listModels(): Result<List<String>> = Result.Success(emptyList())
 

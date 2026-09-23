@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/job.schema.json",
+  "title": "AiVanceJob",
+  "description": "Standardized job listing entity capturing employer metadata, structured compensation bounds, remote-work policies, skill prerequisites, and source provenance.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "company",
+    "remotePolicy",
+    "employmentType",
+    "description",
+    "sourceProvider"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this job posting"
+    },
+    "title": {
+      "type": "string",
+      "description": "Job title or role designation"
+    },
+    "company": {
+      "type": "object",
+      "required": ["name"],
+      "description": "Employer details associated with the posting",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Foreign key reference to company catalog entity if resolved"
+        },
+        "name": {
+          "type": "string",
+          "description": "Legal or operational name of hiring company"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Primary web domain of company (e.g., 'stripe.com')"
+        },
+        "logoUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to company brand icon/logo"
+        },
+        "websiteUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "Corporate homepage URL"
+        },
+        "headquarters": {
+          "type": "string",
+          "description": "Headquarters city/country"
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "description": "Geographic workplace location parameters",
+      "properties": {
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "formattedAddress": { "type": "string" },
+        "isRemote": { "type": "boolean", "default": false }
+      }
+    },
+    "compensation": {
+      "type": "object",
+      "description": "Structured remuneration bounds and currency specifications",
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Lower bound of salary/rate"
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Upper bound of salary/rate"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD",
+          "description": "Three-letter ISO 4217 currency symbol"
+        },
+        "interval": {
+          "type": "string",
+          "enum": ["HOURLY", "DAILY", "WEEKLY", "MONTHLY", "ANNUALLY"],
+          "default": "ANNUALLY",
+          "description": "Pay frequency interval"
+        },
+        "rawRange": {
+          "type": "string",
+          "description": "Original unparsed compensation string (e.g. '$140k - $180k + equity')"
+        }
+      }
+    },
+    "remotePolicy": {
+      "type": "string",
+      "enum": [
+        "FULLY_REMOTE",
+        "REMOTE_FIRST",
+        "REMOTE_FRIENDLY",
+        "HYBRID",
+        "ON_SITE",
+        "UNKNOWN"
+      ],
+      "description": "Remote-work policy tier"
+    },
+    "employmentType": {
+      "type": "string",
+      "enum": [
+        "FULL_TIME",
+        "PART_TIME",
+        "CONTRACT",
+        "INTERNSHIP",
+        "APPRENTICESHIP",
+        "TEMPORARY",
+        "FREELANCE",
+        "OTHER"
+      ],
+      "description": "Legal employment relationship category"
+    },
+    "experienceLevel": {
+      "type": "string",
+      "enum": [
+        "ENTRY_LEVEL",
+        "MID_LEVEL",
+        "SENIOR_LEVEL",
+        "EXECUTIVE",
+        "NOT_SPECIFIED"
+      ],
+      "default": "NOT_SPECIFIED",
+      "description": "Seniority classification requested"
+    },
+    "requiredSkills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Essential skills, languages, and competencies required"
+    },
+    "preferredSkills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Nice-to-have or bonus qualifications"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full plain text job description and requirements"
+    },
+    "descriptionHtml": {
+      "type": "string",
+      "description": "Sanitized HTML formatted job description if provided by source"
+    },
+    "sourceProvider": {
+      "type": "string",
+      "description": "Identifier of the ingestion provider or scraping actor (e.g., 'GREENHOUSE', 'LEVER', 'REMOTEOK', 'DIRECT_ATS')"
+    },
+    "sourceUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Original posting URL where listing was discovered"
+    },
+    "applicationUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Direct destination URL for applying to the job"
+    },
+    "postedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when listing was first published"
+    },
+    "expiresAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when listing expires"
+    },
+    "matchScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Calculated semantic match score against active candidate profile (0-100)"
+    }
+  },
+  "additionalProperties": false
+}

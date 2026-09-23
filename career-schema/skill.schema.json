@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/skill.schema.json",
+  "title": "AiVanceSkill",
+  "description": "Granular skill node in the career taxonomy, defining competency category, verified proficiency, empirical evidence references, and depth of experience.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "category",
+    "proficiency",
+    "yearsOfExperience",
+    "isVerified",
+    "evidenceIds"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this skill node (UUID or standardized taxonomy slug)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Canonical name of the skill (e.g., 'Kotlin Coroutines', 'Distributed Consensus')"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL-safe normalized slug (e.g., 'kotlin-coroutines')"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["TECHNICAL", "SOFT", "DOMAIN", "TOOL"],
+      "description": "High-level classification in the career taxonomy"
+    },
+    "proficiency": {
+      "type": "string",
+      "enum": ["BEGINNER", "INTERMEDIATE", "ADVANCED", "EXPERT"],
+      "description": "Assessed or self-attested level of mastery"
+    },
+    "yearsOfExperience": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Number of years actively utilizing this skill in production or study"
+    },
+    "isVerified": {
+      "type": "boolean",
+      "description": "Indicates whether the skill proficiency has been verified via audit, assessment, or interview evidence"
+    },
+    "verificationMethod": {
+      "type": "string",
+      "enum": [
+        "SELF_ATTESTED",
+        "ASSESSMENT",
+        "PROJECT_EVIDENCE",
+        "INTERVIEW_BENCHMARK",
+        "ENDORSEMENT"
+      ],
+      "default": "SELF_ATTESTED",
+      "description": "Mechanism utilized to validate competence"
+    },
+    "verifiedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when skill was verified"
+    },
+    "evidenceIds": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of evidence identifiers linking to career-memory records, GitHub repos, assessment IDs, or interview sessions"
+    },
+    "keywords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Alternative synonyms, acronyms, or keywords (e.g., ['kmp', 'kotlin-multiplatform'])"
+    },
+    "subcategories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Hierarchical tags or sub-domains (e.g., ['Mobile', 'Concurrency'])"
+    },
+    "lastUsedYear": {
+      "type": "integer",
+      "description": "Calendar year when this skill was most recently practiced"
+    },
+    "assessmentScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Normalized assessment or benchmark score (0-100)"
+    },
+    "createdAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when record was created"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds of last record update"
+    }
+  },
+  "additionalProperties": false
+}

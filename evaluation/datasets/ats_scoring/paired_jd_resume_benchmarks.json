@@ -1,0 +1,181 @@
+[
+  {
+    "id": "ats_pair_01",
+    "name": "Senior Android Engineer vs FinTech Senior Mobile Role",
+    "candidate_id": "resume_01",
+    "candidate_name": "Maya Lin",
+    "job_title": "Senior Android Engineer",
+    "company": "FinTech Global",
+    "match_category": "HIGH_MATCH",
+    "expected_match_score": 92.0,
+    "expected_score_range": [85.0, 95.0],
+    "job_description": "We are seeking a Senior Android Engineer to spearhead the evolution of our mobile financial platform. You will build highly responsive, crash-free customer experiences.\n\nKey Requirements:\n- 5+ years of production Android development experience using Kotlin and the Android SDK.\n- Deep mastery of Jetpack Compose for state-driven declarative UI engineering.\n- Strong command of Kotlin Coroutines, StateFlow, and SharedFlow for asynchronous reactive pipelines.\n- Experience with dependency injection using Dagger Hilt.\n- Expertise in local persistent storage using Room and network communication via Retrofit.\n- Solid grounding in Clean Architecture and MVVM / MVI architectural patterns.\n- Rigorous unit testing and UI testing discipline with JUnit and MockK.\n- Familiarity with CI/CD automation pipelines and Gradle build scripting.\n\nNice-to-Have:\n- Experience with GraphQL clients.\n- Mobile observability with Datadog.",
+    "ground_truth": {
+      "matched_keywords": [
+        "Kotlin",
+        "Android SDK",
+        "Jetpack Compose",
+        "Coroutines",
+        "Flow",
+        "Dagger Hilt",
+        "Retrofit",
+        "Room",
+        "Clean Architecture",
+        "JUnit",
+        "MockK",
+        "CI/CD",
+        "Gradle"
+      ],
+      "missing_keywords": [
+        "GraphQL",
+        "Datadog"
+      ],
+      "experience_qualified": true,
+      "degree_qualified": true
+    }
+  },
+  {
+    "id": "ats_pair_02",
+    "name": "Senior Platform Engineer vs Cloud Platform SRE Role",
+    "candidate_id": "resume_05",
+    "candidate_name": "Elena Rostova",
+    "job_title": "Senior Cloud Platform Engineer",
+    "company": "ScaleOps Cloud",
+    "match_category": "HIGH_MATCH",
+    "expected_match_score": 89.0,
+    "expected_score_range": [85.0, 95.0],
+    "job_description": "ScaleOps is hiring a Senior Cloud Platform Engineer to architect and operate our next-generation multi-tenant cloud platform.\n\nResponsibilities:\n- Manage and scale enterprise production Kubernetes clusters across AWS.\n- Author reusable, modular Infrastructure as Code using Terraform and Helm.\n- Build continuous delivery GitOps pipelines using ArgoCD and CI/CD tools.\n- Implement end-to-end observability, metrics collection, and alerting with Prometheus, Grafana, and Alertmanager.\n- Write infrastructure automation scripts in Python, Bash, and Linux systems programming.\n\nBonus Qualifications:\n- Secrets governance with HashiCorp Vault.\n- Service mesh orchestration with Istio.",
+    "ground_truth": {
+      "matched_keywords": [
+        "Kubernetes",
+        "Docker",
+        "Terraform",
+        "AWS",
+        "Linux",
+        "Python",
+        "Bash",
+        "CI/CD",
+        "ArgoCD",
+        "Prometheus",
+        "Grafana",
+        "Helm",
+        "GitOps"
+      ],
+      "missing_keywords": [
+        "HashiCorp Vault",
+        "Istio"
+      ],
+      "experience_qualified": true,
+      "degree_qualified": true
+    }
+  },
+  {
+    "id": "ats_pair_03",
+    "name": "Staff Java/Kafka Engineer vs Go Distributed Systems Role",
+    "candidate_id": "resume_02",
+    "candidate_name": "Marcus Vance",
+    "job_title": "Senior Golang Distributed Systems Engineer",
+    "company": "StreamPlatform Networks",
+    "match_category": "MODERATE_MATCH",
+    "expected_match_score": 68.0,
+    "expected_score_range": [60.0, 75.0],
+    "job_description": "StreamPlatform Networks is looking for a Senior Distributed Systems Engineer to build ultra-low-latency message brokers and real-time streaming engines.\n\nRequirements:\n- 5+ years building distributed systems and high-throughput microservices.\n- Extensive production experience with Golang, Goroutines, channels, and concurrency primitives.\n- In-depth operational knowledge of Apache Kafka event streams, partitioning, and consumer lag.\n- Experience with gRPC, Protocol Buffers, and network socket programming.\n- Strong proficiency with PostgreSQL and Redis caching layers.\n- Experience orchestrating microservices in Docker and Kubernetes on AWS.\n\nNice to have:\n- Background in JVM microservices (Java/Kotlin) or C++ is considered a transferrable plus.",
+    "ground_truth": {
+      "matched_keywords": [
+        "Distributed Systems",
+        "Microservices",
+        "Kafka",
+        "PostgreSQL",
+        "Redis",
+        "Kubernetes",
+        "Docker",
+        "gRPC",
+        "AWS",
+        "System Design"
+      ],
+      "missing_keywords": [
+        "Golang",
+        "Goroutines",
+        "Go Channels",
+        "Gin",
+        "Gorm"
+      ],
+      "experience_qualified": true,
+      "degree_qualified": true
+    }
+  },
+  {
+    "id": "ats_pair_04",
+    "name": "Junior React Frontend Dev vs Full-Stack Web Developer Role",
+    "candidate_id": "resume_03",
+    "candidate_name": "Chloe Chen",
+    "job_title": "Full-Stack Web Developer",
+    "company": "SaaSStartup Inc",
+    "match_category": "MODERATE_MATCH",
+    "expected_match_score": 64.0,
+    "expected_score_range": [60.0, 75.0],
+    "job_description": "SaaSStartup is looking for a full-stack engineer to build our customer portal.\n\nRequirements:\n- 2+ years of professional web development experience.\n- Strong expertise in TypeScript, JavaScript, React, and Next.js.\n- Modern styling using Tailwind CSS, responsive design, and CSS3.\n- State management with Redux Toolkit or React Context.\n- Server-side development with Node.js, Express, and REST APIs.\n- Database modeling with PostgreSQL or MongoDB.\n- Unit testing using Jest and React Testing Library.\n- Containerization using Docker and cloud hosting on AWS.",
+    "ground_truth": {
+      "matched_keywords": [
+        "TypeScript",
+        "JavaScript",
+        "React",
+        "Next.js",
+        "HTML5",
+        "CSS3",
+        "Tailwind CSS",
+        "Redux Toolkit",
+        "REST APIs",
+        "Git",
+        "Jest",
+        "Responsive Design"
+      ],
+      "missing_keywords": [
+        "Node.js",
+        "Express",
+        "PostgreSQL",
+        "MongoDB",
+        "Docker",
+        "AWS"
+      ],
+      "experience_qualified": false,
+      "degree_qualified": true
+    }
+  },
+  {
+    "id": "ats_pair_05",
+    "name": "Junior Frontend Developer vs Principal Embedded Firmware Engineer",
+    "candidate_id": "resume_03",
+    "candidate_name": "Chloe Chen",
+    "job_title": "Principal Embedded Firmware Engineer",
+    "company": "IoT Dynamics",
+    "match_category": "MISMATCH",
+    "expected_match_score": 18.0,
+    "expected_score_range": [0.0, 35.0],
+    "job_description": "IoT Dynamics is seeking a Principal Embedded Firmware Engineer to lead bare-metal and RTOS firmware engineering for mission-critical satellite telemetry sensors.\n\nMandatory Qualifications:\n- 8+ years hands-on development in Embedded C and modern C++.\n- Experience with real-time operating systems (FreeRTOS, Zephyr, or VxWorks).\n- Microcontroller architectures: ARM Cortex-M, RISC-V, and bare-metal registers.\n- Hardware serial protocols: SPI, I2C, UART, CAN bus.\n- Hands-on debugging with logic analyzers, digital oscilloscopes, and JTAG/SWD emulators.\n- Hardware board bring-up, PCB schematic review, and low-power power management.\n- Version control with Git.",
+    "ground_truth": {
+      "matched_keywords": [
+        "Git"
+      ],
+      "missing_keywords": [
+        "Embedded C",
+        "C++",
+        "RTOS",
+        "FreeRTOS",
+        "Zephyr",
+        "ARM Cortex-M",
+        "RISC-V",
+        "SPI",
+        "I2C",
+        "UART",
+        "CAN bus",
+        "Oscilloscope",
+        "Logic Analyzer",
+        "PCB Bringup",
+        "Bare-metal"
+      ],
+      "experience_qualified": false,
+      "degree_qualified": false
+    }
+  }
+]

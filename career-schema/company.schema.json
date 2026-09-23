@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/company.schema.json",
+  "title": "AiVanceCompany",
+  "description": "Company catalog entity encapsulating corporate identification, domain, industrial classification, workforce size, headquarters, remote culture policies, social links, and technology stack.",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "domain",
+    "industry",
+    "remoteCulture"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this company (e.g. 'company-stripe' or UUID)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Official company name"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Primary company apex domain (e.g. 'stripe.com')"
+    },
+    "industry": {
+      "type": "string",
+      "description": "Primary industry sector (e.g., 'Financial Technology', 'Cloud Computing')"
+    },
+    "size": {
+      "type": "string",
+      "enum": [
+        "SIZE_1_10",
+        "SIZE_11_50",
+        "SIZE_51_200",
+        "SIZE_201_500",
+        "SIZE_501_1000",
+        "SIZE_1001_5000",
+        "SIZE_5001_10000",
+        "SIZE_10000_PLUS"
+      ],
+      "description": "Standardized employee bracket size"
+    },
+    "employeeCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Approximate headcount of organization"
+    },
+    "headquarters": {
+      "type": "object",
+      "description": "Geographic location of corporate headquarters",
+      "properties": {
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "formattedAddress": { "type": "string" }
+      }
+    },
+    "remoteCulture": {
+      "type": "object",
+      "required": ["policy"],
+      "description": "Company-wide remote and asynchronous working culture parameters",
+      "properties": {
+        "policy": {
+          "type": "string",
+          "enum": [
+            "FULLY_REMOTE",
+            "REMOTE_FIRST",
+            "REMOTE_FRIENDLY",
+            "HYBRID",
+            "ON_SITE",
+            "UNKNOWN"
+          ],
+          "description": "Remote working policy taxonomy"
+        },
+        "asyncFirst": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether organization operates primarily via asynchronous written communication"
+        },
+        "workFromAnywhere": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether employees are permitted to work from any global jurisdiction"
+        },
+        "geoHiringRestrictions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Geographic regions or time zones where hiring is restricted (e.g., ['UTC-5 to UTC-8', 'US-Only'])"
+        },
+        "perks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Remote-related benefits (e.g., 'Home Office Setup', 'Coworking Allowance')"
+        }
+      }
+    },
+    "socialLinks": {
+      "type": "object",
+      "description": "Corporate profiles on social and developer platforms",
+      "properties": {
+        "linkedin": { "type": "string", "format": "uri" },
+        "github": { "type": "string", "format": "uri" },
+        "twitter": { "type": "string", "format": "uri" },
+        "glassdoor": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": { "type": "string" }
+    },
+    "technologyStack": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Verified languages, frameworks, and infrastructure tools utilized by engineering (e.g. ['Kotlin', 'Compose', 'PostgreSQL', 'Docker'])"
+    },
+    "description": {
+      "type": "string",
+      "description": "Corporate mission, product overview, and company background"
+    },
+    "websiteUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical homepage URL"
+    },
+    "logoUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "High-resolution corporate logo URL"
+    },
+    "foundedYear": {
+      "type": "integer",
+      "description": "Calendar year founded"
+    },
+    "isVerified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indicates if catalog details have been verified by AiVance maintainers"
+    },
+    "lastUpdated": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds of catalog entry update"
+    }
+  },
+  "additionalProperties": false
+}

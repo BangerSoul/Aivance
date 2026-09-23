@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/recruiter.schema.json",
+  "title": "AiVanceRecruiter",
+  "description": "Talent acquisition professional and recruiter contact entity, detailing corporate affiliation, verified communication channels, statistical confidence scores, and verification methods.",
+  "type": "object",
+  "required": [
+    "id",
+    "companyId",
+    "name",
+    "title",
+    "verifiedContacts"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this recruiter contact"
+    },
+    "companyId": {
+      "type": "string",
+      "description": "Foreign key reference to associated company in catalog"
+    },
+    "name": {
+      "type": "string",
+      "description": "Full name of the recruiter or hiring manager"
+    },
+    "title": {
+      "type": "string",
+      "description": "Official job title (e.g. 'Senior Technical Recruiter', 'Head of Engineering Talent')"
+    },
+    "department": {
+      "type": "string",
+      "description": "Talent acquisition subdivision or engineering group (e.g., 'Infra & Platform Hiring')"
+    },
+    "linkedinUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "Public LinkedIn profile link"
+    },
+    "verifiedContacts": {
+      "type": "array",
+      "description": "Set of verified or synthesized contact endpoints with confidence scores",
+      "items": {
+        "$ref": "#/$defs/RecruiterContactChannel"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "User notes or interaction context regarding this recruiter"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Classification tags (e.g., ['in-house', 'agency', 'executive-search'])"
+    },
+    "createdAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when record was created"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when record was last updated"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "RecruiterContactChannel": {
+      "type": "object",
+      "required": ["id", "type", "value", "confidenceScore", "verificationMethod", "isVerified"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique contact channel ID"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["EMAIL", "PHONE", "LINKEDIN_INMAIL", "TWITTER_DM"],
+          "description": "Communication channel type"
+        },
+        "value": {
+          "type": "string",
+          "description": "Contact address or endpoint (e.g., recruiter@company.com)"
+        },
+        "confidenceScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Statistical confidence score (0 to 100) indicating email deliverability"
+        },
+        "verificationMethod": {
+          "type": "string",
+          "enum": [
+            "SMTP_HANDSHAKE",
+            "MX_RECORD",
+            "PATTERN_SYNTHESIS",
+            "INBOX_SCRAPE",
+            "MANUAL_VERIFIED",
+            "THIRD_PARTY_ENRICHMENT"
+          ],
+          "description": "Method utilized to deduce or verify contact deliverability"
+        },
+        "isVerified": {
+          "type": "boolean",
+          "description": "True if confirmed valid via SMTP ping or manual test"
+        },
+        "lastVerifiedAt": {
+          "type": "integer",
+          "description": "Epoch timestamp in milliseconds when contact deliverability was confirmed"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

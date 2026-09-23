@@ -1,0 +1,180 @@
+[
+  {
+    "id": "resume_01",
+    "candidate_name": "Maya Lin",
+    "target_role": "Senior Android Engineer",
+    "seniority_level": "Senior",
+    "resume_text": "MAYA LIN\nSeattle, WA | maya.lin@email.example | linkedin.com/in/mayalin-dev | github.com/mayalin\n\nPROFESSIONAL SUMMARY\nDedicated Senior Android Engineer with 7.5 years of experience designing and shipping high-performance mobile applications used by over 5 million daily active users. Expert in modern Android development with Kotlin, Jetpack Compose, Coroutines, and reactive architectures. Strong proponent of clean architecture, automated testing, and CI/CD pipelines.\n\nEXPERIENCE\n\nSenior Android Engineer | FinTech Innovations, Seattle, WA | June 2020 – Present (4.2 years)\n- Led migration of flagship banking app from XML layouts to 100% Jetpack Compose, reducing UI codebase by 38% and UI crash rate by 45%.\n- Architected asynchronous event-driven pipelines using Kotlin Coroutines and StateFlow, improving screen transition latency by 120ms.\n- Implemented dependency injection using Dagger Hilt across 16 modular feature modules.\n- Built offline-first transactional caching using Room database and Retrofit with custom OkHttp interceptors.\n- Authored comprehensive test suites with JUnit 5, MockK, and Compose UI tests achieving 84% code coverage.\n- Maintained GitHub Actions CI/CD workflows automating static analysis (Detekt, Android Lint) and Google Play internal track deployments.\n\nAndroid Software Engineer | MobilePulse Corp, Bellevue, WA | January 2017 – May 2020 (3.3 years)\n- Developed core audio streaming features using Android SDK, Kotlin, and Java for an entertainment app with 10M+ downloads.\n- Refactored legacy MVP codebase to MVVM and Clean Architecture patterns.\n- Integrated RESTful APIs with Retrofit and Moshi, ensuring robust error handling and token refresh lifecycles.\n- Managed Gradle multi-module build optimization, cutting clean build times by 30%.\n\nEDUCATION\nBachelor of Science in Computer Science\nUniversity of Washington, Seattle, WA | Graduated May 2017\n\nTECHNICAL SKILLS\n- Languages: Kotlin, Java\n- Android Technologies: Android SDK, Jetpack Compose, Coroutines, Flow, Dagger Hilt, Room, Retrofit, Navigation Component\n- Architecture: Clean Architecture, MVVM, MVI, Multi-Module Design\n- Testing & Tools: JUnit, MockK, Espresso, CI/CD, GitHub Actions, Gradle, Git",
+    "ground_truth": {
+      "experience_years": 7.5,
+      "degrees": [
+        {
+          "degree": "Bachelor of Science",
+          "field": "Computer Science",
+          "institution": "University of Washington",
+          "graduation_year": 2017
+        }
+      ],
+      "skills": [
+        "Kotlin",
+        "Android SDK",
+        "Jetpack Compose",
+        "Coroutines",
+        "Flow",
+        "Dagger Hilt",
+        "Retrofit",
+        "Room",
+        "Clean Architecture",
+        "JUnit",
+        "MockK",
+        "CI/CD",
+        "Gradle"
+      ]
+    }
+  },
+  {
+    "id": "resume_02",
+    "candidate_name": "Marcus Vance",
+    "target_role": "Staff Backend Engineer",
+    "seniority_level": "Staff",
+    "resume_text": "MARCUS VANCE\nChicago, IL | marcus.vance@email.example | github.com/marcusvance | (312) 555-0192\n\nEXECUTIVE SUMMARY\nStaff Backend Engineer with 12 years of hands-on experience designing, scaling, and operating mission-critical distributed systems. Deep technical expertise in Java and Kotlin microservice ecosystems, event streaming architectures with Apache Kafka, high-concurrency databases, and cloud infrastructure on AWS. Proven track record leading multi-team technical initiatives handling 200,000+ requests per second.\n\nPROFESSIONAL EXPERIENCE\n\nStaff Backend Engineer | CloudScale Systems, Chicago, IL | March 2019 – Present (5.5 years)\n- Principal technical architect for CloudScale's unified event-driven payment processing platform processing $14B annually.\n- Designed resilient distributed microservices in Java 21 and Spring Boot, communicating over gRPC and Kafka with sub-25ms p99 latency.\n- Re-architected data tier with PostgreSQL partitioning, read replicas, and distributed caching in Redis, reducing query loads by 60%.\n- Governed containerized workloads across 40+ Kubernetes clusters on AWS using Terraform for declarative infrastructure as code.\n- Mentored 18 senior and staff engineers across 4 autonomous squad teams in distributed systems design and resiliency patterns.\n\nLead Software Engineer | FinTech Systems, Chicago, IL | August 2014 – February 2019 (4.5 years)\n- Spearheaded transition from monolithic legacy systems to 24 containerized microservices using Kotlin, Spring Boot, and Docker.\n- Designed fault-tolerant message streaming pipelines on Apache Kafka handling 50M messages daily with exactly-once processing semantics.\n- Implemented database sharding strategies on PostgreSQL databases to overcome vertical scaling limitations.\n- Built comprehensive telemetry and tracing infrastructure using OpenTelemetry and Prometheus.\n\nBackend Software Engineer | Enterprise Core, Indianapolis, IN | June 2012 – July 2014 (2.0 years)\n- Developed core transaction processing services in Java EE, Hibernate, and Oracle SQL.\n- Built RESTful web services and automated integration testing pipelines.\n\nEDUCATION\n- Master of Science in Computer Science | Georgia Institute of Technology, Atlanta, GA | 2014\n- Bachelor of Science in Software Engineering | Purdue University, West Lafayette, IN | 2012\n\nTECHNICAL SKILLS\n- Languages: Java, Kotlin, SQL, Bash\n- Frameworks & Systems: Spring Boot, Microservices, Distributed Systems, Kafka, gRPC, Hibernate\n- Data & Storage: PostgreSQL, Redis, Oracle DB\n- Cloud & DevOps: Kubernetes, Docker, AWS, Terraform, System Design, Prometheus",
+    "ground_truth": {
+      "experience_years": 12.0,
+      "degrees": [
+        {
+          "degree": "Master of Science",
+          "field": "Computer Science",
+          "institution": "Georgia Institute of Technology",
+          "graduation_year": 2014
+        },
+        {
+          "degree": "Bachelor of Science",
+          "field": "Software Engineering",
+          "institution": "Purdue University",
+          "graduation_year": 2012
+        }
+      ],
+      "skills": [
+        "Java",
+        "Kotlin",
+        "Spring Boot",
+        "Microservices",
+        "Distributed Systems",
+        "Kafka",
+        "PostgreSQL",
+        "Redis",
+        "Kubernetes",
+        "Docker",
+        "gRPC",
+        "AWS",
+        "System Design",
+        "Terraform"
+      ]
+    }
+  },
+  {
+    "id": "resume_03",
+    "candidate_name": "Chloe Chen",
+    "target_role": "Junior Frontend Developer",
+    "seniority_level": "Junior",
+    "resume_text": "CHLOE CHEN\nSan Jose, CA | chloe.chen@email.example | github.com/chloechen-dev | chloechen.me\n\nPROFILE\nPassionate and detail-oriented Junior Frontend Developer with 1.5 years of industry experience crafting fast, accessible, and responsive user interfaces. Proficient in modern TypeScript, React, Next.js, and CSS frameworks. Quick learner with strong fundamentals in DOM manipulation, component-driven design, and API integration.\n\nEXPERIENCE\n\nJunior Frontend Developer | WebStudio Agency, San Jose, CA | July 2023 – Present (1.2 years)\n- Built and maintained customer-facing web applications using TypeScript, React 18, and Next.js for 8 client e-commerce platforms.\n- Implemented pixel-perfect, accessible UI components utilizing Tailwind CSS and HTML5/CSS3 semantics, adhering to WCAG 2.1 AA standards.\n- Integrated REST APIs with Redux Toolkit and React Query for asynchronous data fetching and global client state management.\n- Authored unit and component tests with Jest and React Testing Library, maintaining 78% code coverage across repositories.\n- Utilized Git and GitHub for branch management, code reviews, and pair programming.\n\nFrontend Developer Intern | LocalTech Solutions, San Jose, CA | February 2023 – June 2023 (0.3 years)\n- Assisted in rebuilding company marketing portal in Next.js, improving Lighthouse performance score from 62 to 94.\n- Collaborated with UI/UX designers to implement responsive design patterns across mobile, tablet, and desktop viewports.\n\nEDUCATION\nBachelor of Science in Information Technology\nSan Jose State University, San Jose, CA | Graduated May 2023\n\nTECHNICAL SKILLS\n- Core: TypeScript, JavaScript, HTML5, CSS3\n- Frameworks & Libraries: React, Next.js, Tailwind CSS, Redux Toolkit\n- Concepts: REST APIs, Responsive Design, Web Accessibility, Component Architecture\n- Tooling: Git, Jest, React Testing Library, Vite, npm",
+    "ground_truth": {
+      "experience_years": 1.5,
+      "degrees": [
+        {
+          "degree": "Bachelor of Science",
+          "field": "Information Technology",
+          "institution": "San Jose State University",
+          "graduation_year": 2023
+        }
+      ],
+      "skills": [
+        "TypeScript",
+        "JavaScript",
+        "React",
+        "Next.js",
+        "HTML5",
+        "CSS3",
+        "Tailwind CSS",
+        "Redux Toolkit",
+        "REST APIs",
+        "Git",
+        "Jest",
+        "Responsive Design"
+      ]
+    }
+  },
+  {
+    "id": "resume_04",
+    "candidate_name": "Tariq Al-Mansoor",
+    "target_role": "Mobile Architect",
+    "seniority_level": "Principal / Architect",
+    "resume_text": "TARIQ AL-MANSOOR\nAustin, TX | tariq.mansoor@email.example | linkedin.com/in/tariqmansoor | github.com/tariq-arch\n\nSUMMARY\nAccomplished Mobile Architect with 14 years of engineering leadership across Android and iOS ecosystems. Renowned for defining cross-platform architecture frameworks, mobile modularization patterns, app security standards, and high-performance native rendering engines. Expert in Kotlin, Swift, Android NDK, Jetpack Compose, and SwiftUI.\n\nEXPERIENCE\n\nPrincipal Mobile Architect | Global Mobility Inc, Austin, TX | January 2018 – Present (6.7 years)\n- Defined enterprise-wide mobile architecture and SDK design strategy supporting 12 distributed engineering teams and 45M active mobile installations.\n- Architected cross-platform architecture governance strategy, harmonizing business logic between Kotlin (Android) and Swift (iOS).\n- Designed multi-module decoupled modularization architecture reducing build compilation times by 55% across 80+ Gradle modules.\n- Led performance profiling and memory optimization task force, eliminating cold-start latency by 42% and eliminating native memory leaks via Android NDK.\n- Implemented mobile app security hardening protocols: biometric authentication, runtime integrity verification, and certificate pinning.\n- Established automated CI/CD automation pipelines for continuous delivery across Google Play Store and Apple App Store.\n\nLead Android Architect | MegaApp Technologies, Dallas, TX | March 2013 – December 2017 (4.8 years)\n- Supervised engineering architecture for high-concurrency real-time messaging application.\n- Spearheaded transition from early Java/Dalvik architectures to modern Kotlin and reactive paradigms.\n- Mentored 25+ engineers on clean architecture, design patterns, and automated testing.\n\nSenior Mobile Developer | Apex Apps, Austin, TX | June 2010 – February 2013 (2.7 years)\n- Developed native Android and early iOS applications, handling camera hardware integration and SQLite database layers.\n\nEDUCATION\n- Master of Science in Computer Engineering | University of Michigan, Ann Arbor, MI | 2010\n- Bachelor of Science in Electrical & Computer Engineering | University of Texas at Austin, TX | 2008\n\nTECHNICAL SKILLS\n- Languages: Kotlin, Swift, Android NDK, Java, C++\n- Platforms: Android SDK, iOS SDK, Jetpack Compose, SwiftUI\n- Architecture: Cross-Platform Architecture, Modularization, SDK Design, Clean Architecture\n- Engineering Excellence: Performance Profiling, Memory Optimization, App Security, CI/CD Automation",
+    "ground_truth": {
+      "experience_years": 14.0,
+      "degrees": [
+        {
+          "degree": "Master of Science",
+          "field": "Computer Engineering",
+          "institution": "University of Michigan",
+          "graduation_year": 2010
+        },
+        {
+          "degree": "Bachelor of Science",
+          "field": "Electrical & Computer Engineering",
+          "institution": "University of Texas at Austin",
+          "graduation_year": 2008
+        }
+      ],
+      "skills": [
+        "Kotlin",
+        "Swift",
+        "Android NDK",
+        "iOS SDK",
+        "Cross-Platform Architecture",
+        "Modularization",
+        "Jetpack Compose",
+        "SwiftUI",
+        "Performance Profiling",
+        "Memory Optimization",
+        "App Security",
+        "CI/CD Automation",
+        "SDK Design"
+      ]
+    }
+  },
+  {
+    "id": "resume_05",
+    "candidate_name": "Elena Rostova",
+    "target_role": "DevOps / Platform Engineer",
+    "seniority_level": "Senior",
+    "resume_text": "ELENA ROSTOVA\nDenver, CO | elena.rostova@email.example | github.com/erostova | (720) 555-0183\n\nPROFILE\nResults-driven DevOps / Platform Engineer with 6.0 years of experience building scalable, resilient cloud platforms and automated deployment infrastructures. Deep hands-on expertise in Kubernetes, Docker, Terraform, AWS, and GitOps workflows. Passionate about developer velocity, observability, and infrastructure security.\n\nWORK EXPERIENCE\n\nSenior Platform Engineer | CloudNative Solutions, Denver, CO | August 2021 – Present (3.1 years)\n- Architected and managed production Kubernetes (EKS) clusters hosting 150+ microservices on AWS with 99.99% uptime.\n- Implemented Infrastructure as Code using Terraform and Helm, provisioning multi-region VPCs, IAM roles, RDS instances, and transit gateways.\n- Established GitOps deployment pipelines using ArgoCD, cutting deployment lead time from 2 hours to 6 minutes.\n- Built comprehensive observability and monitoring stacks with Prometheus, Grafana, and Alertmanager, reducing MTTR by 45%.\n- Developed automation tooling and custom CLI scripts in Python and Bash for automated secret rotation and node scaling.\n\nDevOps Engineer | SaaSify Networks, Boulder, CO | June 2018 – July 2021 (3.1 years)\n- Built automated CI/CD pipelines in GitLab CI and Jenkins for containerized Python and Go microservices.\n- Managed Docker container image lifecycle, vulnerability scanning with Trivy, and image registries.\n- Configured automated configuration management with Ansible across 200+ Linux EC2 instances.\n- Enforced cloud security best practices and compliance policies across AWS environments.\n\nEDUCATION & CERTIFICATIONS\n- Bachelor of Science in Computer Engineering | University of Colorado Boulder, CO | Graduated May 2018\n- Certified Kubernetes Administrator (CKA)\n- AWS Certified Solutions Architect – Associate\n\nTECHNICAL SKILLS\n- Cloud & Orchestration: Kubernetes, Docker, AWS, Helm, ArgoCD, GitOps\n- Infrastructure as Code: Terraform, Ansible\n- Observability: Prometheus, Grafana, Alertmanager, Datadog\n- Scripting & OS: Python, Bash, Linux\n- Automation: CI/CD, GitHub Actions, GitLab CI",
+    "ground_truth": {
+      "experience_years": 6.0,
+      "degrees": [
+        {
+          "degree": "Bachelor of Science",
+          "field": "Computer Engineering",
+          "institution": "University of Colorado Boulder",
+          "graduation_year": 2018
+        }
+      ],
+      "skills": [
+        "Kubernetes",
+        "Docker",
+        "Terraform",
+        "AWS",
+        "Linux",
+        "Python",
+        "Bash",
+        "CI/CD",
+        "ArgoCD",
+        "Prometheus",
+        "Grafana",
+        "Helm",
+        "Ansible",
+        "GitOps"
+      ]
+    }
+  }
+]

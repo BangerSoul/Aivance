@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/application.schema.json",
+  "title": "AiVanceJobApplication",
+  "description": "Tracked job application lifecycle model managing pipeline stages, linked resume versions, cover letters, recruiter contacts, chronological timeline events, and actionable tasks.",
+  "type": "object",
+  "required": [
+    "id",
+    "jobId",
+    "stage",
+    "timeline",
+    "tasks"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this tracked application"
+    },
+    "jobId": {
+      "type": "string",
+      "description": "Foreign key reference to target job posting"
+    },
+    "companyName": {
+      "type": "string",
+      "description": "Display name of employer"
+    },
+    "jobTitle": {
+      "type": "string",
+      "description": "Title of role applied for"
+    },
+    "resumeVersionId": {
+      "type": "string",
+      "description": "Foreign key reference to specific resume version submitted"
+    },
+    "coverLetterId": {
+      "type": "string",
+      "description": "Foreign key reference to tailored cover letter document"
+    },
+    "recruiterId": {
+      "type": "string",
+      "description": "Foreign key reference to primary recruiter contact"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "SAVED",
+        "APPLIED",
+        "SCREENING",
+        "TECHNICAL_ROUND",
+        "ONSITE",
+        "OFFER",
+        "REJECTED",
+        "WITHDRAWN"
+      ],
+      "description": "Current pipeline stage of the job application"
+    },
+    "salaryTarget": {
+      "type": "string",
+      "description": "Target compensation discussed or submitted for this application"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Freeform user notes, interview impressions, or debrief comments"
+    },
+    "timeline": {
+      "type": "array",
+      "description": "Chronological audit trail of stage changes and milestone interactions",
+      "items": {
+        "$ref": "#/$defs/ApplicationTimelineEvent"
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Actionable follow-up checklist items (e.g. thank you notes, prep tasks)",
+      "items": {
+        "$ref": "#/$defs/ApplicationTask"
+      }
+    },
+    "appliedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when application was formally submitted"
+    },
+    "createdAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when entry was created"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when application was last modified"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ApplicationTimelineEvent": {
+      "type": "object",
+      "required": ["id", "stage", "title", "timestamp"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique timeline event ID"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "SAVED",
+            "APPLIED",
+            "SCREENING",
+            "TECHNICAL_ROUND",
+            "ONSITE",
+            "OFFER",
+            "REJECTED",
+            "WITHDRAWN"
+          ],
+          "description": "Application stage associated with event"
+        },
+        "title": {
+          "type": "string",
+          "description": "Event headline (e.g., 'Initial Recruiter Phone Screen Completed')"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Epoch timestamp in milliseconds when event took place"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional event notes or debrief points"
+        },
+        "actor": {
+          "type": "string",
+          "enum": ["USER", "AUTOMATION", "RECRUITER"],
+          "default": "USER",
+          "description": "Initiator of the timeline event"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ApplicationTask": {
+      "type": "object",
+      "required": ["id", "title", "isCompleted"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique task ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Task actionable description"
+        },
+        "dueDate": {
+          "type": "integer",
+          "description": "Epoch timestamp in milliseconds when task is due"
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "default": false,
+          "description": "Completion flag"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "URGENT"],
+          "default": "MEDIUM",
+          "description": "Task priority level"
+        },
+        "taskType": {
+          "type": "string",
+          "enum": [
+            "FOLLOW_UP_EMAIL",
+            "PREPARE_PORTFOLIO",
+            "SCHEDULE_INTERVIEW",
+            "THANK_YOU_NOTE",
+            "CUSTOM"
+          ],
+          "default": "CUSTOM",
+          "description": "Categorization of application task"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

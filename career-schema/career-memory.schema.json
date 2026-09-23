@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/career-memory.schema.json",
+  "title": "AiVanceCareerMemory",
+  "description": "Longitudinal career memory entry tracking historical skill evolution, interview performance, career weaknesses, empirical metrics, and grounding references across time.",
+  "type": "object",
+  "required": [
+    "id",
+    "timestamp",
+    "category",
+    "evidenceType",
+    "strengths",
+    "weaknesses",
+    "metrics",
+    "groundingReferences"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this career memory node (UUID v4)"
+    },
+    "userId": {
+      "type": "string",
+      "description": "Candidate user identifier associated with memory entry"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when observation occurred"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "INTERVIEW_PERFORMANCE",
+        "RESUME_FEEDBACK",
+        "SKILL_ACQUISITION",
+        "APPLICATION_OUTCOME",
+        "CAREER_MILESTONE",
+        "GOAL_PROGRESS"
+      ],
+      "description": "Domain category of longitudinal career observation"
+    },
+    "evidenceType": {
+      "type": "string",
+      "enum": [
+        "TRANSCRIPT_SNIPPET",
+        "ATS_AUDIT_LOG",
+        "ASSESSMENT_RESULT",
+        "APPLICATION_DECISION",
+        "CODE_COMMITS",
+        "EXTERNAL_REFERENCE"
+      ],
+      "description": "Empirical evidence source underpinning this memory"
+    },
+    "strengths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Observed competencies, exemplary answers, or verified proficiencies"
+    },
+    "weaknesses": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Identified areas for improvement, knowledge gaps, or interview stumbling blocks"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Quantitative telemetry, scoring parameters, and benchmark scores",
+      "additionalProperties": {
+        "type": ["number", "string", "boolean"]
+      },
+      "examples": [
+        {
+          "overallScore": 88,
+          "clarityScore": 92,
+          "accuracyScore": 85,
+          "toneScore": 90,
+          "starMethodScore": 85,
+          "wordCount": 350
+        }
+      ]
+    },
+    "groundingReferences": {
+      "type": "array",
+      "description": "Direct citations, transcript passages, or document offsets grounding the memory",
+      "items": {
+        "$ref": "#/$defs/GroundingReference"
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "High-level synthesized executive summary of this memory entry"
+    },
+    "retentionPolicy": {
+      "type": "string",
+      "enum": ["EPHEMERAL_30D", "LONGITUDINAL_1Y", "PERMANENT"],
+      "default": "LONGITUDINAL_1Y",
+      "description": "Data lifecycle retention period for compliance and pruning"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Semantic categorization tags (e.g. ['system-design', 'distributed-systems'])"
+    },
+    "createdAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when entry was recorded"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when entry was last amended"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "GroundingReference": {
+      "type": "object",
+      "required": ["id", "sourceUri", "sourceType", "quote", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique reference ID"
+        },
+        "sourceUri": {
+          "type": "string",
+          "description": "URI or URI-fragment locating source material (e.g. 'aivance://interview/session-99#q-3')"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "INTERVIEW_SESSION",
+            "RESUME_VERSION",
+            "JOB_LISTING",
+            "APPLICATION_EVENT",
+            "DOCUMENT"
+          ],
+          "description": "Class of referenced primary artifact"
+        },
+        "quote": {
+          "type": "string",
+          "description": "Verbatim quote or transcript excerpt supporting the memory"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Grounding extraction confidence probability"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

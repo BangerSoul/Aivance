@@ -1,0 +1,77 @@
+[
+  {
+    "id": "interview_01",
+    "question_type": "behavioral",
+    "category": "Incident Management & Leadership",
+    "question": "Tell me about a time you resolved a major production incident under high pressure.",
+    "response_quality": "strong_star",
+    "candidate_response": "In November during Black Friday week at FinTech Innovations, our core mobile payment gateway suddenly experienced a cascade failure at 2:00 AM, spiking transaction timeouts to 35% and threatening millions in checkout volume.\n\nAs the on-call tech lead, my objective was to identify the root cause, restore service within our 30-minute SLA, and prevent customer balance discrepancies.\n\nFirst, I opened an incident bridge call and delegated customer communications to the product liaison while I analyzed telemetry in Grafana and Datadog. I noticed database connection pool exhaustion caused by an unindexed query introduced in a midnight deployment. Within 8 minutes, I isolated the traffic by routing non-critical traffic to a degraded fallback mode, scaled our database read replicas from 3 to 8, and triggered an automated rollback of the offending service via GitHub Actions.\n\nWithin 18 minutes of page receipt, error rates dropped back to 0.01% and zero financial transactions were corrupted. The following week, I chaired a blameless post-mortem, implemented automated query index linting in our CI/CD pipeline, and introduced connection-pool circuit breakers so queries fail fast rather than stalling the entire system.",
+    "ground_truth_rubric": {
+      "clarity": 9.5,
+      "technical_accuracy": 9.0,
+      "star_method_score": 9.5,
+      "overall_score": 9.3,
+      "expected_feedback": "Outstanding answer demonstrating master-level execution of the STAR framework. The candidate clearly delineated Situation, Task, Action, and Result with quantifiable business metrics (35% timeouts reduced to 0.01% within 18 minutes). Action steps demonstrated calm leadership, systematic triage, and long-term blameless post-mortem prevention mechanisms."
+    }
+  },
+  {
+    "id": "interview_02",
+    "question_type": "behavioral",
+    "category": "Stakeholder Management & Technical Debt",
+    "question": "Describe a situation where you had a conflict with a product manager over technical debt versus feature delivery.",
+    "response_quality": "mediocre_vague",
+    "candidate_response": "Yeah so we often had disagreements with our PM because they always wanted features pushed out super fast, but our codebase was getting kind of messy and slow. One time the PM wanted to ship a new checkout screen by Friday, but I told them the code had too much tech debt. We had a couple of tense meetings and debated back and forth. Eventually we reached a compromise where we shipped most of the feature, and then later on in another sprint we did some refactoring. In the end, things worked out reasonably fine and the release went out.",
+    "ground_truth_rubric": {
+      "clarity": 5.0,
+      "technical_accuracy": 5.5,
+      "star_method_score": 3.5,
+      "overall_score": 4.5,
+      "expected_feedback": "The response is overly vague and fails to leverage the STAR method. It does not identify the specific technical debt at stake (e.g., lack of tests, brittle architecture, database bottleneck) nor does it explain the data-driven framework used to negotiate with the PM. The candidate should quantify the risk of the technical debt, describe how they prioritized work together using roadmap scoring, and share measurable outcomes from the compromise."
+    }
+  },
+  {
+    "id": "interview_03",
+    "question_type": "technical",
+    "category": "Mobile Performance & Concurrency",
+    "question": "How would you optimize an Android RecyclerView that is suffering severe frame drops and jank during rapid scrolling with complex nested views?",
+    "response_quality": "technically_flawed",
+    "candidate_response": "To fix frame drops, I usually move all the view inflation and data binding onto a background thread using AsyncTask or a custom thread pool so the UI thread doesn't do any work. Then, I set recyclerView.setItemViewCacheSize(10000) so that all ten thousand items are cached in device memory forever and never need to be rebound. Additionally, to avoid view recycling glitches, I override getItemViewType to return position so every single list item has a unique view type, which completely disables recycling and ensures smooth scrolling.",
+    "ground_truth_rubric": {
+      "clarity": 7.0,
+      "technical_accuracy": 2.0,
+      "star_method_score": 3.0,
+      "overall_score": 3.0,
+      "expected_feedback": "Critical technical inaccuracies and dangerous anti-patterns identified: 1) Updating or binding Android views on background threads causes CalledFromWrongThreadException and fatal crashes; 2) Caching 10,000 items in memory will cause an immediate OutOfMemoryError (OOM); 3) Disabling view recycling via unique view types completely defeats the purpose of RecyclerView and destroys memory efficiency. The correct solution entails using DiffUtil on a background dispatcher, flattening view hierarchies, prefetching with setHasFixedSize(true), image thumbnail downsampling, and proper ViewHolder recycling."
+    }
+  },
+  {
+    "id": "interview_04",
+    "question_type": "technical",
+    "category": "Distributed Systems & Streaming",
+    "question": "Explain how you would design a high-throughput, fault-tolerant event processing pipeline using Apache Kafka.",
+    "response_quality": "strong_star",
+    "candidate_response": "To achieve high throughput and fault tolerance, I partition the topic based on a deterministic domain key (e.g. accountId) so all related events preserve strict ordering while distinct partitions distribute load horizontally across consumer group instances.\n\nFor fault tolerance and zero data loss, producers configure acks=all with idempotence enabled (enable.idempotence=true) to prevent duplicate sequence numbers during network retries. On the consumer side, I avoid auto-commit; instead, consumers commit offsets synchronously or asynchronously only after the event payload is successfully processed or durably stored in our database.\n\nTo handle poison-pill messages without stalling the entire partition lag, I implement an exponential-backoff retry topic pattern leading to a Dead Letter Queue (DLQ) with automated alert triggers. Finally, we monitor Consumer Lag metrics using Prometheus and Alertmanager to auto-scale consumer pods in Kubernetes before backpressure accumulates.",
+    "ground_truth_rubric": {
+      "clarity": 9.0,
+      "technical_accuracy": 9.5,
+      "star_method_score": 8.5,
+      "overall_score": 9.2,
+      "expected_feedback": "Exceptional technical depth. The candidate accurately explains partition key selection for ordering, acks=all and idempotence on the producer, manual offset commit semantics on consumers, dead letter queue (DLQ) topology for non-blocking error isolation, and operational metrics monitoring."
+    }
+  },
+  {
+    "id": "interview_05",
+    "question_type": "technical",
+    "category": "Language Concurrency & Runtimes",
+    "question": "What is the key difference between Kotlin Coroutines and standard Java Threads, and how does structured concurrency work?",
+    "response_quality": "mediocre_vague",
+    "candidate_response": "Basically Kotlin coroutines are lightweight threads that run on top of regular threads. You can launch thousands of them and they don't block the computer because they are non-blocking. Structured concurrency is just a design concept in Kotlin where you launch everything inside scopes like GlobalScope so that background jobs keep running even when the user navigates away so they don't get lost.",
+    "ground_truth_rubric": {
+      "clarity": 6.0,
+      "technical_accuracy": 5.0,
+      "star_method_score": 4.5,
+      "overall_score": 5.2,
+      "expected_feedback": "Contains a major conceptual error regarding structured concurrency: recommending GlobalScope is the antithesis of structured concurrency, as GlobalScope operates outside lifecycle management and causes severe memory leaks and untracked coroutine lifecycles. The candidate should clarify that coroutines are cooperative user-space continuations multiplexed across an OS thread pool, and explain that structured concurrency binds child coroutine lifecycles to parent CoroutineScopes with automatic cancellation propagation."
+    }
+  }
+]

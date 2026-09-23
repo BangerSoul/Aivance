@@ -138,6 +138,22 @@ Before implementing ad-hoc features, repository velocity aligns around these fiv
 * **State Decoupling**: Refactor `CareerStateEngine.kt` to subscribe reactively to events rather than polling 5 repositories. ✅ Reactive event subscription + graph projection (saved jobs + interview sessions) landed.
 * **Emission Pipeline**: Instrument `:feature:resume`, `:feature:ats`, `:feature:jobs`, `:feature:tracker`, and `:feature:interview`. *(resume + interview + workflow emit today; remaining producers planned)*
 
+### M04 — Durable Event Replay & State Rehydration (next foundation milestone)
+
+> **Baseline:** tag `v2-foundation-baseline` (commit `fc6b5b9`) is the stable V2 foundation checkpoint. M04 begins from this tag rather than continuing to mutate the foundation.
+
+* **Objective**: Make the durable `career_event_log` **replayable**, and use replay to deterministically rehydrate the Career Knowledge OS projections (graph + memory).
+* **Non-objective (for now)**: The event log does **not** become the system's source of truth. `career_event_log` is durable append-only audit persistence; the Room database remains authoritative until event sourcing is deliberately adopted as the canonical persistence model.
+* **Invariants to establish before implementing**:
+  1. **Idempotency** — replaying the same event cannot duplicate graph nodes, edges, or memory entries (keyed on `eventId` + deterministic projection IDs).
+  2. **Deterministic ordering** — replay applies events in a stable, well-defined order (e.g. `(timestamp, eventId)` or a monotonic sequence).
+  3. **Payload versioning** — persisted event payloads carry an explicit schema/version, with a forward-compatible decode strategy.
+  4. **Checkpoint/rebuild semantics** — explicitly define whether replay reconstructs from empty state or incrementally repairs existing state.
+  5. **Failure recovery** — a single malformed event must fail loudly, never silently produce a falsely complete reconstruction.
+  6. **Transactional projection** — graph/memory projections update atomically; no partially-applied replay.
+  7. **DB stays authoritative** — replay is a rehydration/repair path, not a replacement for the canonical Room state.
+* **Progression**: M01 event production → M02 multiple real producers → M03 career-intelligence projection → **foundation landing (baseline tag)** → **M04 durable replay/rehydration** → M05 knowledge/context consumers → later: controlled agent execution + `HumanApprovalGate`.
+
 ### Phase 3: Provider SDK 2.0 & Standalone Decoupling
 * **Pure Kotlin SDK**: Extract `core:sdk` into standalone multiplatform library `aivance-sdk`.
 * **Abstracted Secrets**: Abstract Android Keystore behind `SecretStore` interface (supporting keychain, env vars, or encrypted preferences).

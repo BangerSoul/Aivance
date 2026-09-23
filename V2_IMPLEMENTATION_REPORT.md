@@ -135,7 +135,7 @@
 ## 12. Known Limitations
 
 * Live API evaluation against remote providers requires active API keys; current CI baseline runs using deterministic mock simulations.
-* ~~Room Database remains on v25; physical database upgrade to v26 will execute during the Phase 1 app release.~~ **RESOLVED (2026-09-24):** Room upgraded to **v26** via the strictly-additive `MIGRATION_25_26` (adds `graph_nodes`, `graph_edges`, `career_event_log`, `career_memory_entries`). `CareerGraphEngine` and `CareerMemoryEngine` are now durably persisted, and every dispatched event is appended to `career_event_log`. **Durable event log: YES. Event replay engine: NOT YET IMPLEMENTED** — the log is append-only audit persistence with no consumer.
+* ~~Room Database remains on v25; physical database upgrade to v26 will execute during the Phase 1 app release.~~ **RESOLVED (2026-09-24):** Room upgraded to **v26** via the strictly-additive `MIGRATION_25_26` (adds `graph_nodes`, `graph_edges`, `career_event_log`, `career_memory_entries`). `CareerGraphEngine` and `CareerMemoryEngine` are now durably persisted, and every dispatched event is appended to `career_event_log`. **Durable event log: YES. Event replay engine: NOT YET IMPLEMENTED** — the log is append-only audit persistence with no consumer. **Terminology note:** `career_event_log` is a durable event/audit record, *not* a source of truth or authoritative state-reconstruction mechanism; the Room database remains authoritative. This foundation state is tagged `v2-foundation-baseline` (commit `fc6b5b9`); making the log replayable to rehydrate projections is the next milestone (**M04 — Durable Event Replay & State Rehydration**, see `ROADMAP.md`).
 
 ---
 

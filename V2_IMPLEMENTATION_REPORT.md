@@ -149,7 +149,7 @@
 
 * Dual application tables (`job_applications` and `applications`) still coexist in Room; unification remains a dedicated follow-up (out of scope for the v26 foundation landing).
 * Legacy `ContextEngine` and `AssistantContextEngine` retained for backward compatibility; features should migrate to `AiContextEngine2`.
-* `career_event_log` is durable but has no replay consumer yet; a replay/read path is future work.
+* `career_event_log` is durable but has no replay consumer yet; a replay/read path is future work. **M04-A (2026-09-24) hardened the persisted contract**: every event carries an explicit payload `schemaVersion` (Room v26→v27, additive `MIGRATION_26_27`), a `CareerEventContract` registry + shared `CareerEventCodec` govern encode/decode, and `CareerEventLogRepository.decodeAll()` returns explicit `CareerEventDecodeResult`s (`Decoded`/`UnknownType`/`UnsupportedVersion`/`Malformed`) with no silent fallback. This is a prerequisite for replay, not replay itself; the log remains audit persistence and the Room DB remains authoritative.
 * The controlled agent runtime (`CareerAgentEngine`, `HumanApprovalGate`, `AutonomousApplyUseCase`, CRM outreach/follow-up use cases) is implemented and unit-tested but **not yet wired into any feature UI**; wiring requires the Human Approval Gate UI and is deferred.
 
 ---

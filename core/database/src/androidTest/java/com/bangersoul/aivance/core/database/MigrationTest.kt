@@ -8,6 +8,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,10 +59,13 @@ class MigrationTest {
         AivanceDatabase.MIGRATION_23_24
     )
 
-    /** Full ordered chain 5 -> 26 (adds the legacy-drop and the v26 foundation steps). */
+    /** Full ordered chain 5 -> 27 (adds the legacy-drop and the v26/v27 foundation steps). */
     private val ALL_FROM_5_TO_26 = ALL_FROM_5 +
         AivanceDatabase.MIGRATION_24_25 +
         AivanceDatabase.MIGRATION_25_26
+
+    private val ALL_FROM_5_TO_27 = ALL_FROM_5_TO_26 +
+        AivanceDatabase.MIGRATION_26_27
 
     // ---------------------------------------------------------------- helpers
 
@@ -90,6 +94,11 @@ class MigrationTest {
             check(c.moveToFirst()) { "no rows for: $sql" }
             c.getString(0)
         }
+    }
+
+    private fun columnExists(table: String, column: String): Boolean = raw().use { db ->
+        db.rawQuery("SELECT COUNT(*) FROM pragma_table_info('$table') WHERE name = ?", arrayOf(column))
+            .use { c -> c.moveToFirst(); c.getLong(0) > 0 }
     }
 
     private fun count(table: String): Long = raw().use { db ->
@@ -569,6 +578,51 @@ class MigrationTest {
         }
         assertCount("graph_nodes", 1)
         assertCount("career_memory_entries", 1)
+    }
+
+    // ------------------------------------------- 26 -> 27 (event-contract schemaVersion)
+
+    @Test
+    fun migrate26To27_addsSchemaVersionColumnAndPreservesExistingEvents() {
+        seed(
+            26,
+            "INSERT INTO career_event_log (eventId, timestamp, sourceModule, eventType, payloadJson) " +
+                "VALUES ('evt_1', 100, 'feature:resume', 'ResumeCreated', '{\"name\":\"R\"}')"
+        )
+        runStep(26, 27, AivanceDatabase.MIGRATION_26_27)
+
+        // 1. The pre-existing v26 audit row survives the additive column.
+        assertCount("career_event_log", 1)
+        assertEquals("ResumeCreated", scalar("SELECT eventType FROM career_event_log WHERE eventId = 'evt_1'"))
+
+        // 2. The new schemaVersion column exists and backfills legacy rows to contract v1.
+        assertTrue("schemaVersion column added", columnExists("career_event_log", "schemaVersion"))
+        assertEquals("1", scalar("SELECT schemaVersion FROM career_event_log WHERE eventId = 'evt_1'"))
+
+        // 3. New rows can carry an explicit version.
+        raw().use { db ->
+            db.execSQL(
+                "INSERT INTO career_event_log (eventId, timestamp, sourceModule, eventType, schemaVersion, payloadJson) " +
+                    "VALUES ('evt_2', 200, 'feature:resume', 'ResumeUpdated', 1, '{}')"
+            )
+        }
+        assertCount("career_event_log", 2)
+        assertEquals("1", scalar("SELECT schemaVersion FROM career_event_log WHERE eventId = 'evt_2'"))
+    }
+
+    // ------------------------------------------- full chain: 5 -> 27 (with data)
+
+    @Test
+    fun migrate5To27_fullChainPreservesUserDataAndHardensEventLog() {
+        seed(
+            5,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')"
+        )
+        runStep(5, 27, *ALL_FROM_5_TO_27)
+        assertCount("user_profiles", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        assertTableExists("career_event_log")
+        assertTrue("schemaVersion present at end of chain", columnExists("career_event_log", "schemaVersion"))
     }
 
     // ------------------------------------------- full chain: 5 -> 26 (with data)

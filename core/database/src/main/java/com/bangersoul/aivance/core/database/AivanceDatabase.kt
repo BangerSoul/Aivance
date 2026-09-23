@@ -60,7 +60,7 @@ import com.bangersoul.aivance.core.database.model.*
         CareerEventLogEntity::class,
         CareerMemoryEntity::class
     ],
-    version = 26,
+    version = 27,
     exportSchema = true
 )
 @TypeConverters(AivanceConverters::class)
@@ -396,6 +396,26 @@ abstract class AivanceDatabase : RoomDatabase() {
 
                 db.execSQL("CREATE TABLE IF NOT EXISTS `career_memory_entries` (`memoryId` TEXT NOT NULL, `type` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `confidence` REAL NOT NULL, `sourceEventIdsJson` TEXT NOT NULL, `evidenceRefsJson` TEXT NOT NULL, `isUserConfirmed` INTEGER NOT NULL, `expirationTimestamp` INTEGER, PRIMARY KEY(`memoryId`))")
                 db.execSQL("CREATE INDEX IF NOT EXISTS `idx_career_memory_type` ON `career_memory_entries` (`type`, `isUserConfirmed`)")
+            }
+        }
+
+        /**
+         * v26 -> v27: Event-contract hardening (M04-A).
+         *
+         * STRICTLY ADDITIVE / NON-DESTRUCTIVE. Adds a single `schemaVersion` column to
+         * `career_event_log`, carrying the explicit payload/schema version of each persisted
+         * event. Existing rows (all written under contract v1) default to 1 via the column
+         * DEFAULT, so the audit trail is preserved intact and no data is rewritten.
+         *
+         * This column is the M04-A prerequisite for a future replay engine: it lets a consumer
+         * decode a persisted event against its known contract version rather than inferring the
+         * version from payload shape. Replay itself is NOT implemented here.
+         *
+         * Rollback: MIGRATION_27_26 would rebuild `career_event_log` without `schemaVersion`.
+         */
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `career_event_log` ADD COLUMN `schemaVersion` INTEGER NOT NULL DEFAULT 1")
             }
         }
     }

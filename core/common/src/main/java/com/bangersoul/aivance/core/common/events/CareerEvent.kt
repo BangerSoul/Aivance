@@ -15,6 +15,10 @@ import java.util.UUID
  * @property causationId Identifier of the direct command/event that caused this event.
  * @property sourceModule Name of the origin module (e.g. "feature:resume", "core:agent").
  * @property eventType Canonical event type discriminator.
+ * @property schemaVersion Explicit payload/schema version for this event type. Distinct from the
+ *   Room database version and from [eventType]; it lets a payload evolve (e.g. v1 -> v2) without a
+ *   database migration, and a future replay engine reads it rather than inferring version from
+ *   payload shape. Every current event type is version [CareerEventContract.CURRENT_PAYLOAD_VERSION].
  * @property payload Structured, serializable telemetry and domain attributes.
  */
 sealed interface CareerEvent {
@@ -24,6 +28,7 @@ sealed interface CareerEvent {
     val causationId: String?
     val sourceModule: String
     val eventType: String
+    val schemaVersion: Int get() = CareerEventContract.CURRENT_PAYLOAD_VERSION
     val payload: Map<String, Any?>
 }
 

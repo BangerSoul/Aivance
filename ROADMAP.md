@@ -134,7 +134,7 @@ Before implementing ad-hoc features, repository velocity aligns around these fiv
 * **Domain Engine**: `CareerGraphRepository` with `GetSkillGapGraphUseCase` and `GetCareerNetworkUseCase`. *(traversal use cases still planned)*
 
 ### Phase 2: Event-Driven Career State Engine (`:core:events`)
-* **Event Bus**: In-memory `SharedFlow` coupled with SQLite event logging. ✅ **Durable log landed** (`career_event_log`, idempotent on `eventId`). ⚠️ **Replay engine: not yet implemented** — the log is append-only audit persistence; nothing consumes it for replay.
+* **Event Bus**: In-memory `SharedFlow` coupled with SQLite event logging. ✅ **Durable log landed** (`career_event_log`, idempotent on `eventId`; each row carries an explicit payload `schemaVersion` — M04-A). ⚠️ **Replay engine: not yet implemented** — the log is append-only audit persistence; nothing consumes it for replay.
 * **State Decoupling**: Refactor `CareerStateEngine.kt` to subscribe reactively to events rather than polling 5 repositories. ✅ Reactive event subscription + graph projection (saved jobs + interview sessions) landed.
 * **Emission Pipeline**: Instrument `:feature:resume`, `:feature:ats`, `:feature:jobs`, `:feature:tracker`, and `:feature:interview`. *(resume + interview + workflow emit today; remaining producers planned)*
 
@@ -153,6 +153,21 @@ Before implementing ad-hoc features, repository velocity aligns around these fiv
   6. **Transactional projection** — graph/memory projections update atomically; no partially-applied replay.
   7. **DB stays authoritative** — replay is a rehydration/repair path, not a replacement for the canonical Room state.
 * **Progression**: M01 event production → M02 multiple real producers → M03 career-intelligence projection → **foundation landing (baseline tag)** → **M04 durable replay/rehydration** → M05 knowledge/context consumers → later: controlled agent execution + `HumanApprovalGate`.
+
+#### M04-A — Event Contract Hardening ✅ (landed 2026-09-24)
+
+Prerequisite for replay: the persisted event contract now carries an explicit payload version so a future replay engine never infers version from payload shape.
+
+* **`CareerEvent.schemaVersion`** — every event carries an explicit payload/schema version (current = `1`), distinct from the Room DB version and the event-type discriminator.
+* **`CareerEventContract`** — registry mapping each emitted event type to the payload versions it can decode (`New contract → v1`; a breaking payload change adds a new version).
+* **`CareerEventCodec`** — one codec shared by the write and read paths, so payloads encode/decode identically.
+* **`CareerEventDecodeResult`** — decoding yields an explicit `Decoded` / `UnknownType` / `UnsupportedVersion` / `Malformed`; **no silent fallback or reinterpretation**. `CareerEventLogRepository.decodeAll()` exposes this read path (no projection).
+* **Room v26 → v27** — strictly-additive `MIGRATION_26_27` adds `career_event_log.schemaVersion` (default `1`, backfilling legacy rows); `27.json` exported.
+* **Still out of scope**: replay, rehydration, and making the log the source of truth — those are M04-B.
+
+#### M04-B — Durable Replay & Rehydration (next)
+
+With the contract hardened, implement the replay engine that deterministically rehydrates the graph + memory projections from `career_event_log`, honoring all seven invariants above. The DB remains authoritative; replay is a rehydration/repair path.
 
 ### Phase 3: Provider SDK 2.0 & Standalone Decoupling
 * **Pure Kotlin SDK**: Extract `core:sdk` into standalone multiplatform library `aivance-sdk`.

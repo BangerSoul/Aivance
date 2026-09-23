@@ -71,6 +71,7 @@ class CareerOsDaoTest {
             timestamp = 100,
             sourceModule = "feature:resume",
             eventType = "ResumeCreated",
+            schemaVersion = 1,
             payloadJson = "{}"
         )
 
@@ -80,6 +81,24 @@ class CareerOsDaoTest {
 
         assertThat(eventLogDao.count()).isEqualTo(1)
         assertThat(eventLogDao.getAll().single().timestamp).isEqualTo(100)
+    }
+
+    @Test
+    fun eventLogPersistsAndReloadsExplicitSchemaVersion() = runTest {
+        eventLogDao.append(
+            CareerEventLogEntity(
+                eventId = "evt_v",
+                timestamp = 100,
+                sourceModule = "feature:resume",
+                eventType = "ResumeAnalysisCompleted",
+                schemaVersion = 1,
+                payloadJson = "{\"atsScore\":\"88\"}"
+            )
+        )
+
+        val row = eventLogDao.getAll().single()
+        assertThat(row.schemaVersion).isEqualTo(1)
+        assertThat(row.payloadJson).contains("88")
     }
 
     @Test

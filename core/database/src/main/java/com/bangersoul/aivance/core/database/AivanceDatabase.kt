@@ -54,9 +54,13 @@ import com.bangersoul.aivance.core.database.model.*
         AssistantMessageEntity::class,
         WorkflowExecutionEntity::class,
         AuditLogEntity::class,
-        UserEntity::class
+        UserEntity::class,
+        GraphNodeEntity::class,
+        GraphEdgeEntity::class,
+        CareerEventLogEntity::class,
+        CareerMemoryEntity::class
     ],
-    version = 25,
+    version = 26,
     exportSchema = true
 )
 @TypeConverters(AivanceConverters::class)
@@ -79,6 +83,9 @@ abstract class AivanceDatabase : RoomDatabase() {
     abstract fun assistantDao(): AssistantDao
     abstract fun auditDao(): AuditDao
     abstract fun userDao(): UserDao
+    abstract fun graphDao(): GraphDao
+    abstract fun careerEventLogDao(): CareerEventLogDao
+    abstract fun careerMemoryDao(): CareerMemoryDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -358,6 +365,37 @@ abstract class AivanceDatabase : RoomDatabase() {
                 // (introduced in MIGRATION_11_12). Dropping it completes the AtsReport
                 // migration (T-04) and removes the ResumeAnalysisEntity from production.
                 db.execSQL("DROP TABLE IF EXISTS `resume_analyses`")
+            }
+        }
+        /**
+         * v25 -> v26: Career Knowledge OS foundation.
+         *
+         * STRICTLY ADDITIVE / NON-DESTRUCTIVE. Only `CREATE TABLE IF NOT EXISTS` and
+         * `CREATE INDEX IF NOT EXISTS` — no ALTER, no column removal, no data rewrite,
+         * no row modification, no destructive fallback. Every pre-existing v25 table and
+         * all user data are left completely intact.
+         *
+         * Adds the four canonical foundation tables:
+         *  - `graph_nodes` / `graph_edges`  : persisted Career Knowledge Graph projection.
+         *  - `career_event_log`             : durable append-only event log (logging only; no replay yet).
+         *  - `career_memory_entries`        : longitudinal, auditable career memory.
+         *
+         * Rollback: MIGRATION_26_25 would simply DROP these four tables, leaving core tables intact.
+         */
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `graph_nodes` (`id` TEXT NOT NULL, `type` TEXT NOT NULL, `label` TEXT NOT NULL, `propertiesJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_graph_nodes_type` ON `graph_nodes` (`type`)")
+
+                db.execSQL("CREATE TABLE IF NOT EXISTS `graph_edges` (`id` TEXT NOT NULL, `sourceId` TEXT NOT NULL, `targetId` TEXT NOT NULL, `relationType` TEXT NOT NULL, `weight` REAL NOT NULL, `propertiesJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_graph_edges_source` ON `graph_edges` (`sourceId`, `relationType`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_graph_edges_target` ON `graph_edges` (`targetId`, `relationType`)")
+
+                db.execSQL("CREATE TABLE IF NOT EXISTS `career_event_log` (`eventId` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `correlationId` TEXT, `causationId` TEXT, `sourceModule` TEXT NOT NULL, `eventType` TEXT NOT NULL, `payloadJson` TEXT NOT NULL, PRIMARY KEY(`eventId`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_career_event_log_type_time` ON `career_event_log` (`eventType`, `timestamp`)")
+
+                db.execSQL("CREATE TABLE IF NOT EXISTS `career_memory_entries` (`memoryId` TEXT NOT NULL, `type` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `confidence` REAL NOT NULL, `sourceEventIdsJson` TEXT NOT NULL, `evidenceRefsJson` TEXT NOT NULL, `isUserConfirmed` INTEGER NOT NULL, `expirationTimestamp` INTEGER, PRIMARY KEY(`memoryId`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_career_memory_type` ON `career_memory_entries` (`type`, `isUserConfirmed`)")
             }
         }
     }

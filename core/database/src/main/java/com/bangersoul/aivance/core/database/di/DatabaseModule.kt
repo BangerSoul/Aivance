@@ -53,7 +53,8 @@ object DatabaseModule {
             AivanceDatabase.MIGRATION_21_22,
             AivanceDatabase.MIGRATION_22_23,
             AivanceDatabase.MIGRATION_23_24,
-            AivanceDatabase.MIGRATION_24_25
+            AivanceDatabase.MIGRATION_24_25,
+            AivanceDatabase.MIGRATION_25_26
         )
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
         .setQueryExecutor(Executors.newFixedThreadPool(4))
@@ -112,4 +113,15 @@ object DatabaseModule {
 
     @Provides
     fun provideUserDao(database: AivanceDatabase): UserDao = database.userDao()
+
+    @Provides
+    fun provideGraphDao(database: AivanceDatabase): GraphDao = database.graphDao()
+
+    @Provides
+    fun provideCareerEventLogDao(database: AivanceDatabase): CareerEventLogDao =
+        database.careerEventLogDao()
+
+    @Provides
+    fun provideCareerMemoryDao(database: AivanceDatabase): CareerMemoryDao =
+        database.careerMemoryDao()
 }

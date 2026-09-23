@@ -58,6 +58,11 @@ class MigrationTest {
         AivanceDatabase.MIGRATION_23_24
     )
 
+    /** Full ordered chain 5 -> 26 (adds the legacy-drop and the v26 foundation steps). */
+    private val ALL_FROM_5_TO_26 = ALL_FROM_5 +
+        AivanceDatabase.MIGRATION_24_25 +
+        AivanceDatabase.MIGRATION_25_26
+
     // ---------------------------------------------------------------- helpers
 
     private fun seed(version: Int, vararg statements: String) {
@@ -106,6 +111,26 @@ class MigrationTest {
             ).use { c -> c.moveToFirst(); c.getLong(0) > 0 }
         }
         assertEquals("table $table should have been dropped", false, exists)
+    }
+
+    private fun assertTableExists(table: String) {
+        val exists = raw().use { db ->
+            db.rawQuery(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?",
+                arrayOf(table)
+            ).use { c -> c.moveToFirst(); c.getLong(0) > 0 }
+        }
+        assertEquals("table $table should exist", true, exists)
+    }
+
+    private fun assertIndexExists(index: String) {
+        val exists = raw().use { db ->
+            db.rawQuery(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name = ?",
+                arrayOf(index)
+            ).use { c -> c.moveToFirst(); c.getLong(0) > 0 }
+        }
+        assertEquals("index $index should exist", true, exists)
     }
 
     // ------------------------------------------------------- 5 -> 6 (resume tables)
@@ -499,6 +524,73 @@ class MigrationTest {
         assertTableGone("resume_analyses")
         assertCount("ats_reports", 1)
         assertEquals("92", scalar("SELECT overallScore FROM ats_reports WHERE id = 1"))
+    }
+
+    // ------------------------------------------- 25 -> 26 (Career Knowledge OS foundation)
+
+    @Test
+    fun migrate25To26_createsFoundationTablesAndPreservesData() {
+        seed(
+            25,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')",
+            "INSERT INTO companies (id, name) VALUES (1, 'Acme')",
+            "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) VALUES (1, 1, 'Eng', '', 'X', 100)"
+        )
+        runStep(25, 26, AivanceDatabase.MIGRATION_25_26)
+
+        // 1. The migration is strictly additive: all pre-existing v25 data survives untouched.
+        assertCount("user_profiles", 1)
+        assertCount("companies", 1)
+        assertCount("jobs", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        assertEquals("Eng", scalar("SELECT title FROM jobs WHERE id = 1"))
+
+        // 2. The four new foundation tables exist and are empty.
+        assertTableExists("graph_nodes")
+        assertTableExists("graph_edges")
+        assertTableExists("career_event_log")
+        assertTableExists("career_memory_entries")
+        assertCount("graph_nodes", 0)
+        assertCount("graph_edges", 0)
+        assertCount("career_event_log", 0)
+        assertCount("career_memory_entries", 0)
+
+        // 3. Their indices are present.
+        assertIndexExists("idx_graph_nodes_type")
+        assertIndexExists("idx_graph_edges_source")
+        assertIndexExists("idx_graph_edges_target")
+        assertIndexExists("idx_career_event_log_type_time")
+        assertIndexExists("idx_career_memory_type")
+
+        // 4. The new tables are writable (schema is usable, not just present).
+        raw().use { db ->
+            db.execSQL("INSERT INTO graph_nodes (id, type, label, propertiesJson, createdAt, updatedAt) VALUES ('skill_kotlin', 'SKILL', 'Kotlin', '{}', 1, 1)")
+            db.execSQL("INSERT INTO career_memory_entries (memoryId, type, content, createdAt, updatedAt, confidence, sourceEventIdsJson, evidenceRefsJson, isUserConfirmed) VALUES ('m1', 'FACT', 'c', 1, 1, 1.0, '[]', '[]', 1)")
+        }
+        assertCount("graph_nodes", 1)
+        assertCount("career_memory_entries", 1)
+    }
+
+    // ------------------------------------------- full chain: 5 -> 26 (with data)
+
+    @Test
+    fun migrate5To26_fullChainPreservesUserDataAndAddsFoundation() {
+        seed(
+            5,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')",
+            "INSERT INTO cover_letters (id, company, role, content, dateCreated, tone) " +
+                "VALUES (1, 'Acme', 'Eng', 'body', 100, 'PRO')"
+        )
+        runStep(5, 26, *ALL_FROM_5_TO_26)
+        // Core user data survives the full chain including the additive v26 step.
+        assertCount("user_profiles", 1)
+        assertCount("cover_letters", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        // The v26 foundation tables are present at the end of the chain.
+        assertTableExists("graph_nodes")
+        assertTableExists("graph_edges")
+        assertTableExists("career_event_log")
+        assertTableExists("career_memory_entries")
     }
 
     // ------------------------------------------------ full chain: 5 -> 24 (empty)

@@ -20,6 +20,19 @@ interface AssistantDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertConversation(conversation: AssistantConversationEntity)
 
+    /**
+     * Idempotent parent-row insert. Messages carry a CASCADE foreign key to
+     * [AssistantConversationEntity]; a message insert throws
+     * SQLiteConstraintException if the parent row is absent (Room runs with
+     * foreign_keys=ON). This IGNORE-on-conflict insert guarantees the parent
+     * exists without clobbering an existing conversation's createdAt/title.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertConversationIfAbsent(conversation: AssistantConversationEntity)
+
+    @Query("UPDATE assistant_conversations SET lastUpdatedAt = :timestamp WHERE id = :id")
+    suspend fun touchConversation(id: String, timestamp: Long)
+
     @Update
     suspend fun updateConversation(conversation: AssistantConversationEntity)
 

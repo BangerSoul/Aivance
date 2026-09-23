@@ -37,8 +37,8 @@ class DashboardViewModel @Inject constructor(
                 isLoading = false,
                 greeting = "Hello, ${state.profile.name.substringBefore(' ')}",
                 userDesignation = state.profile.targetRole,
-                careerScore = state.intelligenceHub?.careerScore ?: state.growth.careerScore,
-                atsScore = state.intelligenceHub?.dimensionScores?.get("ATS_READINESS") ?: state.intelligence.atsScore,
+                careerScore = state.growth.careerScore,
+                atsScore = state.intelligence.atsScore,
                 activeApplications = state.pipeline.activeApplications,
                 nextInterview = state.pipeline.upcomingInterviews.firstOrNull()?.dateTime,
                 savedJobs = state.discovery.savedJobsCount,
@@ -46,7 +46,12 @@ class DashboardViewModel @Inject constructor(
                     "AI Tip: ${it.title}"
                 },
                 nextBestAction = navWorkflowEngine.getRecommendedDestination(state),
-                recentActivity = emptyList()
+                agentMissions = listOf(
+                    AgentMission("1", "Global Job Scan", MissionStatus.RUNNING, 0.65f, "2m ago", "jobs"),
+                    AgentMission("2", "Resume Optimization", MissionStatus.REVIEW_REQUIRED, 1.0f, "1h ago", "resume"),
+                    AgentMission("3", "Interview Prep", MissionStatus.PENDING, 0f, "Yesterday", "interview")
+                ),
+                activeTask = AgentTask("t1", "Scraping LinkedIn for Senior Android roles...", MissionStatus.RUNNING, 0.42f)
             )
         }
         .onStart { emit(DashboardUiState(isLoading = true)) }

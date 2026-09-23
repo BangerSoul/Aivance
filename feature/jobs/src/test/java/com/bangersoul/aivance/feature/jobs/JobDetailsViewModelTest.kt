@@ -3,8 +3,11 @@ package com.bangersoul.aivance.feature.jobs
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.bangersoul.aivance.core.common.model.JobListing
+import com.bangersoul.aivance.core.common.model.CareerState
+import com.bangersoul.aivance.core.common.model.ProfileState
 import com.bangersoul.aivance.core.common.result.DomainError
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.repository.crm.CompanyIntelligenceRepository
@@ -15,9 +18,11 @@ import com.bangersoul.aivance.core.domain.usecase.job.GetJobDetailsUseCase
 import com.bangersoul.aivance.core.domain.usecase.job.ToggleJobBookmarkUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -38,6 +43,7 @@ class JobDetailsViewModelTest {
     private val mockApplicationWorkflowRepository: ApplicationWorkflowRepository = mockk()
     private val mockCompanyIntelligence: CompanyIntelligenceRepository = mockk()
     private val mockRecruiterIntelligence: RecruiterIntelligenceRepository = mockk()
+    private val mockCareerStateEngine: CareerStateEngine = mockk()
     private val mockTrackEvent: TrackEventUseCase = mockk()
 
     private val sampleJob = JobListing(
@@ -58,6 +64,7 @@ class JobDetailsViewModelTest {
         applicationWorkflowRepository = mockApplicationWorkflowRepository,
         companyIntelligenceRepository = mockCompanyIntelligence,
         recruiterIntelligenceRepository = mockRecruiterIntelligence,
+        careerStateEngine = mockCareerStateEngine,
         trackEventUseCase = mockTrackEvent
     )
 
@@ -70,6 +77,10 @@ class JobDetailsViewModelTest {
         // The detail load enriches the listing with company + recruiter data;
         // no company is found for the sample listing, so no recruiters resolve.
         coEvery { mockCompanyIntelligence.getCompanyByName("Google") } returns null
+        // Default: a usable profile so readiness resolves to a real score.
+        every { mockCareerStateEngine.state } returns MutableStateFlow(
+            CareerState(profile = ProfileState(targetRole = "Android Engineer", skills = listOf("Kotlin")))
+        )
     }
 
     @After
@@ -129,6 +140,46 @@ class JobDetailsViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is JobDetailsUiState.Success)
         assertEquals("Android Engineer", (state as JobDetailsUiState.Success).job.title)
+    }
+
+    // ── Readiness score (profile-aware match), R-04 alignment ──
+
+    @Test
+    fun `readiness is the profile-aware fit score when a profile exists`() = runTest {
+        val profile = ProfileState(targetRole = "Android Engineer", skills = listOf("Kotlin"))
+        every { mockCareerStateEngine.state } returns MutableStateFlow(CareerState(profile = profile))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as JobDetailsUiState.Success
+        // Same authoritative scorer the Jobs screen uses — no fabricated value.
+        assertEquals(JobFitScorer.calculateFitScore(sampleJob, profile), state.readinessScore)
+    }
+
+    @Test
+    fun `readiness is null when there is no usable profile`() = runTest {
+        // Empty profile: no target role and no skills => nothing to score against.
+        every { mockCareerStateEngine.state } returns MutableStateFlow(CareerState(profile = ProfileState()))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as JobDetailsUiState.Success
+        assertEquals(null, state.readinessScore)
+    }
+
+    @Test
+    fun `readiness never returns the fabricated 60 placeholder`() = runTest {
+        // A profile with only skills still produces a computed score, not 60.
+        val profile = ProfileState(skills = listOf("Kotlin", "Android"))
+        every { mockCareerStateEngine.state } returns MutableStateFlow(CareerState(profile = profile))
+
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as JobDetailsUiState.Success
+        assertEquals(JobFitScorer.calculateFitScore(sampleJob, profile), state.readinessScore)
     }
 
     @Test

@@ -49,6 +49,7 @@ data class ProviderMetadata(
     val description: String,
     val icon: String? = null,
     val author: String,
+    val isLocal: Boolean = false,
     val configFields: List<ConfigField> = emptyList(),
     val supportedModels: List<String> = emptyList()
 )

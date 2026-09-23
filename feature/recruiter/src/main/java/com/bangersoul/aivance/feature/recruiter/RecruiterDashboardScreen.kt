@@ -139,6 +139,7 @@ private fun RecruiterListContent(
                 recruiter = state.selectedRecruiter,
                 isGenerating = state.isGenerating,
                 draftContent = state.draft?.content,
+                outreachError = state.outreachError,
                 onGenerate = onGenerate
             )
         }
@@ -150,6 +151,7 @@ private fun OutreachSection(
     recruiter: Recruiter,
     isGenerating: Boolean,
     draftContent: String?,
+    outreachError: String?,
     onGenerate: (String) -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
@@ -175,6 +177,15 @@ private fun OutreachSection(
 
         if (isGenerating) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
+        }
+
+        if (outreachError != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = outreachError,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         if (draftContent != null) {

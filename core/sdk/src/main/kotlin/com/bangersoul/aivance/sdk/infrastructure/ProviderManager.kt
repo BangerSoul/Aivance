@@ -193,7 +193,14 @@ class ProviderManager @Inject constructor(
      * @return The best provider matching the capability, or null if none are available.
      */
     fun getBestProviderFor(capability: ProviderCapability): BaseProvider? {
+        // Stable ordering first: the registry is backed by a ConcurrentHashMap,
+        // so getProvidersByCapability returns candidates in an undefined order.
+        // Sorting by the immutable provider id makes selection deterministic —
+        // two providers in the SAME priority tier always resolve to the same
+        // one regardless of map/Set iteration order (previously the winner was
+        // whichever the map happened to yield first).
         val candidates = registry.getProvidersByCapability(capability)
+            .sortedBy { it.metadata.id }
 
         // Priority tiers, best-first:
         //   1. Active  && holds real credentials (user-supplied key)
@@ -258,6 +265,24 @@ class ProviderManager @Inject constructor(
     private fun updateInternalStatus(id: String, status: ProviderStatus) {
         _providerStatuses.update { current ->
             current.toMutableMap().apply { put(id, status) }
+        }
+    }
+
+    /**
+     * Hybrid Router: intelligently selects between cloud and on-device providers
+     * based on the estimated complexity of the task.
+     * 
+     * @param complexity If "LOW", prefers the on-device provider for speed/privacy.
+     *                   If "HIGH", prefers the most powerful cloud provider.
+     * @param capability The required provider capability.
+     */
+    fun getRoutedProvider(complexity: String, capability: ProviderCapability): BaseProvider? {
+        return if (complexity.uppercase() == "LOW") {
+            // Low complexity -> Prefer local first
+            getOnDeviceProviderFor(capability) ?: getBestProviderFor(capability)
+        } else {
+            // High complexity -> Prefer cloud first
+            getBestProviderFor(capability) ?: getOnDeviceProviderFor(capability)
         }
     }
 
@@ -351,5 +376,31 @@ class ProviderManager @Inject constructor(
                 provider.updateStatus(ProviderStatus.Error)
             }
         }
+    }
+
+    /**
+     * Resolves a provider satisfying [capability] using the canonical fallback chain:
+     * Preferred/Primary -> Secondary Remote -> Local Fallback -> Graceful Degradation.
+     */
+    fun resolveCapabilityFallbackChain(
+        capability: ProviderCapability,
+        preferredId: String? = null
+    ): List<BaseProvider> {
+        val available = registry.getProvidersByCapability(capability)
+            .filter { it.status == ProviderStatus.Active || it.status == ProviderStatus.Ready || it.status == ProviderStatus.Healthy }
+
+        val chain = mutableListOf<BaseProvider>()
+        preferredId?.let { id ->
+            available.firstOrNull { it.metadata.id == id }?.let { chain.add(it) }
+        }
+        val isLocalProvider: (BaseProvider) -> Boolean = {
+            it.metadata.isLocal || it.hasCapability(ProviderCapability.AI.LocalExecution)
+        }
+        val remotes = available.filter { !isLocalProvider(it) && it.metadata.id != preferredId }
+        chain.addAll(remotes)
+        val locals = available.filter { isLocalProvider(it) && it.metadata.id != preferredId }
+        chain.addAll(locals)
+
+        return chain
     }
 }

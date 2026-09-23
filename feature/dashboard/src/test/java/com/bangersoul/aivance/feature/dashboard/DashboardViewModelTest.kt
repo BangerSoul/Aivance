@@ -121,7 +121,7 @@ class DashboardViewModelTest {
             assertEquals(3, state.savedJobs)
             assertEquals("AI Tip: Polish Resume", state.aiRecommendation)
             assertEquals(NavigationIntent.Action("Search Jobs", "job_search"), state.nextBestAction)
-            assertTrue(state.recentActivity.isEmpty())
+            assertTrue(state.agentMissions.isNotEmpty())
             cancelAndIgnoreRemainingEvents()
         }
     }

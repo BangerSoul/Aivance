@@ -9,6 +9,7 @@ import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.Recruiter
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.getOrNull
+import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.repository.crm.CompanyIntelligenceRepository
@@ -34,7 +35,12 @@ sealed interface JobDetailsUiState {
         val company: Company? = null,
         val recruiters: List<Recruiter> = emptyList(),
         val isBookmarked: Boolean = false,
-        val readinessScore: Int = 0
+        /**
+         * Profile-aware match readiness (0..100), or null when there is no
+         * usable profile to score against. Null renders an explicit
+         * "complete your profile" state instead of a fabricated number.
+         */
+        val readinessScore: Int? = null
     ) : JobDetailsUiState
     data class Error(val message: String) : JobDetailsUiState
 }
@@ -67,6 +73,7 @@ class JobDetailsViewModel @Inject constructor(
     private val applicationWorkflowRepository: ApplicationWorkflowRepository,
     private val companyIntelligenceRepository: CompanyIntelligenceRepository,
     private val recruiterIntelligenceRepository: RecruiterIntelligenceRepository,
+    private val careerStateEngine: CareerStateEngine,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -134,9 +141,17 @@ class JobDetailsViewModel @Inject constructor(
         }
     }
 
-    private fun calculateReadiness(job: JobListing): Int {
-        // Mock readiness calculation for now
-        return (job.matchScore ?: 60).coerceIn(0, 100)
+    /**
+     * Readiness is the same profile-aware "match" concept the Jobs screen shows
+     * via [JobFitScorer]. Without a usable profile (no target role and no
+     * skills) there is nothing to score against, so we return null and let the
+     * UI show a "complete your profile" state rather than inventing a number.
+     */
+    private fun calculateReadiness(job: JobListing): Int? {
+        val profile = careerStateEngine.state.value.profile
+        val hasProfile = profile.targetRole.isNotBlank() || profile.skills.isNotEmpty()
+        if (!hasProfile) return null
+        return JobFitScorer.calculateFitScore(job, profile).coerceIn(0, 100)
     }
 
     private fun toggleBookmark() {

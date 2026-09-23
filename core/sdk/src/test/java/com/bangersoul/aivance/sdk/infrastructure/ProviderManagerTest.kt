@@ -212,6 +212,33 @@ class ProviderManagerTest {
     }
 
     @Test
+    fun `getBestProviderFor is deterministic regardless of registration order`() {
+        // Two same-tier candidates (both Ready, both keyed): the winner must be
+        // stable (lowest id) no matter which is registered first, so provider
+        // Set/map iteration order can never change the resolved provider.
+        fun resolveWith(firstId: String, secondId: String): String? {
+            val reg = ProviderRegistry(emptySet(), emptySet(), emptySet())
+            val mgr = ProviderManager(reg)
+            val a = ReconfigurableTestProvider(firstId)
+            a.updateStatus(ProviderStatus.Ready)
+            val b = ReconfigurableTestProvider(secondId)
+            b.updateStatus(ProviderStatus.Ready)
+            // Both configured with real credentials -> identical priority tier.
+            kotlinx.coroutines.runBlocking {
+                a.applyConfiguration(ProviderConfiguration(firstId, secrets = mapOf("apiKey" to "k")))
+                b.applyConfiguration(ProviderConfiguration(secondId, secrets = mapOf("apiKey" to "k")))
+            }
+            reg.register(a)
+            reg.register(b)
+            return mgr.getBestProviderFor(ProviderCapability.TextAnalysis)?.metadata?.id
+        }
+
+        // "alpha" < "zulu": whichever order they are registered, alpha wins.
+        assertEquals("alpha", resolveWith("alpha", "zulu"))
+        assertEquals("alpha", resolveWith("zulu", "alpha"))
+    }
+
+    @Test
     fun `getBestProviderFor should prioritize Active providers`() {
         val provider1 = TestProvider("id1", setOf(ProviderCapability.TextAnalysis))
         val provider2 = TestProvider("id2", setOf(ProviderCapability.TextAnalysis))

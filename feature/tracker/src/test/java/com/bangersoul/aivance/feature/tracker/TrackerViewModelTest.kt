@@ -47,7 +47,12 @@ class TrackerViewModelTest {
     private lateinit var viewModel: TrackerViewModel
 
     private fun buildViewModel(): TrackerViewModel {
-        val workflowEngine = WorkflowEngine(mockRepository, mockAnalyticsRepository, mockTaskGenerator)
+        val workflowEngine = WorkflowEngine(
+            mockRepository,
+            mockAnalyticsRepository,
+            mockTaskGenerator,
+            mockk(relaxed = true)
+        )
         return TrackerViewModel(
             mockRepository, workflowEngine, mockCareerStateEngine, mockTrackEvent, mockJobRepository,
             mockApplicationPreferences

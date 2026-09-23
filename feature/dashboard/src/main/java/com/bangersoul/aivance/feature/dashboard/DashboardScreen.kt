@@ -399,11 +399,7 @@ private fun DashboardContentPreview() {
                 activeApplications = 6,
                 nextInterview = "Fri 10:00",
                 savedJobs = 4,
-                aiRecommendation = "Tailor your resume for senior Android roles to boost your match rate.",
-                recentActivity = listOf(
-                    ActivityItem("1", "Applied to Senior Android Engineer at Acme", "Aug 1"),
-                    ActivityItem("2", "ATS scan completed — 85% match", "Jul 31")
-                )
+                aiRecommendation = "Tailor your resume for senior Android roles to boost your match rate."
             ),
             onNavigateToResume = {},
             onNavigateToJobs = {},

@@ -232,7 +232,7 @@ private fun JobOverviewContent(
 
 @Composable
 private fun JobReadinessContent(
-    score: Int,
+    score: Int?,
     onOpenAts: () -> Unit,
     onGenerateCoverLetter: () -> Unit,
     onNavigateToPrepStudio: () -> Unit
@@ -246,10 +246,20 @@ private fun JobReadinessContent(
     ) {
         AivanceWorkspaceCard {
             Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                ScoreGauge(score = score, size = 80.dp)
-                Column {
-                    Text("Match Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("How prepared you are for this specific role.", style = MaterialTheme.typography.bodySmall)
+                if (score != null) {
+                    ScoreGauge(score = score, size = 80.dp)
+                    Column {
+                        Text("Match Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("How prepared you are for this specific role.", style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    Column {
+                        Text("Match Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Add your target role and skills to your profile to see how well you match this role.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -258,7 +268,11 @@ private fun JobReadinessContent(
 
         ReadinessCard(
             title = "ATS Optimization",
-            description = "Your current resume match is ${score}%. Fix missing keywords to pass filters.",
+            description = if (score != null) {
+                "Your current resume match is ${score}%. Fix missing keywords to pass filters."
+            } else {
+                "Run an ATS scan to see how well your resume matches this role."
+            },
             actionLabel = "Run ATS Scan",
             icon = Icons.Rounded.Search,
             onClick = onOpenAts

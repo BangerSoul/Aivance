@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -104,6 +105,28 @@ class AssistantViewModel @Inject constructor(
     private var currentConversationId = "main_session"
     private var lastUserMessage: String? = null
 
+    init {
+        // Restore persisted transcript so history survives process death / app
+        // restart (previously nothing was ever read back, and writes silently
+        // failed on a foreign-key violation).
+        loadHistory()
+    }
+
+    private fun loadHistory() {
+        viewModelScope.launch {
+            val result = assistantRepository.getMessages(currentConversationId).firstOrNull() ?: return@launch
+            val messages = (result as? com.bangersoul.aivance.core.common.result.Result.Success)?.data ?: return@launch
+            if (messages.isEmpty()) return@launch
+            // Only hydrate when the user hasn't already started interacting, so a
+            // late DB emission never clobbers an in-flight conversation.
+            if (_uiState.value is AssistantUiState.Idle) {
+                _uiState.value = AssistantUiState.Chatting(
+                    messages = messages.map { AssistantChatMessage(it.role, it.content, it.timestamp) }
+                )
+            }
+        }
+    }
+
     /**
      * Job the user is currently looking at (surfaced from saved jobs / job
      * details via the global assistant overlay). Included in the next prompt so
@@ -128,67 +151,105 @@ class AssistantViewModel @Inject constructor(
 
         lastUserMessage = text
         val userMsg = AssistantChatMessage("USER", text)
-        val messages = if (current is AssistantUiState.Chatting) current.messages + userMsg else listOf(userMsg)
+        val baseMessages = if (current is AssistantUiState.Chatting) current.messages else emptyList()
+        val messages = baseMessages + userMsg
 
         _uiState.value = AssistantUiState.Chatting(messages, isTyping = true)
 
         viewModelScope.launch {
+            // Persist the user turn exactly once, here — the repository guarantees
+            // the parent conversation row exists first (CASCADE FK).
             assistantRepository.saveMessage(currentConversationId, "USER", text)
-
-            val state = stateEngine.state.value
-            val intent = intentEngine.detectIntent(text, state)
-            val orchestratedPrompt = promptOrchestrator.buildCopilotPrompt(
-                text,
-                state,
-                intent,
-                jobContext = _jobContext.value
-            )
-
-            var fullResponse = ""
-            try {
-                getAssistantResponseUseCase.stream(
-                    AssistantRequest(currentConversationId, orchestratedPrompt, rawUserMessage = text)
-                ).collect { chunk ->
-                    fullResponse += chunk
-                    _uiState.value = AssistantUiState.Chatting(
-                        messages = messages,
-                        isTyping = false,
-                        streamingContent = fullResponse
-                    )
-                }
-
-                if (fullResponse.isBlank()) {
-                    _uiState.value = AssistantUiState.Error("AI returned an empty response")
-                    return@launch
-                }
-
-                assistantRepository.saveMessage(currentConversationId, "ASSISTANT", fullResponse)
-                val aiMsg = AssistantChatMessage("ASSISTANT", fullResponse)
-                _uiState.value = AssistantUiState.Chatting(
-                    messages = messages + aiMsg,
-                    isTyping = false,
-                    streamingContent = null
-                )
-            } catch (e: Exception) {
-                if (fullResponse.isNotBlank()) {
-                    assistantRepository.saveMessage(currentConversationId, "ASSISTANT", fullResponse)
-                    _uiState.value = AssistantUiState.Chatting(
-                        messages = messages,
-                        isTyping = false,
-                        streamingContent = fullResponse,
-                        streamFailed = true
-                    )
-                } else {
-                    _uiState.value = AssistantUiState.Error(
-                        e.message?.takeIf { it.isNotBlank() } ?: "AI failed to respond"
-                    )
-                }
-            }
+            runAssistant(rawText = text, messages = messages)
         }
     }
 
+    /**
+     * Re-runs generation for the last user message WITHOUT appending or
+     * re-persisting a duplicate user turn. The previous user message is already
+     * in the transcript and already saved, so retry must not create a second
+     * copy (that corrupted history: two identical user rows per failed attempt).
+     */
     fun retry() {
-        lastUserMessage?.let { sendMessage(it) }
+        val last = lastUserMessage ?: return
+        val current = _uiState.value
+        // Reuse the existing transcript (which already contains the user turn);
+        // only synthesize a minimal one if somehow retried from a non-chat state.
+        val messages = (current as? AssistantUiState.Chatting)?.messages
+            ?: listOf(AssistantChatMessage("USER", last))
+        _uiState.value = AssistantUiState.Chatting(messages, isTyping = true)
+        viewModelScope.launch { runAssistant(rawText = last, messages = messages) }
+    }
+
+    /**
+     * Streams an assistant response for [rawText] against the current [messages]
+     * transcript.
+     *
+     * Persistence contract (truthful history):
+     *  - SUCCESS → the complete assistant message is persisted and committed.
+     *  - FAILURE after partial output → the partial text stays visible in-memory
+     *    (streamingContent + streamFailed + retry) but is deliberately NOT
+     *    persisted, so a failed/truncated turn can never reload as a completed
+     *    assistant message. The failed partial is transient by contract.
+     *  - CANCELLATION → propagated untouched; never persisted, never shown as an
+     *    error (structured concurrency / VM teardown must stay clean).
+     */
+    private suspend fun runAssistant(rawText: String, messages: List<AssistantChatMessage>) {
+        val state = stateEngine.state.value
+        val intent = intentEngine.detectIntent(rawText, state)
+        val orchestratedPrompt = promptOrchestrator.buildCopilotPrompt(
+            rawText,
+            state,
+            intent,
+            jobContext = _jobContext.value
+        )
+
+        var fullResponse = ""
+        try {
+            getAssistantResponseUseCase.stream(
+                AssistantRequest(currentConversationId, orchestratedPrompt, rawUserMessage = rawText)
+            ).collect { chunk ->
+                fullResponse += chunk
+                _uiState.value = AssistantUiState.Chatting(
+                    messages = messages,
+                    isTyping = false,
+                    streamingContent = fullResponse
+                )
+            }
+
+            if (fullResponse.isBlank()) {
+                _uiState.value = AssistantUiState.Error("AI returned an empty response")
+                return
+            }
+
+            // Only a fully-completed response is persisted.
+            assistantRepository.saveMessage(currentConversationId, "ASSISTANT", fullResponse)
+            val aiMsg = AssistantChatMessage("ASSISTANT", fullResponse)
+            _uiState.value = AssistantUiState.Chatting(
+                messages = messages + aiMsg,
+                isTyping = false,
+                streamingContent = null
+            )
+        } catch (ce: kotlin.coroutines.cancellation.CancellationException) {
+            // User/VM cancellation must remain cancellation — never an error,
+            // never a persisted failed turn.
+            throw ce
+        } catch (e: Exception) {
+            if (fullResponse.isNotBlank()) {
+                // Transient partial: shown with a retry affordance, NOT persisted,
+                // so history never contains a fake-completed assistant message.
+                _uiState.value = AssistantUiState.Chatting(
+                    messages = messages,
+                    isTyping = false,
+                    streamingContent = fullResponse,
+                    streamFailed = true
+                )
+            } else {
+                _uiState.value = AssistantUiState.Error(
+                    e.message?.takeIf { it.isNotBlank() } ?: "AI failed to respond"
+                )
+            }
+        }
     }
 
     private fun friendlyName(providerId: String): String =

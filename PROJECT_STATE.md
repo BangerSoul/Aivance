@@ -8,7 +8,7 @@
 - **Dependency Injection**: Hilt.
 - **UI**: Jetpack Compose with Material Design 3.
 - **Concurrency**: Kotlin Coroutines & Flow.
-- **Data Persistence**: Room (v25) & DataStore.
+- **Data Persistence**: Room (v26) & DataStore.
 - **Background Tasks**: WorkManager.
 - **Provider System**: Plug-and-play Provider SDK architecture for AI, Job, and Enrichment services.
 - **Security**: Centralized on-device encryption (AES-GCM via Google Tink) and Keystore-backed secrets management.
@@ -51,8 +51,9 @@
 - **Enrichment Providers**: Hunter.io (real domain search + email verification).
 
 ## Database & API
-- **Room Version**: 25.
-- **Latest Migration**: `MIGRATION_24_25` (drops the legacy `resume_analyses` table — completes T-04, the AtsReport migration).
+- **Room Version**: 26.
+- **Latest Migration**: `MIGRATION_25_26` (Career Knowledge OS foundation — strictly additive: adds `graph_nodes`, `graph_edges`, `career_event_log`, `career_memory_entries` and their indices; no existing table or row is altered). Backs the persisted Career Graph, durable event log, and Career Memory. **Durable event log: YES. Event replay engine: NOT YET IMPLEMENTED** (the log is append-only audit persistence; nothing consumes it for replay yet).
+- **Previous Migration**: `MIGRATION_24_25` (drops the legacy `resume_analyses` table — completes T-04, the AtsReport migration).
 - **Previous Security Migration**: `MIGRATION_19_20` (Security Hardening — audit_logs table, removed `apiKey` column from `provider_configurations`).
 - **Encryption**: AES-GCM (Tink) for PII (emails, resume text, outreach content).
 - **API integrations**: Firebase AI SDK, Retrofit, OkHttp.
@@ -116,6 +117,7 @@ See `KNOWN_ISSUES.md` for the full catalog. All 🔴 High and 🟡 Medium severi
 Open items: P0-02 (MITM pen-test — requires device). P0-01 ✅ RESOLVED (2026-08-11 — `:core:database:connectedDebugAndroidTest` executed on the `aivance` AVD: 37 tests, 0 failures, migration chain 5→25 verified on-device). See `DEVICE_VALIDATION.md` for P0-02 execution instructions.
 
 ## Last Coordinated
+- **2026-09-24**: V2 "Career Knowledge OS" foundation landed and made durable. Room upgraded v25→v26 with the strictly-additive `MIGRATION_25_26`. `CareerGraphEngine` now persists/hydrates via `graph_nodes`/`graph_edges` (transactional replace, deterministic upsert IDs), `CareerMemoryEngine` hydrates + writes through `career_memory_entries`, and `CareerEventDispatcher` appends every event to the durable `career_event_log` (idempotent on `eventId`; logging only, replay not implemented). `CareerStateEngine` now projects saved jobs + interview sessions into the graph. Evidence: `:core:database`/`:core:domain`/`:core:data` unit suites + `assembleDebug` green; new migration + DAO/repository round-trip tests added.
 - **2026-08-11**: P0-01 closed — instrumented DB suite executed on the `aivance` emulator (37 tests, 0 failures, migration chain 5→25 on-device). T-05 test-strength pass also landed.
 - **2026-08-10**: Full walkthrough + TODO coordination pass. All stale debt entries updated. `DEVICE_VALIDATION.md` created.
 

@@ -202,6 +202,19 @@ Converts M04/M05 from "replay code that compiles + passes JVM tests with fakes" 
 * **One test-only fix** — `MigrationTest.migrate25To26`'s seed omitted v25 `user_profiles` NOT NULL columns, failing the INSERT before the migration; corrected the seed. The migration itself was already correct (classification B, not a production defect).
 * **Runtime evidence** — `:core:database:connectedDebugAndroidTest` → 36 tests, 0 failures; `:core:data:connectedDebugAndroidTest` (`CareerEventReplayRuntimeTest`) → 10 tests, 0 failures; full `testDebugUnitTest` + `:app:assembleDebug` green. No schema change (reuses v27). DB stays authoritative; the event log stays append-only audit persistence.
 
+#### M04-C — Event-Contract Evolution (stable entity identity) ✅ (landed 2026-09-24)
+
+Evolves the persisted payload contract so that a *future* rehydration engine can key entity state on identity carried in the log, instead of inferring or fabricating it. The M07 blocker was proven from source first: the flattened audit payloads of the flagship events omit their entity identity.
+
+* **Four payloads → schema version 2** (`ENTITY_IDENTITY_V2_TYPES`): `ResumeAnalysisCompleted` (+`resumeId`,`versionId`), `JobSaved` (+`jobId`), `ApplicationStageChanged` (+`applicationId`), `InterviewCompleted` (+`sessionId`). Every other event type stays v1.
+* **Backward compatible** — `CareerEventContract.SUPPORTED_VERSIONS` accepts `{1,2}` for the four evolved types and `{1}` for the rest. Already-persisted **v1 rows decode exactly as before** (and stay non-rehydratable, lacking identity); an unsupported v3 / unknown type / malformed payload still fails loudly and distinguishably. Version is never inferred from payload shape and v1 is never reinterpreted as v2.
+* **No Room schema change** — payload/schema version is independent of the Room DB version; the identity is additive JSON in new rows only (reuses v27). No migration invented.
+* **Projection-layer benefit, no ownership change** — a v2 event's identity now flows automatically into the replay-owned `CAREER_EVENT` provenance node's `payload.*` properties. No new writer; the M05 entity/provenance ownership boundary is untouched.
+
+#### M07 — State Rehydration ⛔ BLOCKED (by ownership, 2026-09-24)
+
+M04-C removed the *data* blocker, but genuine entity/memory rehydration is **correctly blocked by ownership, not weakened**. Creating/updating entity nodes (RESUME/JOB/APPLICATION/INTERVIEW_SESSION) or memory entries from replay would place the replay engine into the *entity* projection slice that M05 assigns exclusively to the live `CareerStateEngine` (fed by authoritative Room entities). That would reintroduce two competing writers to one slice and make the append-only log a second source of truth for entity state — both forbidden invariants. **Unblocking M07 requires a deliberate projection-ownership decision** (e.g. a separately-owned rehydration slice, or an explicit reconciliation contract with the live engine), not more payload data. Reported BLOCKED per the stop conditions rather than violating the single-writer/authoritative-DB invariants.
+
 ### Phase 3: Provider SDK 2.0 & Standalone Decoupling
 * **Pure Kotlin SDK**: Extract `core:sdk` into standalone multiplatform library `aivance-sdk`.
 * **Abstracted Secrets**: Abstract Android Keystore behind `SecretStore` interface (supporting keychain, env vars, or encrypted preferences).

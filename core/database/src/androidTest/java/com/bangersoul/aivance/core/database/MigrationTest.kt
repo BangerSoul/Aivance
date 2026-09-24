@@ -541,7 +541,11 @@ class MigrationTest {
     fun migrate25To26_createsFoundationTablesAndPreservesData() {
         seed(
             25,
-            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')",
+            // v25 user_profiles carries several NOT NULL columns without defaults
+            // (experienceYears, preferredIndustries, visaRequired, createdDate); the seed must
+            // satisfy them to mirror a real v25 row.
+            "INSERT INTO user_profiles (id, name, email, skills, experienceYears, preferredIndustries, visaRequired, createdDate) " +
+                "VALUES ('u1', 'Alice', 'a@x.com', '[]', 3, '[]', 0, 5)",
             "INSERT INTO companies (id, name) VALUES (1, 'Acme')",
             "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) VALUES (1, 1, 'Eng', '', 'X', 100)"
         )

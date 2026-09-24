@@ -21,9 +21,11 @@ import javax.inject.Singleton
  *
  * - Node/edge identities are the engine's deterministic IDs, so [persist] upserts the same rows
  *   rather than duplicating them across repeated event-driven projections.
- * - The projection is replaced atomically inside [GraphDao.replaceGraph] (single transaction).
+ * - [persist] writes the ENTITY projection slice atomically inside [GraphDao.replaceEntityProjection]
+ *   (single transaction), replacing every non-`CAREER_EVENT` node and all edges while leaving the
+ *   replay-owned `CAREER_EVENT` provenance slice intact (M05).
  * - [replaceEventProjection] atomically rebuilds ONLY the `CAREER_EVENT` provenance slice (M04-B
- *   replay), leaving the relational-entity projection untouched.
+ *   replay), leaving the entity projection untouched.
  * - Unknown persisted type strings are skipped defensively on hydration so a forward-compatible
  *   row never crashes an older reader.
  */
@@ -50,7 +52,7 @@ class CareerGraphRepositoryImpl @Inject constructor(
                 createdAt = edge.createdAt
             )
         }
-        graphDao.replaceGraph(nodeEntities, edgeEntities)
+        graphDao.replaceEntityProjection(nodeEntities, edgeEntities)
     }
 
     override suspend fun loadGraph(userId: String): CareerGraph {

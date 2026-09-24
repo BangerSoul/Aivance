@@ -45,6 +45,9 @@ interface GraphDao {
     @Query("DELETE FROM graph_nodes WHERE type = :type")
     suspend fun clearNodesByType(type: String)
 
+    @Query("DELETE FROM graph_nodes WHERE type != :excludedType")
+    suspend fun clearNodesExceptType(excludedType: String)
+
     @Query("SELECT * FROM graph_nodes WHERE type = :type")
     suspend fun getNodesOfType(type: String): List<GraphNodeEntity>
 
@@ -52,11 +55,39 @@ interface GraphDao {
      * Atomically replaces the entire persisted graph with a freshly projected one.
      * Runs in a single transaction: partial failure rolls back, so readers never observe
      * a half-applied projection.
+     *
+     * NOTE (M05): this is the *whole-graph* rewrite and is destructive across ALL node types,
+     * including the replay-owned `CAREER_EVENT` provenance slice. The live entity-projection path
+     * must use [replaceEntityProjection] instead so it never erases the replay slice. This method
+     * is retained for full-reset scenarios and DAO tests.
      */
     @Transaction
     suspend fun replaceGraph(nodes: List<GraphNodeEntity>, edges: List<GraphEdgeEntity>) {
         clearEdges()
         clearNodes()
+        upsertNodes(nodes)
+        upsertEdges(edges)
+    }
+
+    /**
+     * Atomically replaces the ENTITY-owned projection (every node type except the replay-owned
+     * `CAREER_EVENT` provenance slice) plus all edges, leaving the `CAREER_EVENT` nodes intact
+     * (M05).
+     *
+     * This is the write target of the live [com.bangersoul.aivance.core.domain.engine.CareerStateEngine]
+     * graph projection. Ownership is disjoint from [replaceNodesOfType]: the entity projection owns
+     * all non-`CAREER_EVENT` nodes and all edges; the event-provenance projection owns only the
+     * `CAREER_EVENT` nodes (and produces no edges). Because the two slices never overlap, a live
+     * entity re-projection can no longer erase a replay-rebuilt provenance slice, and vice versa.
+     *
+     * Runs in one transaction: partial failure rolls back, so readers never observe a half-applied
+     * projection. [nodes] is expected to contain no `CAREER_EVENT` rows (the engine never produces
+     * them); any that slip through are upserted rather than clearing the replay slice.
+     */
+    @Transaction
+    suspend fun replaceEntityProjection(nodes: List<GraphNodeEntity>, edges: List<GraphEdgeEntity>) {
+        clearEdges()
+        clearNodesExceptType(com.bangersoul.aivance.core.database.model.GraphNodeTypes.CAREER_EVENT)
         upsertNodes(nodes)
         upsertEdges(edges)
     }

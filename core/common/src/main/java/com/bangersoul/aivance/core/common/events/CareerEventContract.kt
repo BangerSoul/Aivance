@@ -36,14 +36,29 @@ object CareerEventContract {
     const val CURRENT_PAYLOAD_VERSION: Int = 1
 
     /**
+     * Event types whose payload has evolved to v2 (M04-C) to carry stable entity identity that a
+     * v1 audit payload omitted. Both versions remain decodable: already-persisted v1 rows decode
+     * exactly as before (and are non-rehydratable because they lack the identity), while newly
+     * emitted v2 rows carry the identity a replay engine needs to rebuild the entity node.
+     */
+    val ENTITY_IDENTITY_V2_TYPES: Set<String> = setOf(
+        "ResumeAnalysisCompleted", // + resumeId, versionId
+        "JobSaved",                // + jobId
+        "ApplicationStageChanged", // + applicationId
+        "InterviewCompleted"       // + sessionId
+    )
+
+    /**
      * Every canonical [CareerEvent.eventType] discriminator currently produced by
      * [CareerEventDispatcher], mapped to the set of payload versions this contract can decode.
      *
      * Keep this in lock-step with the `eventType` values declared in `CareerEvent.kt`. Adding a
-     * breaking payload change means adding the new version number to the relevant entry here.
+     * breaking payload change means adding the new version number to the relevant entry here
+     * (see [ENTITY_IDENTITY_V2_TYPES]).
      */
     val SUPPORTED_VERSIONS: Map<String, Set<Int>> = buildMap {
         val v1 = setOf(CURRENT_PAYLOAD_VERSION)
+        val v1AndV2 = setOf(CURRENT_PAYLOAD_VERSION, 2)
         listOf(
             // Resume
             "ResumeCreated", "ResumeUpdated", "ResumeVersionCreated",
@@ -73,7 +88,7 @@ object CareerEventContract {
             "AutomationRuleTriggered",
             // System
             "SystemInitialized"
-        ).forEach { put(it, v1) }
+        ).forEach { put(it, if (it in ENTITY_IDENTITY_V2_TYPES) v1AndV2 else v1) }
     }
 
     /** True if [eventType] is a discriminator this contract recognizes. */

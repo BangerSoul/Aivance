@@ -18,7 +18,8 @@ import java.util.UUID
  * @property schemaVersion Explicit payload/schema version for this event type. Distinct from the
  *   Room database version and from [eventType]; it lets a payload evolve (e.g. v1 -> v2) without a
  *   database migration, and a future replay engine reads it rather than inferring version from
- *   payload shape. Every current event type is version [CareerEventContract.CURRENT_PAYLOAD_VERSION].
+ *   payload shape. Most event types are version [CareerEventContract.CURRENT_PAYLOAD_VERSION]; a few
+ *   have evolved to v2 to carry stable entity identity (M04-C) — see [CareerEventContract].
  * @property payload Structured, serializable telemetry and domain attributes.
  */
 sealed interface CareerEvent {
@@ -89,9 +90,13 @@ sealed interface ResumeEvent : CareerEvent {
         override val timestamp: Long = System.currentTimeMillis(),
         override val correlationId: String? = null,
         override val causationId: String? = null,
-        override val payload: Map<String, Any?> = mapOf("atsScore" to atsScore)
+        // Payload v2 (M04-C): carries the stable resume + version identity required to
+        // rehydrate the RESUME / RESUME_VERSION graph nodes this analysis belongs to. v1
+        // payloads (already persisted) omit these ids and remain decodable but non-rehydratable.
+        override val payload: Map<String, Any?> = mapOf("resumeId" to resumeId, "versionId" to versionId, "atsScore" to atsScore)
     ) : ResumeEvent {
         override val eventType: String get() = "ResumeAnalysisCompleted"
+        override val schemaVersion: Int get() = 2
     }
 
     data class SectionModified(
@@ -205,9 +210,11 @@ sealed interface JobEvent : CareerEvent {
         override val timestamp: Long = System.currentTimeMillis(),
         override val correlationId: String? = null,
         override val causationId: String? = null,
-        override val payload: Map<String, Any?> = mapOf("company" to company, "title" to title)
+        // Payload v2 (M04-C): carries the stable jobId required to rehydrate the JOB graph node.
+        override val payload: Map<String, Any?> = mapOf("jobId" to jobId, "company" to company, "title" to title)
     ) : JobEvent {
         override val eventType: String get() = "JobSaved"
+        override val schemaVersion: Int get() = 2
         constructor(jobId: Long, company: String, title: String) : this(jobId.toString(), company, title)
     }
 
@@ -287,9 +294,12 @@ sealed interface ApplicationEvent : CareerEvent {
         override val timestamp: Long = System.currentTimeMillis(),
         override val correlationId: String? = null,
         override val causationId: String? = null,
-        override val payload: Map<String, Any?> = mapOf("oldStage" to oldStage, "newStage" to newStage)
+        // Payload v2 (M04-C): carries the stable applicationId required to rehydrate the
+        // APPLICATION graph node this stage transition belongs to.
+        override val payload: Map<String, Any?> = mapOf("applicationId" to applicationId, "oldStage" to oldStage, "newStage" to newStage)
     ) : ApplicationEvent {
         override val eventType: String get() = "ApplicationStageChanged"
+        override val schemaVersion: Int get() = 2
     }
 
     data class TaskCreated(
@@ -376,9 +386,12 @@ sealed interface InterviewEvent : CareerEvent {
         override val timestamp: Long = System.currentTimeMillis(),
         override val correlationId: String? = null,
         override val causationId: String? = null,
-        override val payload: Map<String, Any?> = mapOf("overallScore" to overallScore, "weaknesses" to topWeaknesses)
+        // Payload v2 (M04-C): carries the stable sessionId required to rehydrate the
+        // INTERVIEW_SESSION graph node this completion belongs to.
+        override val payload: Map<String, Any?> = mapOf("sessionId" to sessionId, "overallScore" to overallScore, "weaknesses" to topWeaknesses)
     ) : InterviewEvent {
         override val eventType: String get() = "InterviewCompleted"
+        override val schemaVersion: Int get() = 2
     }
 
     data class Evaluated(

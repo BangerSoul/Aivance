@@ -104,7 +104,7 @@ class CareerEventReplayRuntimeTest {
         val row = db.careerEventLogDao().getAll().single()
         assertThat(row.eventId).isEqualTo("evt_a")
         assertThat(row.eventType).isEqualTo("ResumeAnalysisCompleted")
-        assertThat(row.schemaVersion).isEqualTo(1)
+        assertThat(row.schemaVersion).isEqualTo(2) // evolved to payload v2 (M04-C)
         assertThat(row.timestamp).isEqualTo(1_000)
         assertThat(row.correlationId).isEqualTo("corr_1")
         assertThat(row.causationId).isEqualTo("cause_1")

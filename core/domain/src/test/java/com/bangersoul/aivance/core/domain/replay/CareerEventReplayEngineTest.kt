@@ -4,6 +4,7 @@ import com.bangersoul.aivance.core.common.events.CareerEvent
 import com.bangersoul.aivance.core.common.events.CareerEventCodec
 import com.bangersoul.aivance.core.common.events.CareerEventDecodeResult
 import com.bangersoul.aivance.core.common.events.InterviewEvent
+import com.bangersoul.aivance.core.common.events.JobEvent
 import com.bangersoul.aivance.core.common.events.ResumeEvent
 import com.bangersoul.aivance.core.common.graph.CareerGraphNode
 import com.bangersoul.aivance.core.common.graph.CareerNodeType
@@ -111,7 +112,8 @@ class CareerEventReplayEngineTest {
         assertEquals("ResumeAnalysisCompleted", node.label)
         assertTrue(node.id.startsWith("event_"))
         assertEquals("88", node.properties["payload.atsScore"])
-        assertEquals("1", node.properties["schemaVersion"])
+        // ResumeAnalysisCompleted evolved to payload v2 under M04-C.
+        assertEquals("2", node.properties["schemaVersion"])
     }
 
     @Test
@@ -198,6 +200,49 @@ class CareerEventReplayEngineTest {
 
         assertTrue(result is CareerReplayResult.Failed)
         assertTrue((result as CareerReplayResult.Failed).failure is CareerReplayFailure.ProjectionError)
+    }
+
+    @Test
+    fun `v2 evolved events carry stable entity identity into the provenance node`() = runTest {
+        // M04-C: the four evolved payloads now flatten their entity identity into the persisted
+        // payload, so the CAREER_EVENT provenance node records WHICH entity each event refers to.
+        // This enriches the replay-owned slice only; it does not create entity nodes/edges (which
+        // remain owned by the live entity projection per M05).
+        log.add(ResumeEvent.AnalysisCompleted(resumeId = "5", versionId = "9", atsScore = 88))
+        log.add(JobEvent.Saved(jobId = "7", company = "Acme", title = "Eng"))
+        log.add(InterviewEvent.Completed(sessionId = "s1", overallScore = 70))
+
+        engine.replayAll()
+
+        val byLabel = graph.eventProjection!!.associateBy { it.label }
+        val analysis = byLabel.getValue("ResumeAnalysisCompleted")
+        assertEquals("2", analysis.properties["schemaVersion"])
+        assertEquals("5", analysis.properties["payload.resumeId"])
+        assertEquals("9", analysis.properties["payload.versionId"])
+
+        assertEquals("7", byLabel.getValue("JobSaved").properties["payload.jobId"])
+        assertEquals("s1", byLabel.getValue("InterviewCompleted").properties["payload.sessionId"])
+
+        // Every node is still CAREER_EVENT — replay created no entity node.
+        assertTrue(graph.eventProjection!!.all { it.type == CareerNodeType.CAREER_EVENT })
+        assertEquals(0, graph.persistCalls)
+    }
+
+    @Test
+    fun `a legacy v1 analysis and a v2 analysis both replay, only v2 carrying identity`() = runTest {
+        // Simulate an already-persisted v1 row (payload lacks identity) alongside a new v2 row.
+        log.rows.add(FakeEventLogRepository.Row("evt_v1", 1, "ResumeAnalysisCompleted", "feature:resume", 10, "{\"atsScore\":\"70\"}"))
+        log.add(ResumeEvent.AnalysisCompleted(resumeId = "5", versionId = "9", atsScore = 88).copy(eventId = "evt_v2", timestamp = 20))
+
+        val result = engine.replayAll()
+
+        assertTrue(result is CareerReplayResult.Success)
+        val byId = graph.eventProjection!!.associateBy { it.id }
+        // v1 decodes and projects, but has no entity identity to key rehydration on.
+        assertEquals("1", byId.getValue("event_evt_v1").properties["schemaVersion"])
+        assertFalse(byId.getValue("event_evt_v1").properties.containsKey("payload.resumeId"))
+        // v2 carries identity.
+        assertEquals("5", byId.getValue("event_evt_v2").properties["payload.resumeId"])
     }
 
     @Test

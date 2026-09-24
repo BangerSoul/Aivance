@@ -16,8 +16,9 @@ import org.junit.Test
 class CareerEventContractTest {
 
     @Test
-    fun `every dispatched event type is registered at the current payload version`() {
+    fun `every dispatched event type is registered and supports its own emitted version`() {
         // Representative events across each producer family currently persisted by the dispatcher.
+        // Four families carry a v2 payload (M04-C) that adds stable entity identity; the rest are v1.
         val events: List<CareerEvent> = listOf(
             ResumeEvent.Created(resumeId = "1", name = "R"),
             ResumeEvent.AnalysisCompleted(resumeId = "1", versionId = "2", atsScore = 90),
@@ -30,7 +31,6 @@ class CareerEventContractTest {
         )
 
         events.forEach { event ->
-            assertEquals(CareerEventContract.CURRENT_PAYLOAD_VERSION, event.schemaVersion)
             assertTrue(
                 "event type ${event.eventType} must be in the versioned contract",
                 CareerEventContract.isKnownType(event.eventType)
@@ -40,6 +40,97 @@ class CareerEventContractTest {
                 CareerEventContract.isSupportedVersion(event.eventType, event.schemaVersion)
             )
         }
+    }
+
+    @Test
+    fun `the four entity-identity families emit payload version 2`() {
+        assertEquals(2, ResumeEvent.AnalysisCompleted(resumeId = "1", versionId = "2", atsScore = 90).schemaVersion)
+        assertEquals(2, JobEvent.Saved(jobId = "1", company = "Acme", title = "Eng").schemaVersion)
+        assertEquals(2, ApplicationEvent.StageChanged(applicationId = "1", oldStage = "A", newStage = "B").schemaVersion)
+        assertEquals(2, InterviewEvent.Completed(sessionId = "1", overallScore = 70).schemaVersion)
+
+        // Their v2 payloads carry the stable entity identity a replay engine needs to rehydrate.
+        assertEquals("1", ResumeEvent.AnalysisCompleted(resumeId = "1", versionId = "2", atsScore = 90).payload["resumeId"])
+        assertEquals("2", ResumeEvent.AnalysisCompleted(resumeId = "1", versionId = "2", atsScore = 90).payload["versionId"])
+        assertEquals("1", JobEvent.Saved(jobId = "1", company = "Acme", title = "Eng").payload["jobId"])
+        assertEquals("1", ApplicationEvent.StageChanged(applicationId = "1", oldStage = "A", newStage = "B").payload["applicationId"])
+        assertEquals("1", InterviewEvent.Completed(sessionId = "1", overallScore = 70).payload["sessionId"])
+    }
+
+    @Test
+    fun `entity-identity families accept both v1 and v2 while other types accept only v1`() {
+        CareerEventContract.ENTITY_IDENTITY_V2_TYPES.forEach { type ->
+            assertTrue("$type must decode v1", CareerEventContract.isSupportedVersion(type, 1))
+            assertTrue("$type must decode v2", CareerEventContract.isSupportedVersion(type, 2))
+        }
+        // A representative non-evolved type still rejects v2.
+        assertTrue(CareerEventContract.isSupportedVersion("ResumeCreated", 1))
+        assertFalse(CareerEventContract.isSupportedVersion("ResumeCreated", 2))
+    }
+
+    @Test
+    fun `a legacy v1 analysis payload without identity still decodes but carries no entity id`() {
+        // Simulates an already-persisted v1 row: payload has only atsScore, no resumeId/versionId.
+        val result = CareerEventCodec.decode(
+            eventId = "legacy-1",
+            schemaVersion = 1,
+            eventType = "ResumeAnalysisCompleted",
+            sourceModule = "feature:resume",
+            timestamp = 100,
+            correlationId = null,
+            causationId = null,
+            payloadJson = "{\"atsScore\":\"77\"}"
+        )
+
+        assertTrue(result is CareerEventDecodeResult.Decoded)
+        val envelope = (result as CareerEventDecodeResult.Decoded).envelope
+        assertEquals(1, envelope.schemaVersion)
+        assertEquals("77", envelope.payload["atsScore"])
+        assertFalse("legacy v1 payload must not contain entity identity", envelope.payload.containsKey("resumeId"))
+    }
+
+    @Test
+    fun `a v2 analysis payload round-trips carrying stable entity identity`() {
+        val event = ResumeEvent.AnalysisCompleted(resumeId = "5", versionId = "9", atsScore = 88)
+        val payloadJson = CareerEventCodec.encodePayload(event.payload)
+
+        val result = CareerEventCodec.decode(
+            eventId = event.eventId,
+            schemaVersion = event.schemaVersion,
+            eventType = event.eventType,
+            sourceModule = event.sourceModule,
+            timestamp = event.timestamp,
+            correlationId = event.correlationId,
+            causationId = event.causationId,
+            payloadJson = payloadJson
+        )
+
+        assertTrue(result is CareerEventDecodeResult.Decoded)
+        val envelope = (result as CareerEventDecodeResult.Decoded).envelope
+        assertEquals(2, envelope.schemaVersion)
+        assertEquals("5", envelope.payload["resumeId"])
+        assertEquals("9", envelope.payload["versionId"])
+        assertEquals("88", envelope.payload["atsScore"])
+    }
+
+    @Test
+    fun `an unsupported v3 version of an evolved type fails explicitly`() {
+        val result = CareerEventCodec.decode(
+            eventId = "e1",
+            schemaVersion = 3,
+            eventType = "InterviewCompleted",
+            sourceModule = "feature:interview",
+            timestamp = 1,
+            correlationId = null,
+            causationId = null,
+            payloadJson = "{\"sessionId\":\"1\"}"
+        )
+
+        assertTrue(result is CareerEventDecodeResult.UnsupportedVersion)
+        result as CareerEventDecodeResult.UnsupportedVersion
+        assertEquals("InterviewCompleted", result.eventType)
+        assertEquals(3, result.schemaVersion)
+        assertEquals(setOf(1, 2), result.supportedVersions)
     }
 
     @Test

@@ -40,10 +40,16 @@ class CareerGraphRepositoryImplTest {
         override suspend fun clearNodesByType(type: String) {
             nodes.values.removeAll { it.type == type }
         }
+        override suspend fun clearNodesExceptType(excludedType: String) {
+            nodes.values.removeAll { it.type != excludedType }
+        }
         override suspend fun getNodesOfType(type: String): List<GraphNodeEntity> =
             nodes.values.filter { it.type == type }
         override suspend fun replaceGraph(nodes: List<GraphNodeEntity>, edges: List<GraphEdgeEntity>) {
             clearEdges(); clearNodes(); upsertNodes(nodes); upsertEdges(edges)
+        }
+        override suspend fun replaceEntityProjection(nodes: List<GraphNodeEntity>, edges: List<GraphEdgeEntity>) {
+            clearEdges(); clearNodesExceptType("CAREER_EVENT"); upsertNodes(nodes); upsertEdges(edges)
         }
         override suspend fun replaceNodesOfType(type: String, nodes: List<GraphNodeEntity>) {
             clearNodesByType(type); upsertNodes(nodes)
@@ -121,5 +127,54 @@ class CareerGraphRepositoryImplTest {
         val afterSecond = repository.loadGraph("u1")
         assertEquals(1, afterSecond.getNodesByType(CareerNodeType.CAREER_EVENT).size)
         assertTrue(afterSecond.getNode("user_u1") != null)
+    }
+
+    @Test
+    fun `live entity persist after replay preserves the CAREER_EVENT provenance slice (M05 co-writer)`() = runTest {
+        // Replay writes the event-provenance slice first.
+        repository.replaceEventProjection(
+            listOf(
+                CareerGraphNode("event_e1", CareerNodeType.CAREER_EVENT, "ResumeCreated"),
+                CareerGraphNode("event_e2", CareerNodeType.CAREER_EVENT, "JobSaved")
+            )
+        )
+        // A subsequent LIVE entity projection must NOT erase the replay-owned slice.
+        repository.persist(sampleGraph())
+
+        val loaded = repository.loadGraph("u1")
+        assertEquals(2, loaded.getNodesByType(CareerNodeType.CAREER_EVENT).size)
+        assertTrue(loaded.getNode("user_u1") != null)
+        assertTrue(loaded.getNode("skill_kotlin") != null)
+        assertEquals(1, loaded.edges.size)
+    }
+
+    @Test
+    fun `replay after live entity persist preserves the entity projection (M05 co-writer inverse)`() = runTest {
+        // Live entity projection first.
+        repository.persist(sampleGraph())
+        // Replay rebuilds only the event slice; entity nodes/edges must survive.
+        repository.replaceEventProjection(
+            listOf(CareerGraphNode("event_e1", CareerNodeType.CAREER_EVENT, "ResumeCreated"))
+        )
+
+        val loaded = repository.loadGraph("u1")
+        assertTrue(loaded.getNode("user_u1") != null)
+        assertTrue(loaded.getNode("skill_kotlin") != null)
+        assertEquals(1, loaded.edges.size)
+        assertEquals(1, loaded.getNodesByType(CareerNodeType.CAREER_EVENT).size)
+    }
+
+    @Test
+    fun `repeated live entity persist replaces entity slice without duplicating or touching events`() = runTest {
+        repository.replaceEventProjection(
+            listOf(CareerGraphNode("event_e1", CareerNodeType.CAREER_EVENT, "ResumeCreated"))
+        )
+        repository.persist(sampleGraph())
+        repository.persist(sampleGraph())
+
+        val loaded = repository.loadGraph("u1")
+        assertEquals(2, loaded.nodes.filterValues { it.type != CareerNodeType.CAREER_EVENT }.size)
+        assertEquals(1, loaded.edges.size)
+        assertEquals(1, loaded.getNodesByType(CareerNodeType.CAREER_EVENT).size)
     }
 }

@@ -134,6 +134,43 @@ class CareerOsDaoTest {
     }
 
     @Test
+    fun replaceEntityProjectionLeavesCareerEventSliceIntact() = runTest {
+        // Replay writes the event-provenance slice first.
+        graphDao.replaceNodesOfType(
+            "CAREER_EVENT",
+            listOf(
+                GraphNodeEntity("event_e1", "CAREER_EVENT", "ResumeCreated", "{}", 1, 1),
+                GraphNodeEntity("event_e2", "CAREER_EVENT", "JobSaved", "{}", 1, 1)
+            )
+        )
+
+        // A live entity projection replaces entity nodes + edges but must NOT erase CAREER_EVENT.
+        graphDao.replaceEntityProjection(
+            nodes = listOf(
+                GraphNodeEntity("user_1", "PROFILE", "Alice", "{}", 1, 1),
+                GraphNodeEntity("skill_kotlin", "SKILL", "Kotlin", "{}", 1, 1)
+            ),
+            edges = listOf(
+                GraphEdgeEntity("user_1|HAS_SKILL|skill_kotlin", "user_1", "skill_kotlin", "HAS_SKILL", 1.0f, "{}", 1)
+            )
+        )
+
+        assertThat(graphDao.getNodesByType("CAREER_EVENT")).hasSize(2)
+        assertThat(graphDao.getNodesByType("PROFILE")).hasSize(1)
+        assertThat(graphDao.getNodesByType("SKILL")).hasSize(1)
+        assertThat(graphDao.getAllEdges()).hasSize(1)
+
+        // Re-projecting the entity slice again is idempotent and still preserves the event slice.
+        graphDao.replaceEntityProjection(
+            nodes = listOf(GraphNodeEntity("user_1", "PROFILE", "Alice", "{}", 1, 1)),
+            edges = emptyList()
+        )
+        assertThat(graphDao.getNodesByType("CAREER_EVENT")).hasSize(2)
+        assertThat(graphDao.getNodesByType("PROFILE")).hasSize(1)
+        assertThat(graphDao.getNodesByType("SKILL")).isEmpty()
+    }
+
+    @Test
     fun memoryUpsertReplacesSameIdAndSurvivesReload() = runTest {
         val entry = CareerMemoryEntity(
             memoryId = "mem_1",

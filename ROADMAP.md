@@ -181,6 +181,18 @@ Prerequisite for replay: the persisted event contract now carries an explicit pa
 
 **Coverage (honest):** the event-provenance graph layer only. **Deferred:** entity-graph nodes (owned by `CareerGraphEngine.buildGraph`, fed by authoritative Room entities) and structured memory entries (owned by `CareerMemoryEngine`) — the flattened audit payloads omit the entity identities required to rebuild those without inventing historical data. Promoting them to replay targets requires first enriching persisted payloads with stable entity identifiers (a future contract evolution, i.e. a new payload version).
 
+#### M05 — Graph Projection Ownership & Replay Activation ✅ (landed 2026-09-24)
+
+Closes the M04-B co-writer hazard: the live graph persist used `GraphDao.replaceGraph` (clear ALL nodes + edges), which could erase the replay-owned `CAREER_EVENT` slice on the next state emission.
+
+* **Disjoint projection ownership** — the graph is now split into two independently-owned slices that never overlap:
+  * **Entity projection** — every `CareerNodeType` except `CAREER_EVENT`, plus all edges. Owned by the live `CareerStateEngine` via the new transactional **`GraphDao.replaceEntityProjection`** (clears all edges + all non-`CAREER_EVENT` nodes, then upserts). `CareerGraphRepositoryImpl.persist` now targets this path.
+  * **Event-provenance projection** — `CAREER_EVENT` nodes only. Owned by `CareerEventReplayEngine` via `GraphDao.replaceNodesOfType`.
+* **Co-writer safety proven** — JVM + instrumented tests assert that a live entity persist after replay preserves the `CAREER_EVENT` slice, and replay after a live persist preserves the entity slice.
+* **Deliberate replay trigger** — **`RebuildCareerEventProjectionUseCase`** (`NoInputUseCase<CareerReplayResult>`) is the single production entry point for `replayAll()`. It is intentionally NOT wired into `CareerStateEngine.state`, repository reads, startup, or per-event dispatch — replay is a conscious maintenance/repair operation. No UI was invented.
+* **No schema change** (reuses v27). DB stays authoritative; the event log stays append-only audit persistence.
+* **Device status:** instrumented DAO isolation test compiled but NOT executed (no emulator/device available).
+
 ### Phase 3: Provider SDK 2.0 & Standalone Decoupling
 * **Pure Kotlin SDK**: Extract `core:sdk` into standalone multiplatform library `aivance-sdk`.
 * **Abstracted Secrets**: Abstract Android Keystore behind `SecretStore` interface (supporting keychain, env vars, or encrypted preferences).

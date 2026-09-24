@@ -193,6 +193,15 @@ Closes the M04-B co-writer hazard: the live graph persist used `GraphDao.replace
 * **No schema change** (reuses v27). DB stays authoritative; the event log stays append-only audit persistence.
 * **Device status:** instrumented DAO isolation test compiled but NOT executed (no emulator/device available).
 
+#### M06 — Durable Replay Runtime Acceptance ✅ (landed 2026-09-24)
+
+Converts M04/M05 from "replay code that compiles + passes JVM tests with fakes" to **runtime-proven durable replay** against a real Android Room v27 database.
+
+* **Real Android runtime** — provisioned a headless emulator (AVD `m06_test`, Android 14 / API 34 / x86_64, `emulator-5554`, `boot_completed=1`) and executed the instrumentation on it. Compiled-but-unexecuted androidTests are explicitly NOT counted as PASS.
+* **End-to-end runtime suite** — new `CareerEventReplayRuntimeTest` (`:core:data`) drives the actual production stack (`CareerEventLogRepositoryImpl` → real DAO → `career_event_log`; `RebuildCareerEventProjectionUseCase` → `CareerEventReplayEngine` → `CareerGraphRepositoryImpl` → `GraphDao`) covering M06.4 A–I: log persistence survives DB close/reopen, replay creates stable idempotent `event_<eventId>` provenance nodes, entity/event slices never erase each other (the M05 co-writer regression — now runtime-proven), deterministic `(timestamp, eventId)` ordering incl. tie-break, and loud failure with zero projection on unsupported version / malformed payload / unknown type / empty log.
+* **One test-only fix** — `MigrationTest.migrate25To26`'s seed omitted v25 `user_profiles` NOT NULL columns, failing the INSERT before the migration; corrected the seed. The migration itself was already correct (classification B, not a production defect).
+* **Runtime evidence** — `:core:database:connectedDebugAndroidTest` → 36 tests, 0 failures; `:core:data:connectedDebugAndroidTest` (`CareerEventReplayRuntimeTest`) → 10 tests, 0 failures; full `testDebugUnitTest` + `:app:assembleDebug` green. No schema change (reuses v27). DB stays authoritative; the event log stays append-only audit persistence.
+
 ### Phase 3: Provider SDK 2.0 & Standalone Decoupling
 * **Pure Kotlin SDK**: Extract `core:sdk` into standalone multiplatform library `aivance-sdk`.
 * **Abstracted Secrets**: Abstract Android Keystore behind `SecretStore` interface (supporting keychain, env vars, or encrypted preferences).

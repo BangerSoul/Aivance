@@ -2,6 +2,7 @@ package com.bangersoul.aivance.navigation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,14 +14,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.MilitaryTech
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.WorkOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -56,8 +64,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
+import com.bangersoul.aivance.core.designsystem.components.AivanceEmptyState
 import com.bangersoul.aivance.core.designsystem.components.AivancePrimaryButton
 import com.bangersoul.aivance.core.designsystem.components.AivanceScreen
 import com.bangersoul.aivance.core.designsystem.components.AivanceSecondaryButton
@@ -70,78 +82,14 @@ import com.bangersoul.aivance.feature.profile.ProviderCategory
 import com.bangersoul.aivance.feature.profile.ProviderHealthStatus
 import com.bangersoul.aivance.feature.profile.ProviderManagementUiEvent
 import com.bangersoul.aivance.feature.profile.ProviderManagementUiState
-import com.bangersoul.aivance.feature.profile.AiSettingsViewModel
+import com.bangersoul.aivance.feature.profile.NotificationItem
+import com.bangersoul.aivance.feature.profile.NotificationsUiEvent
+import com.bangersoul.aivance.feature.profile.NotificationsUiState
 import com.bangersoul.aivance.feature.profile.NotificationsViewModel
+import com.bangersoul.aivance.feature.profile.NotificationType
 import com.bangersoul.aivance.feature.profile.ProviderManagementViewModel
 import java.util.Locale
 
-// ──────────────────────────────────────────────────
-// AI Settings Screen
-// ──────────────────────────────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AiSettingsScreen(
-    viewModel: AiSettingsViewModel,
-    onBack: () -> Unit = {}
-) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    AivanceScreen(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.ai_settings), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
-        }
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(Icons.Rounded.Settings, null, tint = MaterialTheme.colorScheme.primary)
-            Text(
-                stringResource(R.string.ai_configuration),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            when (uiState) {
-                is com.bangersoul.aivance.feature.profile.AiSettingsUiState.Loading -> {
-                    Text(stringResource(R.string.loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                is com.bangersoul.aivance.feature.profile.AiSettingsUiState.Success -> {
-                    val state = uiState as com.bangersoul.aivance.feature.profile.AiSettingsUiState.Success
-                    Text(
-                        stringResource(R.string.provider_format, state.config.providerName),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        stringResource(R.string.model_format, state.config.selectedModel.ifEmpty { stringResource(R.string.not_set) }),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        stringResource(R.string.status_format, state.connectionStatus.name),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-                is com.bangersoul.aivance.feature.profile.AiSettingsUiState.Error -> {
-                    Text(
-                        (uiState as com.bangersoul.aivance.feature.profile.AiSettingsUiState.Error).message,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    }
-}
 
 // ──────────────────────────────────────────────────
 // Provider Management Screen
@@ -638,6 +586,28 @@ private fun ProviderHealthChip(status: ProviderHealthStatus) {
 // Notifications Screen
 // ──────────────────────────────────────────────────
 
+/** Icon + tint for a notification's type. */
+@Composable
+private fun NotificationType.visual(): Pair<ImageVector, Color> = when (this) {
+    NotificationType.APPLICATION_UPDATE -> Icons.Rounded.Send to AivanceTheme.colors.info
+    NotificationType.INTERVIEW_REMINDER -> Icons.Rounded.RecordVoiceOver to AivanceTheme.colors.warning
+    NotificationType.JOB_ALERT -> Icons.Rounded.WorkOutline to AivanceTheme.colors.success
+    NotificationType.ROADMAP_MILESTONE -> Icons.Rounded.MilitaryTech to AivanceTheme.colors.accent
+    NotificationType.GENERAL -> Icons.Rounded.Notifications to MaterialTheme.colorScheme.primary
+}
+
+/** Timestamp formatted for the list row: today shows time only, otherwise "Sep 26, 14:05". */
+private fun formatNotificationTime(timestamp: Long): String {
+    val local = java.time.Instant.ofEpochMilli(timestamp).atZone(java.time.ZoneId.systemDefault())
+    val timeOnly = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+    val dateAndTime = java.time.format.DateTimeFormatter.ofPattern("MMM d, HH:mm")
+    return if (local.toLocalDate() == java.time.LocalDate.now()) {
+        local.format(timeOnly)
+    } else {
+        local.format(dateAndTime)
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationsScreen(
@@ -655,39 +625,125 @@ fun NotificationsScreen(
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
+                actions = {
+                    val state = uiState as? NotificationsUiState.Success
+                    if (state != null && state.unreadCount > 0) {
+                        TextButton(onClick = { viewModel.onEvent(NotificationsUiEvent.MarkAllAsRead) }) {
+                            Text(stringResource(R.string.mark_all_read))
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(Icons.Rounded.Notifications, null, tint = MaterialTheme.colorScheme.primary)
-            Text(
-                stringResource(R.string.notifications),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+        when (val state = uiState) {
+            is NotificationsUiState.Loading ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+
+            is NotificationsUiState.Error -> AivanceEmptyState(
+                title = stringResource(R.string.notifications_load_failed),
+                description = state.message,
+                icon = Icons.Rounded.ErrorOutline,
+                iconTint = MaterialTheme.colorScheme.error,
+                primaryActionText = stringResource(R.string.retry),
+                onPrimaryAction = { viewModel.onEvent(NotificationsUiEvent.Refresh) }
             )
-            when (uiState) {
-                is com.bangersoul.aivance.feature.profile.NotificationsUiState.Loading ->
-                    Text(stringResource(R.string.loading))
-                is com.bangersoul.aivance.feature.profile.NotificationsUiState.Success -> {
-                    val state = uiState as com.bangersoul.aivance.feature.profile.NotificationsUiState.Success
-                    Text(stringResource(R.string.unread_count, state.unreadCount), style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary)
-                    if (state.notifications.isEmpty()) {
-                        Text(stringResource(R.string.no_notifications),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 24.dp))
+
+            is NotificationsUiState.Empty,
+            is NotificationsUiState.Success -> {
+                val notifications = (state as? NotificationsUiState.Success)?.notifications.orEmpty()
+                if (notifications.isEmpty()) {
+                    AivanceEmptyState(
+                        title = stringResource(R.string.no_notifications),
+                        description = stringResource(R.string.no_notifications_desc),
+                        icon = Icons.Rounded.Notifications
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(notifications, key = { it.id }) { notification ->
+                            NotificationRow(
+                                notification = notification,
+                                onClick = {
+                                    if (!notification.isRead) {
+                                        viewModel.onEvent(NotificationsUiEvent.MarkAsRead(notification.id))
+                                    }
+                                },
+                                onDismiss = {
+                                    viewModel.onEvent(NotificationsUiEvent.DeleteNotification(notification.id))
+                                }
+                            )
+                        }
+                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
-                is com.bangersoul.aivance.feature.profile.NotificationsUiState.Empty ->
-                    Text(stringResource(R.string.no_notifications), style = MaterialTheme.typography.bodyLarge)
-                is com.bangersoul.aivance.feature.profile.NotificationsUiState.Error ->
-                    Text((uiState as com.bangersoul.aivance.feature.profile.NotificationsUiState.Error).message,
-                        color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NotificationRow(
+    notification: NotificationItem,
+    onClick: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val (icon, tint) = notification.type.visual()
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = AivanceTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = if (notification.isRead) MaterialTheme.colorScheme.surface
+            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(shape = CircleShape, color = tint.copy(alpha = 0.12f)) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(8.dp).size(20.dp),
+                    tint = tint
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = notification.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.SemiBold
+                )
+                Text(
+                    text = notification.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = formatNotificationTime(notification.timestamp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.dismiss_notification),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

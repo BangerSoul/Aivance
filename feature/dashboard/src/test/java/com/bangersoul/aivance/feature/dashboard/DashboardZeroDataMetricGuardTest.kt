@@ -121,9 +121,7 @@ class DashboardZeroDataMetricGuardTest {
 
             // No producer until the user actually does something.
             "nextInterview" to MetricKind.TEXT,
-            "aiRecommendation" to MetricKind.TEXT,
-            "agentMissions" to MetricKind.COLLECTION,
-            "activeTask" to MetricKind.TEXT
+            "aiRecommendation" to MetricKind.TEXT
         )
 
         val INSIGHTS_CONTRACT: Map<String, MetricKind> = mapOf(
@@ -291,7 +289,6 @@ class DashboardZeroDataMetricGuardTest {
         assertNull("Skill Match must not claim a measurement", state.graphInsights.skillMatchPercent)
         assertNull("no interview is scheduled", state.nextInterview)
         assertNull("no recommendation has been generated", state.aiRecommendation)
-        assertNull("no agent task exists", state.activeTask)
         assertNull("no error", state.error)
     }
 
@@ -306,9 +303,6 @@ class DashboardZeroDataMetricGuardTest {
         assertEquals("no gaps acted on", 0, state.graphInsights.gapsActedOn)
         assertTrue("no missing skills", state.graphInsights.missingSkills.isEmpty())
         assertTrue("no application contexts", state.graphInsights.applicationContexts.isEmpty())
-        // R3-6: these used to be three hardcoded "missions" plus a fabricated "Scraping
-        // LinkedIn…" task that no producer owned and nothing rendered.
-        assertTrue("no agent missions", state.agentMissions.isEmpty())
     }
 
     @Test

@@ -24,12 +24,6 @@ data class DashboardUiState(
     val savedJobs: Int = 0,
     val aiRecommendation: String? = null,
     val nextBestAction: com.bangersoul.aivance.core.domain.engine.NavigationIntent = com.bangersoul.aivance.core.domain.engine.NavigationIntent.None,
-    /**
-     * Agent missions. Always empty until a real agent producer is wired (R3-6 removed the
-     * hardcoded literals that used to sit here and were never rendered).
-     */
-    val agentMissions: List<AgentMission> = emptyList(),
-    val activeTask: AgentTask? = null,
     val graphInsights: CareerGraphInsightsUi = CareerGraphInsightsUi(),
     val error: String? = null
 )
@@ -71,24 +65,4 @@ data class ApplicationContextUi(
     val jobTitle: String,
     val company: String,
     val interviewCount: Int
-)
-
-data class AgentMission(
-    val id: String,
-    val title: String,
-    val status: MissionStatus,
-    val progress: Float = 0f,
-    val lastUpdate: String,
-    val actionRoute: String? = null
-)
-
-enum class MissionStatus {
-    PENDING, RUNNING, COMPLETED, FAILED, REVIEW_REQUIRED
-}
-
-data class AgentTask(
-    val id: String,
-    val description: String,
-    val status: MissionStatus,
-    val progress: Float = 0f
 )

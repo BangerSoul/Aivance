@@ -125,8 +125,9 @@ must never become an entity-state writer. No autonomous side-effecting agent pat
 product graph. These remain behind their owning engines until a real production feature consumes
 them — reconnection is explicitly out of the R2/R3 scope.
 
-## 6. Deliberately-empty contract fields (R3 candidates)
+## 6. Deliberately-empty contract fields (resolved)
 
-`DashboardUiState.agentMissions` / `activeTask` are permanently empty (their fabricated literals
-were removed in R3). They should be deleted with `AgentMission` / `AgentTask` / `MissionStatus`
-unless a real agent producer is wired — tracked as an R3/R6 candidate, not a fix.
+`DashboardUiState.agentMissions` / `activeTask` (and the `AgentMission` / `AgentTask` /
+`MissionStatus` model classes) were **deleted** — they were permanently empty after R3 removed their
+fabricated literals, had no producer, and were never rendered. No agent producer is wired, so the
+contract no longer advertises agent state it cannot supply.

@@ -132,10 +132,6 @@ class DashboardViewModelTest {
             assertEquals(3, state.savedJobs)
             assertEquals("AI Tip: Polish Resume", state.aiRecommendation)
             assertEquals(NavigationIntent.Action("Search Jobs", "job_search"), state.nextBestAction)
-            // R3-6: the three hardcoded "missions" this used to surface were removed. A dashboard
-            // must not claim an agent is running a job scan that no producer ever started.
-            assertTrue(state.agentMissions.isEmpty())
-            assertNull(state.activeTask)
             cancelAndIgnoreRemainingEvents()
         }
     }

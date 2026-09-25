@@ -87,9 +87,6 @@
     <string name="job_provider_desc">Select where you want to fetch job listings and recruiter details from.</string>
     <string name="enrichment_optional">Enrichment Service (Optional)</string>
     <string name="enrichment_desc">Find verified recruiter contacts and company intelligence. Highly recommended for outreach.</string>
-    <string name="skip_for_now">Skip for now</string>
-    <string name="skip_all">Skip All — I\'ll configure later</string>
-    <string name="configure_later">You can configure providers later in Settings.</string>
     <string name="validate_continue">Validate &amp; Continue</string>
     <string name="all_set">All Set!</string>
     <string name="ai_engine">AI Engine</string>

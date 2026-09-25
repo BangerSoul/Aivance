@@ -87,9 +87,6 @@
     <string name="job_provider_desc">चुनें कि आप नौकरी की सूचियां और भर्तीकर्ता विवरण कहां से प्राप्त करना चाहते हैं।</string>
     <string name="enrichment_optional">एनरिचमेंट सेवा (वैकल्पिक)</string>
     <string name="enrichment_desc">सत्यापित भर्तीकर्ता संपर्क और कंपनी इंटेलिजेंस खोजें। आउटरीच के लिए अत्यधिक अनुशंसित।</string>
-    <string name="skip_for_now">अभी के लिए छोड़ें</string>
-    <string name="skip_all">सब छोड़ें — मैं बाद में कॉन्फ़िगर करूंगा</string>
-    <string name="configure_later">आप सेटिंग्स में बाद में प्रदाताओं को कॉन्फ़िगर कर सकते हैं।</string>
     <string name="validate_continue">सत्यापित करें और जारी रखें</string>
     <string name="all_set">सब तैयार है!</string>
     <string name="ai_engine">AI इंजन</string>

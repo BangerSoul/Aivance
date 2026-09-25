@@ -6,10 +6,14 @@ import com.bangersoul.aivance.BuildConfig
 import com.bangersoul.aivance.ai.gemini.GeminiAIProvider
 import com.bangersoul.aivance.ai.openai.GroqProvider
 import com.bangersoul.aivance.core.common.enums.JobSortOrder
+import com.bangersoul.aivance.core.common.enums.EmploymentType
+import com.bangersoul.aivance.core.common.enums.ExperienceLevel
+import com.bangersoul.aivance.core.common.enums.RemoteType
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.enrichment.hunter.HunterEnrichmentProvider
+import com.bangersoul.aivance.feature.jobs.JobDetailsViewModel
 import com.bangersoul.aivance.job.apify.ApifyJobProvider
 import com.bangersoul.aivance.job.cache.JobCache
 import com.bangersoul.aivance.job.remoteok.RemoteOKProvider
@@ -153,6 +157,81 @@ class ProviderIntegrationTest {
             "Apify returned no jobs — actor may be invalid, rate-limited, or the dataset was empty",
             (result as Result.Success).data.isNotEmpty()
         )
+    }
+
+    /**
+     * Sweeps a matrix of varied, realistic search filters against the LIVE
+     * Apify actor and asserts that every filter returns real listings AND that
+     * each listing resolves to a non-blank, absolute http(s) apply URL via the
+     * production [JobDetailsViewModel.resolveApplyUrl] logic — i.e. the results
+     * are genuinely applicable, not just present. Skipped when no key is set.
+     */
+    @Test
+    fun apifyProvider_variedFilters_returnRealApplicableRoles() = runTest(timeout = 300.seconds) {
+        assumeTrue("APIFY_API_KEY not set in local.properties", BuildConfig.APIFY_API_KEY.isNotBlank())
+        val provider = ApifyJobProvider(
+            metadata = ProviderMetadata(
+                id = "apify",
+                name = "Apify",
+                type = ProviderType.JOB,
+                version = "1.0.0",
+                description = "Integration test",
+                author = "Aivance"
+            ),
+            apiKey = BuildConfig.APIFY_API_KEY,
+            actorId = "valig~linkedin-jobs-scraper",
+            jobCache = jobCache,
+            okHttpClient = okHttp,
+            baseRetrofit = retrofit("https://api.apify.com/v2/")
+        )
+
+        // A deliberately varied matrix: different roles, locations, remote
+        // policies and experience levels, so a single lucky query can't mask a
+        // filter that silently returns nothing.
+        val filters = listOf(
+            JobSearchFilter(query = "android developer", location = "remote"),
+            JobSearchFilter(query = "data scientist", location = "New York"),
+            JobSearchFilter(query = "product manager", location = "London"),
+            JobSearchFilter(
+                query = "backend engineer",
+                remoteType = RemoteType.REMOTE,
+                experienceLevels = listOf(ExperienceLevel.SENIOR_LEVEL)
+            ),
+            JobSearchFilter(
+                query = "ux designer",
+                employmentTypes = listOf(EmploymentType.CONTRACT)
+            )
+        )
+
+        for (filter in filters) {
+            val label = "query='${filter.query}', location='${filter.location}'"
+            val result = provider.searchJobs(filter, JobSortOrder.RELEVANCE, page = 1)
+            assertTrue(
+                "Apify search failed for [$label]: ${(result as? Result.Failure)?.error?.message}",
+                result is Result.Success
+            )
+            val jobs = (result as Result.Success).data
+            assertTrue("Apify returned no jobs for [$label]", jobs.isNotEmpty())
+
+            // Every returned role must be applicable: title/company present and
+            // a resolvable absolute apply URL. This is the "lands on a real
+            // apply page" guarantee the in-app WebView depends on.
+            jobs.forEach { job ->
+                assertTrue("Blank title for a role in [$label]", job.title.isNotBlank())
+                assertTrue("Blank company for '${job.title}' in [$label]", job.company.isNotBlank())
+                val applyUrl = JobDetailsViewModel.resolveApplyUrl(
+                    job.url, job.sourceUrl, job.descriptionHtml
+                )
+                assertFalse(
+                    "No resolvable apply URL for '${job.title}' @ '${job.company}' in [$label]",
+                    applyUrl.isNullOrBlank()
+                )
+                assertTrue(
+                    "Apply URL is not an absolute http(s) link for '${job.title}' in [$label]: $applyUrl",
+                    applyUrl!!.startsWith("http://") || applyUrl.startsWith("https://")
+                )
+            }
+        }
     }
 
     @Test

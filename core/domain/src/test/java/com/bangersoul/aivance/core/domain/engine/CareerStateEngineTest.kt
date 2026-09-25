@@ -6,9 +6,13 @@ import com.bangersoul.aivance.core.common.graph.CareerGraph
 import com.bangersoul.aivance.core.common.model.AnalyticsSnapshot
 import com.bangersoul.aivance.core.common.model.CareerIntelligence
 import com.bangersoul.aivance.core.common.model.CareerRecommendation
+import com.bangersoul.aivance.core.common.model.CareerState
 import com.bangersoul.aivance.core.common.model.HealthDimension
+import com.bangersoul.aivance.core.common.model.InterviewSession
+import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.PredictiveMetrics
 import com.bangersoul.aivance.core.common.model.UserProfile
+import com.bangersoul.aivance.core.common.util.DateUtils
 import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.careergraph.CareerGraphEngine
@@ -28,6 +32,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -71,14 +77,16 @@ class CareerStateEngineTest {
     private fun buildEngine(
         snapshots: CoreResult<List<AnalyticsSnapshot>> = Result.Success(listOf(snapshot(40, 30))),
         intelligence: MutableStateFlow<CoreResult<CareerIntelligence>>,
+        savedJobs: CoreResult<List<JobListing>> = Result.Success(emptyList()),
+        interviewSessions: CoreResult<List<InterviewSession>> = Result.Success(emptyList()),
         eventBus: CareerEventBus = CareerEventBus()
     ): Pair<CareerStateEngine, CareerEventBus> {
         every { userRepository.getProfile() } returns
             flowOf(Result.Success(UserProfile(fullName = "Ada Lovelace", email = "ada@x.io", targetRole = "Engineer")))
         every { resumeRepository.getResumes() } returns flowOf(Result.Success(emptyList()))
         every { workflowRepository.getApplications() } returns flowOf(Result.Success(emptyList()))
-        every { jobRepository.getSavedJobs() } returns flowOf(Result.Success(emptyList()))
-        every { interviewRepository.getSessions() } returns flowOf(Result.Success(emptyList()))
+        every { jobRepository.getSavedJobs() } returns flowOf(savedJobs)
+        every { interviewRepository.getSessions() } returns flowOf(interviewSessions)
         every { analyticsRepository.getSnapshots() } returns flowOf(snapshots)
         every { analyticsRepository.getActiveRecommendations() } returns
             flowOf(Result.Success(emptyList<CareerRecommendation>()))
@@ -94,8 +102,23 @@ class CareerStateEngineTest {
         return engine to eventBus
     }
 
+    /** Polls the eagerly-shared state until [predicate] holds for the whole state. */
+    private fun awaitStateMatching(
+        engine: CareerStateEngine,
+        timeoutMs: Long = 2_000,
+        predicate: (CareerState) -> Boolean
+    ) = runBlocking {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            val s = engine.state.value
+            if (predicate(s)) return@runBlocking s
+            kotlinx.coroutines.delay(20)
+        }
+        engine.state.value
+    }
+
     /** Polls the eagerly-shared state until [predicate] holds or the deadline passes. */
-    private fun awaitState(engine: CareerStateEngine, timeoutMs: Long = 2_000, predicate: (Int, Int) -> Boolean) =
+    private fun awaitState(engine: CareerStateEngine, timeoutMs: Long = 2_000, predicate: (Int?, Int?) -> Boolean) =
         runBlocking {
             val deadline = System.currentTimeMillis() + timeoutMs
             while (System.currentTimeMillis() < deadline) {
@@ -177,5 +200,82 @@ class CareerStateEngineTest {
         // mutate the score — scores remain sourced only from the hub.
         assert(after.lastEventTimestamp > 0L)
         assertEquals(beforeScore, after.intelligence.atsScore)
+    }
+
+    private fun savedJob(id: String) = JobListing(
+        id = id,
+        title = "Android Engineer",
+        company = "Acme",
+        description = "Kotlin role",
+        url = "https://x.io/$id",
+        sourceProvider = "Greenhouse"
+    )
+
+    @Test
+    fun `saved jobs are counted from the saved-jobs table, not from an application stage`() {
+        val intel = MutableStateFlow<CoreResult<CareerIntelligence>>(Result.Success(intelligence(ats = 50, career = 45)))
+        val (engine, _) = buildEngine(
+            intelligence = intel,
+            savedJobs = Result.Success(listOf(savedJob("job_1"), savedJob("job_2")))
+        )
+
+        val state = awaitStateMatching(engine) { it.discovery.savedJobsCount == 2 }
+
+        // R3-4: a bookmarked job with no application row is still a saved job. The previous
+        // metric counted `applications.currentStageId == "SAVED"`, so bookmarks made from Job
+        // Discovery never appeared in the dashboard's "Saved Jobs" stat.
+        assertEquals(2, state.discovery.savedJobsCount)
+        assertEquals(0, state.pipeline.activeApplications)
+    }
+
+    @Test
+    fun `upcoming interviews use the session start time, never the application date`() {
+        val appliedAt = 1_700_000_000_000L
+        val interviewStartsAt = 1_800_000_000_000L
+        val scheduled = InterviewSession(
+            id = "session_1",
+            targetRole = "Senior Android Engineer",
+            companyName = "Acme",
+            startTime = interviewStartsAt,
+            isCompleted = false
+        )
+        val intel = MutableStateFlow<CoreResult<CareerIntelligence>>(Result.Success(intelligence(ats = 50, career = 45)))
+        val (engine, _) = buildEngine(
+            intelligence = intel,
+            interviewSessions = Result.Success(listOf(scheduled))
+        )
+
+        val state = awaitStateMatching(engine) { it.pipeline.upcomingInterviews.isNotEmpty() }
+
+        val upcoming = state.pipeline.upcomingInterviews.single()
+        // R3-5: the date is formatted from the interview session's own start time. The previous
+        // implementation rendered `application.dateApplied` — the date the user *applied* — as if
+        // it were the interview datetime.
+        assertEquals(
+            "${DateUtils.formatDateDisplay(interviewStartsAt)} · ${DateUtils.formatTimeDisplay(interviewStartsAt)}",
+            upcoming.dateTime
+        )
+        assertFalse(upcoming.dateTime.contains(appliedAt.toString()))
+        assertEquals("Acme", upcoming.company)
+        assertEquals("Senior Android Engineer", upcoming.role)
+    }
+
+    @Test
+    fun `completed interview sessions are not surfaced as upcoming interviews`() {
+        val finished = InterviewSession(
+            id = "session_1",
+            targetRole = "Engineer",
+            companyName = "Acme",
+            isCompleted = true
+        )
+        val intel = MutableStateFlow<CoreResult<CareerIntelligence>>(Result.Success(intelligence(ats = 50, career = 45)))
+        val (engine, _) = buildEngine(
+            intelligence = intel,
+            interviewSessions = Result.Success(listOf(finished))
+        )
+
+        val state = awaitStateMatching(engine) { it.growth.careerScore == 45 }
+
+        assertTrue(state.pipeline.upcomingInterviews.isEmpty())
     }
 }

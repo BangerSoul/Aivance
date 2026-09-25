@@ -115,7 +115,7 @@ class CareerGraphEngineTest {
     }
 
     @Test
-    fun `analyzeSkillGaps returns 100 percent match when no missing skills required`() {
+    fun `analyzeSkillGaps reports no measurable match when no target job demands a skill`() {
         val profile = UserProfile(
             id = "user_123",
             fullName = "Alice Developer",
@@ -132,7 +132,46 @@ class CareerGraphEngineTest {
         )
 
         val analysis = engine.analyzeSkillGaps(graph)
-        assertEquals(1.0f, analysis.matchRatio, 0.01f)
+
+        // Nothing was demanded of the candidate, so there is no ratio to report. Answering 1.0
+        // here is what rendered "Skill Match 100%" beside "0 of 0 target-job skills
+        // demonstrated" on an empty dashboard (R3-2).
+        assertNull(analysis.matchRatio)
+        assertTrue(analysis.missingSkills.isEmpty())
+        assertEquals(0, analysis.targetSkills.size)
+    }
+
+    @Test
+    fun `analyzeSkillGaps reports a measured ratio once a target job demands skills`() {
+        val profile = UserProfile(
+            id = "user_123",
+            fullName = "Alice Developer",
+            email = "alice@example.com",
+            skills = listOf("Kotlin", "Android")
+        )
+        // Requirements are grounded in the job's own text: Android (title) + Kotlin (body).
+        val job = JobListing(
+            id = "job_1",
+            title = "Android Engineer",
+            company = "Acme",
+            description = "Kotlin role on a platform team.",
+            url = "https://x.io/1",
+            sourceProvider = "Greenhouse"
+        )
+
+        val graph = engine.buildGraph(
+            profile = profile,
+            resumes = emptyList(),
+            jobs = listOf(job),
+            applications = emptyList(),
+            interviews = emptyList()
+        )
+
+        val analysis = engine.analyzeSkillGaps(graph)
+
+        // Now 1.0 is a *measured* result: every demanded skill is demonstrated.
+        assertEquals(1.0f, analysis.matchRatio ?: -1f, 0.01f)
+        assertTrue(analysis.targetSkills.isNotEmpty())
         assertTrue(analysis.missingSkills.isEmpty())
     }
 }

@@ -18,7 +18,15 @@ data class SkillGapAnalysis(
     val demonstratedSkills: List<CareerGraphNode>,
     val targetSkills: List<CareerGraphNode>,
     val missingSkills: List<CareerGraphNode>,
-    val matchRatio: Float
+    /**
+     * Share (0..1) of target-job skills the candidate already demonstrates, or `null` when no
+     * target job demanded a single recognised skill.
+     *
+     * `null` means *unmeasured*, not "perfect": with nothing to match against there is no
+     * ratio to report. Returning `1.0` here is what rendered a confident "Skill Match 100%"
+     * next to "0 of 0 target-job skills demonstrated" on an empty dashboard (R3-2).
+     */
+    val matchRatio: Float?
 )
 
 /**
@@ -189,6 +197,31 @@ class CareerGraphEngine @Inject constructor(
                     relationType = CareerEdgeType.BELONGS_TO
                 )
             )
+
+            // Required skills — grounded strictly in the job's own text via the
+            // canonical [SkillLexicon]. A skill is attributed to the job ONLY when a
+            // known term appears verbatim in its title/description, so the graph never
+            // fabricates a requirement. Required-skill nodes share the same deterministic
+            // `skill_<name>` identity as demonstrated profile skills, so the skill-gap
+            // traversal can compare them directly.
+            SkillLexicon.extractSkills("${job.title}\n${job.description}").forEach { skillName ->
+                val skillNodeId = "skill_${skillName.lowercase().trim()}"
+                val skillNode = nodes.getOrPut(skillNodeId) {
+                    CareerGraphNode(
+                        id = skillNodeId,
+                        type = CareerNodeType.SKILL,
+                        label = skillName,
+                        properties = mapOf("source" to "JOB")
+                    )
+                }
+                edges.add(
+                    CareerGraphEdge(
+                        sourceId = jobNodeId,
+                        targetId = skillNode.id,
+                        relationType = CareerEdgeType.REQUIRES_SKILL
+                    )
+                )
+            }
         }
 
         // 5. Applications
@@ -285,7 +318,14 @@ class CareerGraphEngine @Inject constructor(
      * demanded by saved/applied target jobs.
      */
     fun analyzeSkillGaps(graph: CareerGraph): SkillGapAnalysis {
-        val demonstratedSkills = graph.getNodesByType(CareerNodeType.SKILL)
+        // Demonstrated skills are ONLY those the candidate owns (profile HAS_SKILL edges),
+        // never the SKILL nodes introduced purely as job requirements. Deriving them from
+        // the graph's relationships keeps a required-only skill from masquerading as
+        // demonstrated just because it shares the SKILL node type.
+        val profileNode = graph.getNodesByType(CareerNodeType.PROFILE).firstOrNull()
+        val demonstratedSkills = profileNode
+            ?.let { graph.getOutgoingNeighbors(it.id, CareerEdgeType.HAS_SKILL) }
+            ?: emptyList()
         val demonstratedNames = demonstratedSkills.map { it.label.lowercase().trim() }.toSet()
 
         // Discover target skills required by saved target jobs
@@ -303,16 +343,17 @@ class CareerGraphEngine @Inject constructor(
 
         val totalTarget = requiredSkills.map { it.label.lowercase().trim() }.distinct().size
         val matchRatio = if (totalTarget > 0) {
-            (totalTarget - missingSkills.size).toFloat() / totalTarget.toFloat()
+            ((totalTarget - missingSkills.size).toFloat() / totalTarget.toFloat()).coerceIn(0.0f, 1.0f)
         } else {
-            1.0f
+            // Nothing was demanded of the candidate, so there is no match to measure.
+            null
         }
 
         return SkillGapAnalysis(
             demonstratedSkills = demonstratedSkills,
             targetSkills = requiredSkills.distinctBy { it.id },
             missingSkills = missingSkills,
-            matchRatio = matchRatio.coerceIn(0.0f, 1.0f)
+            matchRatio = matchRatio
         )
     }
 

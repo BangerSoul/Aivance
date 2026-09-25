@@ -14,7 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Migration regression suite for AivanceDatabase v5 -> v25.
+ * Migration regression suite for AivanceDatabase v5 -> v28.
  *
  * Every migration is exercised individually and as part of the full chain, always with
  * [PRAGMA foreign_keys = ON] (the same constraint Room enforces in production), and rebuild
@@ -66,6 +66,10 @@ class MigrationTest {
 
     private val ALL_FROM_5_TO_27 = ALL_FROM_5_TO_26 +
         AivanceDatabase.MIGRATION_26_27
+
+    /** Full ordered chain 5 -> 28 (adds the R1 application-consolidation step). */
+    private val ALL_FROM_5_TO_28 = ALL_FROM_5_TO_27 +
+        AivanceDatabase.MIGRATION_27_28
 
     // ---------------------------------------------------------------- helpers
 
@@ -612,6 +616,67 @@ class MigrationTest {
         }
         assertCount("career_event_log", 2)
         assertEquals("1", scalar("SELECT schemaVersion FROM career_event_log WHERE eventId = 'evt_2'"))
+    }
+
+    // ------------------------------------------- 27 -> 28 (R1: application consolidation)
+
+    @Test
+    fun migrate27To28_importsLegacyApplicationsDedupesAndDropsTable() {
+        seed(
+            27,
+            "INSERT INTO companies (id, name) VALUES (1, 'Acme')",
+            "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) " +
+                "VALUES (1, 1, 'Eng', '', 'X', 100)",
+            "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) " +
+                "VALUES (2, 1, 'Des', '', 'X', 200)",
+            // A canonical pipeline row already exists for job 1, drifted ahead of the legacy row.
+            "INSERT INTO applications (id, jobId, currentStageId, status, dateApplied, lastModified) " +
+                "VALUES (1, 1, 'INTERVIEWING', 'ACTIVE', 50, 50)",
+            // Legacy rows: job 1 duplicates the canonical row, job 2 has no counterpart.
+            "INSERT INTO job_applications (id, jobId, status, dateApplied, salaryRange, notes, lastModified) " +
+                "VALUES (1, 1, 'APPLIED', 100, '100k', 'dup', 100)",
+            "INSERT INTO job_applications (id, jobId, status, dateApplied, salaryRange, notes, lastModified) " +
+                "VALUES (2, 2, 'APPLIED', 200, '150k', 'new', 200)"
+        )
+        runStep(27, 28, AivanceDatabase.MIGRATION_27_28)
+
+        // 1. The only column the canonical table lacked is added, additively.
+        assertTrue("salaryRange column added", columnExists("applications", "salaryRange"))
+
+        // 2. The duplicate source of truth is retired.
+        assertTableGone("job_applications")
+
+        // 3. Dedupe on jobId: only the legacy row with no canonical counterpart survives.
+        assertCount("applications", 2)
+        assertEquals("one canonical row per job", "1", scalar("SELECT COUNT(*) FROM applications WHERE jobId = 1"))
+        assertEquals("duplicate legacy row not imported", "0", scalar("SELECT COUNT(*) FROM applications WHERE salaryRange = '100k'"))
+
+        // 4. The pre-existing canonical row keeps its own stage untouched.
+        assertEquals("INTERVIEWING", scalar("SELECT currentStageId FROM applications WHERE jobId = 1"))
+
+        // 5. The imported row carries the legacy payload across both axes.
+        assertEquals("APPLIED", scalar("SELECT currentStageId FROM applications WHERE jobId = 2"))
+        assertEquals("ACTIVE", scalar("SELECT status FROM applications WHERE jobId = 2"))
+        assertEquals("150k", scalar("SELECT salaryRange FROM applications WHERE jobId = 2"))
+        assertEquals("new", scalar("SELECT notes FROM applications WHERE jobId = 2"))
+        assertEquals("200", scalar("SELECT dateApplied FROM applications WHERE jobId = 2"))
+    }
+
+    // ------------------------------------------- full chain: 5 -> 28 (with data)
+
+    @Test
+    fun migrate5To28_fullChainConsolidatesApplications() {
+        seed(
+            5,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')"
+        )
+        runStep(5, 28, *ALL_FROM_5_TO_28)
+        assertCount("user_profiles", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        // The canonical table survives the whole chain; the retired one does not.
+        assertTableExists("applications")
+        assertTableGone("job_applications")
+        assertTrue("salaryRange present at end of chain", columnExists("applications", "salaryRange"))
     }
 
     // ------------------------------------------- full chain: 5 -> 27 (with data)

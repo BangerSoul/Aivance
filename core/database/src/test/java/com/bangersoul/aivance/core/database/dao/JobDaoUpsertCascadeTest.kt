@@ -4,7 +4,7 @@ import androidx.room.Room
 import com.bangersoul.aivance.core.database.AivanceDatabase
 import com.bangersoul.aivance.core.database.converter.EncryptedTypeConverters
 import com.bangersoul.aivance.core.database.model.CompanyEntity
-import com.bangersoul.aivance.core.database.model.JobApplicationEntity
+import com.bangersoul.aivance.core.database.model.ApplicationEntity
 import com.bangersoul.aivance.core.database.model.JobEntity
 import com.bangersoul.aivance.core.database.model.SavedJobEntity
 import com.bangersoul.aivance.core.database.model.ViewedJobEntity
@@ -22,7 +22,7 @@ import org.robolectric.RuntimeEnvironment
 /**
  * Regression coverage for the jobs-table cascade-delete defect.
  *
- * `jobs` is the parent of `saved_jobs`, `viewed_jobs`, and `job_applications`
+ * `jobs` is the parent of `saved_jobs`, `viewed_jobs`, and `applications`
  * (all ON DELETE CASCADE). [JobDao.insertJob] used to be annotated
  * `@Insert(onConflict = REPLACE)`, which resolves a primary-key conflict by
  * DELETING the existing row and re-inserting it. Re-caching a job already in the
@@ -40,7 +40,7 @@ class JobDaoUpsertCascadeTest {
     private lateinit var db: AivanceDatabase
     private lateinit var jobDao: JobDao
     private lateinit var companyDao: CompanyDao
-    private lateinit var trackerDao: TrackerDao
+    private lateinit var workflowDao: WorkflowDao
 
     @Before
     fun setup() {
@@ -54,7 +54,7 @@ class JobDaoUpsertCascadeTest {
             .build()
         jobDao = db.jobDao()
         companyDao = db.companyDao()
-        trackerDao = db.trackerDao()
+        workflowDao = db.workflowDao()
     }
 
     @After
@@ -89,12 +89,12 @@ class JobDaoUpsertCascadeTest {
         )
         jobDao.insertSavedJob(SavedJobEntity(jobId = jobId))
         jobDao.insertViewedJob(ViewedJobEntity(jobId = jobId))
-        trackerDao.insertApplication(
-            JobApplicationEntity(
+        workflowDao.insertApplication(
+            ApplicationEntity(
                 jobId = jobId,
-                status = "Applied",
+                currentStageId = "APPLIED",
+                status = "ACTIVE",
                 dateApplied = 2_000L,
-                salaryRange = null,
                 notes = "Referred",
                 lastModified = 2_000L
             )
@@ -111,12 +111,12 @@ class JobDaoUpsertCascadeTest {
     fun deletingParentJobCascadesToChildren() = runTest {
         val jobId = seedJobWithChildren()
         assertThat(jobDao.isJobSaved(jobId)).isTrue()
-        assertThat(trackerDao.getApplications().first()).hasSize(1)
+        assertThat(workflowDao.getAllApplications().first()).hasSize(1)
 
         jobDao.deleteAllJobs()
 
         assertThat(jobDao.isJobSaved(jobId)).isFalse()
-        assertThat(trackerDao.getApplications().first()).isEmpty()
+        assertThat(workflowDao.getAllApplications().first()).isEmpty()
     }
 
     /**
@@ -152,7 +152,7 @@ class JobDaoUpsertCascadeTest {
         assertThat(jobDao.isJobSaved(jobId)).isTrue()
         assertThat(jobDao.getRecentlyViewedJobs(10).first().map { it.job.id })
             .contains(jobId)
-        assertThat(trackerDao.getApplications().first()).hasSize(1)
+        assertThat(workflowDao.getAllApplications().first()).hasSize(1)
         // Success path: the row was updated in place, not deleted or duplicated.
         assertThat(jobDao.getJobById(jobId)?.title).isEqualTo("Android Engineer (updated)")
         assertThat(jobDao.getJobsWithDetails().first()).hasSize(1)

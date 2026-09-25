@@ -20,7 +20,10 @@ class WorkflowEngine @Inject constructor(
         return when {
             state.profile.targetRole.isEmpty() -> CareerLifecycleStage.ONBOARDING
             state.intelligence.totalResumes == 0 -> CareerLifecycleStage.PREPARING
-            state.intelligence.atsScore < 70 && state.intelligence.totalResumes > 0 -> CareerLifecycleStage.OPTIMIZING
+            // A resume that has not been scored yet is "not yet optimized", so an absent score
+            // routes to OPTIMIZING here. This is a lifecycle routing decision — the dashboard
+            // still renders the absence as an em dash rather than a fabricated 0 (R3-1).
+            (state.intelligence.atsScore ?: 0) < 70 && state.intelligence.totalResumes > 0 -> CareerLifecycleStage.OPTIMIZING
             state.discovery.savedJobsCount < 5 -> CareerLifecycleStage.EXPLORING
             state.pipeline.activeApplications < 3 -> CareerLifecycleStage.APPLYING
             state.pipeline.upcomingInterviews.isNotEmpty() -> CareerLifecycleStage.INTERVIEWING

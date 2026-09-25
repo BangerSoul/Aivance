@@ -40,10 +40,6 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindJobTrackerRepository(impl: JobTrackerRepositoryImpl): JobTrackerRepository
-
-    @Binds
-    @Singleton
     abstract fun bindResumeRepository(impl: ResumeRepositoryImpl): ResumeRepository
 
     @Binds
@@ -86,6 +82,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCareerEventLogRepository(impl: CareerEventLogRepositoryImpl): CareerEventLogRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindSkillGapProgressRepository(impl: SkillGapProgressRepositoryImpl): SkillGapProgressRepository
 
     // CRM / Networking Repositories
     @Binds

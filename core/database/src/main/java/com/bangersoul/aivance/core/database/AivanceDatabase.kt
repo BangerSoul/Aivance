@@ -14,7 +14,6 @@ import com.bangersoul.aivance.core.database.model.*
         AivanceEntity::class,
         CompanyEntity::class,
         JobEntity::class,
-        JobApplicationEntity::class,
         ResumeEntity::class,
         ResumeVersionEntity::class,
         ResumeSectionEntity::class,
@@ -60,13 +59,12 @@ import com.bangersoul.aivance.core.database.model.*
         CareerEventLogEntity::class,
         CareerMemoryEntity::class
     ],
-    version = 27,
+    version = 28,
     exportSchema = true
 )
 @TypeConverters(AivanceConverters::class)
 abstract class AivanceDatabase : RoomDatabase() {
     abstract fun aivanceDao(): AivanceDao
-    abstract fun trackerDao(): TrackerDao
     abstract fun jobDao(): JobDao
     abstract fun companyDao(): CompanyDao
     abstract fun atsDao(): AtsDao
@@ -416,6 +414,47 @@ abstract class AivanceDatabase : RoomDatabase() {
         val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `career_event_log` ADD COLUMN `schemaVersion` INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        /**
+         * R1 - Application Ownership Consolidation.
+         *
+         * Declares `applications` (WorkflowDao) the single source of truth for job applications
+         * and retires the parallel `job_applications` table (TrackerDao), which had drifted from
+         * it since MIGRATION_16_17 introduced the pipeline model.
+         *
+         * Steps:
+         *  1. Add the one column `applications` lacked - `salaryRange`. Nullable, so the ALTER is
+         *     strictly additive and existing rows are untouched.
+         *  2. Import legacy rows that have no canonical counterpart yet, deduped on `jobId`.
+         *     The legacy `status` column used an application-status vocabulary (APPLIED,
+         *     INTERVIEWING, ...), so it becomes `currentStageId`; the canonical `status` axis
+         *     (ACTIVE/COMPLETED/ARCHIVED) is backfilled ACTIVE. This mirrors MIGRATION_16_17's
+         *     mapping, so rows already imported there are not double-counted.
+         *  3. Drop `job_applications`. The statement above is the only remaining read of the
+         *     legacy table; every writer/reader is repointed to `applications` in the same change.
+         *
+         * IRREVERSIBLE: there is deliberately no down-migration.
+         *
+         * Rollback: none. Restore from a backup taken before v28, or re-seed.
+         */
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Additive column so no legacy payload is lost on import.
+                db.execSQL("ALTER TABLE `applications` ADD COLUMN `salaryRange` TEXT")
+
+                // 2. Import legacy rows that have no canonical application for the same job.
+                db.execSQL(
+                    "INSERT INTO `applications` " +
+                        "(`jobId`, `currentStageId`, `status`, `dateApplied`, `salaryRange`, `notes`, `lastModified`) " +
+                        "SELECT `jobId`, `status`, 'ACTIVE', `dateApplied`, `salaryRange`, `notes`, `lastModified` " +
+                        "FROM `job_applications` " +
+                        "WHERE `jobId` NOT IN (SELECT `jobId` FROM `applications`)"
+                )
+
+                // 3. Retire the duplicate source of truth.
+                db.execSQL("DROP TABLE `job_applications`")
             }
         }
     }

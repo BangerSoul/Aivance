@@ -591,19 +591,6 @@ fun JobListing.toEntity(companyId: Long): JobEntity {
     )
 }
 
-fun JobApplicationWithDetails.toDomain(): JobApplication {
-    return JobApplication(
-        id = application.id,
-        company = job.company.name,
-        role = job.job.title,
-        status = try { ApplicationStatus.valueOf(application.status) } catch (e: Exception) { ApplicationStatus.SAVED },
-        dateApplied = application.dateApplied,
-        salaryRange = application.salaryRange ?: "",
-        notes = application.notes ?: "",
-        lastModified = application.lastModified
-    )
-}
-
 fun UserProfileEntity.toDomain(): UserProfile {
     return UserProfile(
         id = id,

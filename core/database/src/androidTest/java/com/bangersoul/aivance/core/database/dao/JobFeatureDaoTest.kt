@@ -7,7 +7,7 @@ import app.cash.turbine.test
 import com.bangersoul.aivance.core.database.AivanceDatabase
 import com.bangersoul.aivance.core.database.buildTestDatabase
 import com.bangersoul.aivance.core.database.model.CompanyEntity
-import com.bangersoul.aivance.core.database.model.JobApplicationEntity
+import com.bangersoul.aivance.core.database.model.ApplicationEntity
 import com.bangersoul.aivance.core.database.model.JobEntity
 import com.bangersoul.aivance.core.database.model.SavedSearchEntity
 import com.google.common.truth.Truth.assertThat
@@ -25,7 +25,7 @@ class JobFeatureDaoTest {
     private lateinit var db: AivanceDatabase
     private lateinit var jobDao: JobDao
     private lateinit var companyDao: CompanyDao
-    private lateinit var trackerDao: TrackerDao
+    private lateinit var workflowDao: WorkflowDao
     private lateinit var searchDao: SearchDao
 
     @Before
@@ -34,7 +34,7 @@ class JobFeatureDaoTest {
         db = buildTestDatabase(context)
         jobDao = db.jobDao()
         companyDao = db.companyDao()
-        trackerDao = db.trackerDao()
+        workflowDao = db.workflowDao()
         searchDao = db.searchDao()
     }
 
@@ -84,7 +84,7 @@ class JobFeatureDaoTest {
     }
 
     @Test
-    fun trackerIntegration() = runTest {
+    fun applicationIntegration() = runTest {
         val companyId = companyDao.insertCompany(
             CompanyEntity(
                 name = "Meta",
@@ -114,24 +114,28 @@ class JobFeatureDaoTest {
             )
         )
 
-        val application = JobApplicationEntity(
+        val application = ApplicationEntity(
             id = 1,
             jobId = jobId,
-            status = "Applied",
+            currentStageId = "APPLIED",
+            status = "ACTIVE",
             dateApplied = System.currentTimeMillis(),
             lastModified = System.currentTimeMillis(),
             salaryRange = "$100k-$150k",
             notes = "Referred by friend"
         )
-        trackerDao.insertApplication(application)
+        workflowDao.insertApplication(application)
 
-        trackerDao.getApplications().test {
+        workflowDao.getAllApplications().test {
             val list = awaitItem()
             assertThat(list).hasSize(1)
-            assertThat(list[0].application.status).isEqualTo("Applied")
-            assertThat(list[0].job.job.title).isEqualTo("Software Engineer")
-            assertThat(list[0].job.company.name).isEqualTo("Meta")
+            assertThat(list[0].currentStageId).isEqualTo("APPLIED")
+            assertThat(list[0].salaryRange).isEqualTo("$100k-$150k")
         }
+
+        val details = jobDao.getJobWithDetailsById(jobId)
+        assertThat(details?.job?.title).isEqualTo("Software Engineer")
+        assertThat(details?.company?.name).isEqualTo("Meta")
     }
 
     @Test

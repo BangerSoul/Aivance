@@ -63,6 +63,35 @@
     <string name="check">Check</string>
     <string name="job_description">Job Description</string>
 
+    <!-- In-app Apply (WebView + AI suggestions) -->
+    <string name="apply_title">Apply</string>
+    <string name="apply_no_link">No apply link available for this job</string>
+    <string name="apply_ai_assist">AI Apply Assistant</string>
+    <string name="apply_ai_assist_desc">Live help while you fill out the application.</string>
+    <string name="apply_open_external">Open in browser</string>
+    <string name="apply_reload_page">Reload page</string>
+    <string name="apply_section_ats">ATS Match</string>
+    <string name="apply_section_cover">Cover Letter</string>
+    <string name="apply_section_recruiters">Recruiter Emails</string>
+    <string name="apply_ats_run">Score my resume</string>
+    <string name="apply_ats_running">Scoring your resume against this role…</string>
+    <string name="apply_ats_score">Match %1$d%%</string>
+    <string name="apply_ats_matched">Matched keywords</string>
+    <string name="apply_ats_missing">Missing keywords</string>
+    <string name="apply_cover_generate">Generate cover letter</string>
+    <string name="apply_cover_generating">Writing your cover letter…</string>
+    <string name="apply_cover_copy">Copy</string>
+    <string name="apply_cover_copied">Cover letter copied</string>
+    <string name="apply_recruiters_find">Find recruiter emails</string>
+    <string name="apply_recruiters_finding">Searching for hiring contacts…</string>
+    <string name="apply_recruiters_none">No verified recruiter emails found for this company.</string>
+    <string name="apply_recruiters_copy_email">Copy email</string>
+    <string name="apply_email_copied">Email copied</string>
+    <string name="apply_no_resume">Import a resume first to use AI assistance.</string>
+    <string name="apply_no_company_domain">No company domain available to search recruiters.</string>
+    <string name="apply_verified">Verified</string>
+    <string name="apply_confidence">%1$d%% confidence</string>
+
     <!-- Company detail -->
     <string name="company_title">Company</string>
     <string name="open_roles">Open Roles</string>

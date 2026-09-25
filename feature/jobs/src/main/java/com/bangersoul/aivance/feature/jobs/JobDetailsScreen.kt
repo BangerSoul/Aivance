@@ -37,6 +37,7 @@ fun JobDetailsScreen(
     viewModel: JobDetailsViewModel,
     jobId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToApplyBrowser: (String) -> Unit = {},
     onNavigateToRecruiters: (String) -> Unit = {},
     onNavigateToCoverLetter: (Long) -> Unit = {},
     onNavigateToPipeline: () -> Unit = {},
@@ -59,6 +60,7 @@ fun JobDetailsScreen(
             when (effect) {
                 is JobDetailsUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is JobDetailsUiEffect.OpenExternalUrl -> openExternalUrl(context, effect.url)
+                is JobDetailsUiEffect.NavigateToApplyBrowser -> onNavigateToApplyBrowser(effect.jobId)
                 is JobDetailsUiEffect.NavigateToRecruiters -> onNavigateToRecruiters(effect.jobId)
                 is JobDetailsUiEffect.NavigateToCoverLetter -> onNavigateToCoverLetter(effect.jobId)
                 is JobDetailsUiEffect.NavigateToAts -> onNavigateToAts(effect.jobDescription)
@@ -141,7 +143,7 @@ fun JobDetailsScreen(
                         when (tab) {
                             0 -> JobOverviewContent(
                                 job = state.job,
-                                onApplyClick = { viewModel.onEvent(JobDetailsUiEvent.OpenUrl) },
+                                onApplyClick = { viewModel.onEvent(JobDetailsUiEvent.ApplyInApp) },
                                 onApplyAndTrack = { viewModel.onEvent(JobDetailsUiEvent.ApplyAndTrack) },
                                 onCompanyClick = { onNavigateToCompany(state.job.company) }
                             )

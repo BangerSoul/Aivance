@@ -48,6 +48,7 @@ sealed interface JobDetailsUiState {
 sealed interface JobDetailsUiEvent {
     data object ToggleBookmark : JobDetailsUiEvent
     data object OpenUrl : JobDetailsUiEvent
+    data object ApplyInApp : JobDetailsUiEvent
     data object ApplyAndTrack : JobDetailsUiEvent
     data object FindRecruiters : JobDetailsUiEvent
     data object GenerateCoverLetter : JobDetailsUiEvent
@@ -59,6 +60,7 @@ sealed interface JobDetailsUiEffect {
     data class ShowSnackbar(val message: String) : JobDetailsUiEffect
     data class OpenExternalUrl(val url: String) : JobDetailsUiEffect
     data class NavigateToRecruiters(val jobId: String) : JobDetailsUiEffect
+    data class NavigateToApplyBrowser(val jobId: String) : JobDetailsUiEffect
     data class NavigateToCoverLetter(val jobId: Long) : JobDetailsUiEffect
     data class NavigateToAts(val jobDescription: String) : JobDetailsUiEffect
     data object NavigateToPipeline : JobDetailsUiEffect
@@ -107,6 +109,7 @@ class JobDetailsViewModel @Inject constructor(
         when (event) {
             JobDetailsUiEvent.ToggleBookmark -> toggleBookmark()
             JobDetailsUiEvent.OpenUrl -> openUrl()
+            JobDetailsUiEvent.ApplyInApp -> applyInApp()
             JobDetailsUiEvent.ApplyAndTrack -> applyAndTrack()
             JobDetailsUiEvent.FindRecruiters -> findRecruiters()
             JobDetailsUiEvent.GenerateCoverLetter -> generateCoverLetter()
@@ -167,6 +170,25 @@ class JobDetailsViewModel @Inject constructor(
                     _effects.send(JobDetailsUiEffect.ShowSnackbar(result.error.message ?: "Failed to update bookmark"))
                 }
             }
+        }
+    }
+
+    /**
+     * Opens the in-app apply surface (hosted WebView + AI suggestions) instead
+     * of bouncing straight to an external browser. Only navigates when a real
+     * apply link resolves, so the WebView never opens on a dead page.
+     */
+    private fun applyInApp() {
+        val state = _uiState.value as? JobDetailsUiState.Success ?: return
+        val job = state.job
+        val resolved = resolveApplyUrl(job.url, job.sourceUrl, job.descriptionHtml)
+        if (resolved == null) {
+            _effects.trySend(JobDetailsUiEffect.ShowSnackbar("No apply link available for this job"))
+            return
+        }
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest("job_details_apply_in_app"))
+            _effects.send(JobDetailsUiEffect.NavigateToApplyBrowser(job.id))
         }
     }
 

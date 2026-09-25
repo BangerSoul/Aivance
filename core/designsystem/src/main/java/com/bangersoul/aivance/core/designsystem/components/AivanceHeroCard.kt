@@ -1,8 +1,6 @@
 package com.bangersoul.aivance.core.designsystem.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -10,27 +8,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 
+/**
+ * The standard hero CTA card used across workspaces.
+ *
+ * [kicker] and [description] are optional: a hero with no AI-generated copy
+ * renders title + action only, never filler text.
+ */
 @Composable
 fun AivanceHeroCard(
     title: String,
     description: String,
     actionLabel: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    kicker: String? = null
 ) {
-    val brush = Brush.horizontalGradient(
-        colors = listOf(
-            AivanceTheme.colors.accent,
-            AivanceTheme.colors.info
-        )
-    )
-
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -39,25 +35,27 @@ fun AivanceHeroCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Rounded.AutoAwesome,
-                    contentDescription = null,
-                    tint = AivanceTheme.colors.accent,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "NEXT BEST ACTION",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = AivanceTheme.colors.accent
-                )
-            }
+            if (kicker != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        tint = AivanceTheme.colors.accent,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = kicker,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = AivanceTheme.colors.accent
+                    )
+                }
 
-            Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
+            }
 
             Text(
                 text = title,
@@ -65,11 +63,14 @@ fun AivanceHeroCard(
                 fontWeight = FontWeight.Bold
             )
 
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (description.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             Spacer(Modifier.height(20.dp))
 

@@ -8,7 +8,7 @@
 - **Dependency Injection**: Hilt.
 - **UI**: Jetpack Compose with Material Design 3.
 - **Concurrency**: Kotlin Coroutines & Flow.
-- **Data Persistence**: Room (v26) & DataStore.
+- **Data Persistence**: Room (v28) & DataStore.
 - **Background Tasks**: WorkManager.
 - **Provider System**: Plug-and-play Provider SDK architecture for AI, Job, and Enrichment services.
 - **Security**: Centralized on-device encryption (AES-GCM via Google Tink) and Keystore-backed secrets management.
@@ -134,5 +134,24 @@ Open items: P0-02 (MITM pen-test — requires device). P0-01 ✅ RESOLVED (2026-
 - **Security**: All API keys in encrypted DataStore; PII encrypted at rest; audit logs; Privacy Center.
 - **Privacy**: GDPR-compliant Data Export and Deletion active.
 - **Navigation**: Full type-safe backstack with 6 root destinations.
-- **UI**: Unified design system; no mock data or dead controls.
+- **UI**: Unified design system. ⚠️ *Corrected 2026-09-25:* the topology reconstruction found fabricated dashboard metrics and dead state (see below); this claim did not hold.
 - **Play readiness**: Data safety posture documented; staged rollout (10%) configured; mapping upload wired.
+
+## Topology Reconstruction (2026-09-25)
+
+The end-to-end product topology was reconstructed from source + a live Android 14 / API 34 x86_64 emulator. Full map: `docs/architecture/PRODUCT_TOPOLOGY_MASTER.md`, target architecture: `MINIMAL_STABLE_ARCHITECTURE.md`, backlog: `R2_R3_STABILIZATION_BACKLOG.md`.
+
+**Baseline:** branch `master`, HEAD `845e44b`, tag `v2-foundation-baseline`, Room **v28**.
+
+**Runtime results (emulator-5554):** launches with no FATAL/ANR; DB migrated 27→28 on device; `job_applications` absent from DB+WAL (R1 holds); all 5 root tabs render; process death → cold start lands on Dashboard with persisted state.
+
+**Confirmed findings** (all of the metric-integrity findings below were **fixed in R3**, 2026-09-25 — see `docs/architecture/R2_R3_EXECUTION_REPORT.md`):
+- **Fabricated metrics (FIXED):** Dashboard Career Score rendered **18** at zero data (`AnalyticsRepositoryImpl` hardcoded readiness default 75 in a /4 composite); Skill Match rendered **100%** with "0 of 0 target-job skills demonstrated" (`CareerGraphEngine` returned `1.0f` when `totalTarget == 0`). Both now render `—` with an explanation.
+- **Split readiness (FIXED):** Dashboard's readiness (=75) and Prep Studio's own readiness (**1%**) disagreed on screen; both now call the single `InterviewReadinessCalculator`.
+- **Wrong metric owners (FIXED):** `savedJobsCount` derived from `applications.currentStageId == "SAVED"` (ignored `saved_jobs`); upcoming-interview date derived from `application.dateApplied`. Both re-pointed at their real owners.
+- **Provider gate (FIXED, R2.2, 2026-09-25):** `onboardingCompleted` was set by both onboarding's Skip and `AuthViewModel.continueWithEmail`, so Dashboard was reachable with zero providers. Now split into `onboardingCompleted` + a persisted `providerOptional`, and centrally enforced by `AuthenticationViewModel.evaluateProviderGate` (`UNCONFIGURED/OPTIONAL/CONFIGURED/INVALID`) which the nav graph, splash cold-start path and a mid-session remediation effect all consult. The auth bypass is removed (fresh email/Google → provider setup). Provider-free entry is legal only via the explicit, persisted "Continue without AI providers" choice — the existing supported contract (free keyless job providers + local assistant Copilot fallback). 16 `ProviderGateTest` cases + emulator EXECUTED PASS. See `docs/architecture/R2_R3_EXECUTION_REPORT.md` §R2.2.
+- **Hot path:** `careerGraphEngine.persist(graph)` runs a full rebuild + transactional upsert on every `CareerStateEngine` emission.
+- **Dead/orphan:** `JobComparison` route has no entry point; `agentMissions`/`activeTask` are hardcoded dead state; `ResumeAnalysisWorker`/`NotificationWorker` are never enqueued; only 3 of 13 `CareerEventDispatcher` producers are called.
+- **Dormant (unchanged, not wired):** `CareerEventReplayEngine` (no prod caller), `CareerMemoryEngine`, `AiContextEngine2`, and the agent tier (`CareerAgentEngine`, `HumanApprovalGate`, executor, agent use cases).
+
+**No production code was modified by this gate.**

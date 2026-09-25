@@ -321,3 +321,22 @@ The M07 ownership question is now **settled by decision** — see [ADR 0013](doc
 * **Explainable AI**: No opaque recommendations; every suggestion surfaces its underlying evidence and confidence.
 * **Controlled Automation**: No unconfirmed destructive or outbound actions executed by AI agents.
 * **Deterministic Code Quality**: Zero feature-to-feature dependencies, strict unidirectional data flow, and 100% CI pass rates.
+
+---
+
+## Stabilization Gate (2026-09-25)
+
+The end-to-end product topology was reconstructed (source + live emulator) and a minimal stable target architecture defined. See `docs/architecture/PRODUCT_TOPOLOGY_MASTER.md`, `docs/architecture/MINIMAL_STABLE_ARCHITECTURE.md`, and `docs/architecture/R2_R3_STABILIZATION_BACKLOG.md`.
+
+Implementation proceeds in dependency order, each stage requiring **source proof → unit test → Android VM runtime test → regression → documentation → commit**:
+
+1. **R2** — ✅ **DONE (2026-09-25)** — graph persistence moved off the `CareerStateEngine` hot path (async conflating writer + content-signature dedupe + persisted-revision read-after-write).
+2. **R3** — ✅ **DONE (2026-09-25)** — fabricated zero-data values removed (Career Score, Skill Match, ATS Score), Interview Readiness unified to one owner, Saved-Jobs/interview-date owners fixed, and a zero-data metric guard added at JVM, instrumented and runtime layers.
+   Evidence and verification: `docs/architecture/R2_R3_EXECUTION_REPORT.md`.
+3. **R4 / R2.2 provider gate** — ✅ **DONE (2026-09-25)** — Option B (explicit provider-optional mode) implemented: flag split (`onboardingCompleted` + persisted `providerOptional`), central `AuthenticationViewModel.evaluateProviderGate` authority, auth bypass removed, splash + nav + mid-session remediation all consult the gate. 16 `ProviderGateTest` cases + emulator EXECUTED PASS. Decision: `docs/architecture/PROVIDER_GATE_DECISION.md`; evidence: `R2_R3_EXECUTION_REPORT.md` §R2.2. Minimal target: `MINIMAL_PRODUCTION_ARCHITECTURE.md`.
+4. **R5** — stabilize navigation entry points (e.g. `JobComparison`) and event producers.
+5. **R6** — persistence/table ownership.
+6. **R7** — reconnect only genuinely required V2 infrastructure (replay needs a deliberate trigger; agents only behind `HumanApprovalGate`).
+7. **R8** — runtime regression + release gate.
+
+**Blocked pending product decisions:** whether `JobComparison` is wired or removed (R5-1).

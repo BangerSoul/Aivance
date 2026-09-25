@@ -195,3 +195,21 @@
 * Total New Test Suites: 7 comprehensive test classes.
 * Total Master Documentation & Audits: 10 master markdown reports.
 * Total Lines of Production Code & Contracts Added: ~4,200 lines.
+
+---
+
+## 21. Post-Hoc Topology Reconstruction Addendum (2026-09-25)
+
+A full end-to-end reconstruction (source tracing + live Android 14 / API 34 emulator) was performed to establish what the V2 tier actually does at runtime. **No production code was changed.**
+
+**V2 tier status (as-built):**
+- **Live:** the entity-graph projection (`CareerStateEngine` → `CareerGraphEngine` → `graph_nodes`/`graph_edges`) is written on every state emission and is now read by the Dashboard via `GetCareerGraphInsightsUseCase`.
+- **Dormant (DI-bound + test-covered, no production caller):** `CareerEventReplayEngine`/`RebuildCareerEventProjectionUseCase`, `CareerMemoryEngine`, `AiContextEngine2`, and the entire agent tier (`CareerAgentEngine`, `HumanApprovalGate`, `AgentActionExecutor`, `AutonomousApplyUseCase`/`OutreachAgentUseCase`/`FollowUpAgentUseCase`).
+- **Event emission is minimal:** only `ApplicationEvent.StageChanged`, `ResumeEvent.AnalysisCompleted`, and `InterviewEvent.Completed` are produced in production; the other 10 dispatcher producers are uncalled.
+- **M05 ownership boundary holds:** the entity slice and the `CAREER_EVENT` slice each have a single writer, proven by `CareerEventReplayRuntimeTest` on-device.
+
+Room is now **v28** (R1 consolidated `applications` as canonical and dropped `job_applications`; verified absent from the device DB+WAL).
+
+**Corrections to earlier claims:** the dashboard does *not* render mock agent missions (they are hardcoded dead state in `DashboardViewModel`, never displayed) — but it *did* render a fabricated Career Score (18) and Skill Match (100%) at zero data. Earlier project docs asserting "no mock data or dead controls" are superseded by `docs/architecture/PRODUCT_TOPOLOGY_MASTER.md`.
+
+**R2/R2.2/R3 update (2026-09-25):** the fabricated metrics and the split readiness calculation were fixed (R3), graph persistence was moved off the `CareerStateEngine` emission hot path (R2, async conflating writer + content-signature dedupe + persisted-revision read-after-write), and the provider gate was closed (R2.2) — provider-free entry is now the explicit, persisted `providerOptional` choice, centrally enforced by `AuthenticationViewModel.evaluateProviderGate`; the `AuthViewModel` onboarding-completion bypass is removed. The dormant V2 tier (replay beyond CAREER_EVENT provenance, `CareerMemoryEngine`, `AiContextEngine2`, agent tier + `HumanApprovalGate`) remains **unwired** and is not claimed as production. Evidence: `docs/architecture/R2_R3_EXECUTION_REPORT.md`; minimal target: `MINIMAL_PRODUCTION_ARCHITECTURE.md`.

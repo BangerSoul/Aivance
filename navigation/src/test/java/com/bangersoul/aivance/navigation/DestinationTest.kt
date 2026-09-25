@@ -55,6 +55,8 @@ class DestinationTest {
         assertTrue(Destination.ResumeDetail(1L).isAuthenticatedDestination())
         assertTrue(Destination.ResumeEngine(jobDescription = "JD").isAuthenticatedDestination())
         assertTrue(Destination.TrackApplication("job-1").isAuthenticatedDestination())
+        assertTrue(Destination.DiscoverBySkill("Kotlin").isAuthenticatedDestination())
+        assertTrue(Destination.LearnSkill("Kotlin").isAuthenticatedDestination())
     }
 
     @Test
@@ -68,6 +70,19 @@ class DestinationTest {
         assertEquals("job-1", Destination.TrackApplication("job-1").jobId)
         assertEquals("Pipeline", Destination.TrackApplication("job-1").label)
         assertNotNull(Destination.TrackApplication("job-1").icon)
+    }
+
+    @Test
+    fun `skill-gap deep links carry the skill and map to their workspaces`() {
+        val discover = Destination.DiscoverBySkill("Kubernetes")
+        assertEquals("Kubernetes", discover.skill)
+        assertEquals("Job Discovery", discover.label)
+        assertNotNull(discover.icon)
+
+        val learn = Destination.LearnSkill("Kubernetes")
+        assertEquals("Kubernetes", learn.skill)
+        assertEquals("Prep Studio", learn.label)
+        assertNotNull(learn.icon)
     }
 
     @Test

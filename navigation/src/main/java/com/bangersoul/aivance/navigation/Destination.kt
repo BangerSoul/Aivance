@@ -148,6 +148,20 @@ sealed interface Destination : NavKey {
         override val label = "Pipeline"
     }
 
+    /** Opens Job Discovery with the search pre-seeded to a skill (from a dashboard
+     *  skill-gap chip), so the user sees roles demanding the skill they lack. */
+    @Serializable
+    data class DiscoverBySkill(val skill: String) : Destination {
+        override val label = "Job Discovery"
+    }
+
+    /** Opens Prep Studio's Learn tab pre-seeded with a skill (from a dashboard
+     *  skill-gap chip), so the user gets targeted learning recommendations. */
+    @Serializable
+    data class LearnSkill(val skill: String) : Destination {
+        override val label = "Prep Studio"
+    }
+
     // ── Layer 4: System ──────────────────────────────────────────────────
 
     @Serializable
@@ -214,7 +228,9 @@ fun Destination.isAuthenticatedDestination(): Boolean =
         this is Destination.Ats ||
         this is Destination.CoverLetter ||
         this is Destination.ResumeEngine ||
-        this is Destination.TrackApplication
+        this is Destination.TrackApplication ||
+        this is Destination.DiscoverBySkill ||
+        this is Destination.LearnSkill
 
 val Destination.icon: ImageVector?
     get() = when (this) {
@@ -232,6 +248,8 @@ val Destination.icon: ImageVector?
         is Destination.RecruiterDashboard -> Icons.Rounded.PersonSearch
         Destination.SavedJobs -> Icons.Rounded.BookmarkBorder
         is Destination.TrackApplication -> Icons.Rounded.ViewKanban
+        is Destination.DiscoverBySkill -> Icons.Rounded.WorkOutline
+        is Destination.LearnSkill -> Icons.Rounded.School
         Destination.Appearance -> Icons.Rounded.Palette
         Destination.ProviderManagement -> Icons.Rounded.Tune
         Destination.Notifications -> Icons.Rounded.Notifications
@@ -267,6 +285,8 @@ val Destination.labelRes: Int
         is Destination.RecruiterDashboard -> R.string.dest_recruiter_discovery
         Destination.SavedJobs -> R.string.dest_saved_jobs
         is Destination.TrackApplication -> R.string.dest_pipeline
+        is Destination.DiscoverBySkill -> R.string.dest_discovery
+        is Destination.LearnSkill -> R.string.dest_prep_studio
         Destination.Appearance -> R.string.dest_appearance
         Destination.ProviderManagement -> R.string.dest_providers
         Destination.Notifications -> R.string.dest_notifications

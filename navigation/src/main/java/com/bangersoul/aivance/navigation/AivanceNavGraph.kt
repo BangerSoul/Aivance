@@ -62,6 +62,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 fun AivanceNavGraph() {
     val authViewModel: AuthenticationViewModel = hiltViewModel()
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    // R2.2: the central provider gate — one authority for product entry. It reads
+    // persisted DataStore state (the deliberate provider-optional choice, onboarding
+    // completion, saved provider configurations) plus the live provider statuses, so
+    // neither a UI step nor un-persisted runtime state can grant entry.
+    val providerGate by authViewModel.providerGate.collectAsStateWithLifecycle()
     val deepLinkDestination = remember { DeepLinkHandler.consumePending() }
 
     val initialDestination = remember {
@@ -77,17 +82,31 @@ fun AivanceNavGraph() {
     }
 
     AivanceAppShell {
-        AivanceWorkflowNavGraph(initialDestination, authViewModel)
+        AivanceWorkflowNavGraph(initialDestination, authViewModel, providerGate)
     }
 }
 
 @Composable
 private fun AivanceWorkflowNavGraph(
     initialDestination: Destination,
-    authViewModel: AuthenticationViewModel
+    authViewModel: AuthenticationViewModel,
+    providerGate: ProviderGateState?
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val isAuthed = authState is AuthenticationUiState.Authenticated
+
+    // R2.2: product entry requires the provider contract. UNCONFIGURED/INVALID
+    // must be remediated in provider setup; OPTIONAL (explicit
+    // "Continue without AI providers") and CONFIGURED may enter. Evaluated from
+    // persisted state by AuthenticationViewModel.evaluateProviderGate — never from
+    // an onboarding UI flag. A null gate (first evaluation in flight) defers:
+    // the session keeps whatever access it had until the gate settles, so the
+    // async cold-start hydration can never flash a false lock-out.
+    val productEntryAllowed = when (providerGate) {
+        ProviderGateState.OPTIONAL, ProviderGateState.CONFIGURED -> true
+        ProviderGateState.UNCONFIGURED, ProviderGateState.INVALID -> false
+        null -> true
+    }
 
     // ── Workspace State Management ──────────────────────────────────────────
 
@@ -103,10 +122,29 @@ private fun AivanceWorkflowNavGraph(
         if (initialDestination in Destination.authDestinations) initialDestination else Destination.Splash
     ) as NavBackStack<Destination>
 
+    // R2.2: when a settled gate denies entry while the user is signed in
+    // (provider removed/invalidated mid-session, or the persisted contract
+    // changed), the auth backstack is moved to provider setup for remediation.
+    // Never fires while the gate is unset (null) — a cold-start evaluation in
+    // flight must not yank the user.
+    LaunchedEffect(providerGate, isAuthed) {
+        if (isAuthed && (providerGate == ProviderGateState.UNCONFIGURED ||
+                providerGate == ProviderGateState.INVALID)
+        ) {
+            if (authBackstack.lastOrNull() != Destination.ProviderSetup) {
+                authBackstack.clear()
+                authBackstack.add(Destination.ProviderSetup)
+            }
+        }
+    }
+
     // The current active root workspace. Defaults to Dashboard.
     var activeWorkspace by remember { mutableStateOf<Destination>(Destination.Dashboard) }
 
-    val currentBackstack = if (isAuthed) {
+    // R2.2: workspace backstacks exist only while the provider contract allows
+    // product entry. A signed-in user whose configuration became invalid is held
+    // on the auth backstack (provider setup) even though `isAuthed` is true.
+    val currentBackstack = if (isAuthed && productEntryAllowed) {
         backstacks[activeWorkspace] ?: backstacks[Destination.Dashboard]!!
     } else {
         authBackstack
@@ -116,10 +154,14 @@ private fun AivanceWorkflowNavGraph(
 
     // ── Navigation Logic ──────────────────────────────────────────────────
 
-    val onNavigate: (Destination) -> Unit = remember(currentBackstack, isAuthed, backstacks, authBackstack) {
+    val onNavigate: (Destination) -> Unit = remember(currentBackstack, isAuthed, backstacks, authBackstack, productEntryAllowed) {
         { destination ->
             if (destination.isAuthenticatedDestination() && !isAuthed) {
                 authBackstack.add(Destination.Auth)
+            } else if (destination.isAuthenticatedDestination() && !productEntryAllowed) {
+                // R2.2: authenticated but the provider contract is unsatisfied —
+                // remediation goes through provider setup, not the main graph.
+                authBackstack.add(Destination.ProviderSetup)
             } else if (destination in Destination.rootDestinations) {
                 activeWorkspace = destination
             } else if (destination in Destination.authDestinations) {
@@ -137,9 +179,11 @@ private fun AivanceWorkflowNavGraph(
 
                     destination is Destination.CoverLetter ||
                     destination == Destination.JobComparison ||
+                    destination is Destination.DiscoverBySkill ||
                     destination is Destination.RecruiterDashboard -> Destination.Discovery
 
-                    destination == Destination.PrepStudio -> Destination.PrepStudio
+                    destination == Destination.PrepStudio ||
+                    destination is Destination.LearnSkill -> Destination.PrepStudio
                     destination == Destination.Pipeline ||
                     destination is Destination.TrackApplication -> Destination.Pipeline
                     else -> null
@@ -178,7 +222,7 @@ private fun AivanceWorkflowNavGraph(
 
     // ── Adaptive UI Shell ────────────────────────────────────────────────
 
-    if (isAuthed && !isAuthSurface) {
+    if (isAuthed && productEntryAllowed && !isAuthSurface) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
                 Destination.rootDestinations.forEach { workspace ->
@@ -233,8 +277,7 @@ private fun ScreenContent(
     onBack: () -> Unit
 ) {
     val shellState = LocalAppShellState.current
-    when (destination) {
-        Destination.Splash -> {
+    when (destination) {        Destination.Splash -> {
             val splashScope = rememberCoroutineScope()
             SplashScreen(onSplashComplete = {
                 splashScope.launch {
@@ -245,13 +288,28 @@ private fun ScreenContent(
                     }
                     val isAuthed =
                         (settled ?: authViewModel.uiState.value) is AuthenticationUiState.Authenticated
-                    onNavigate(if (isAuthed) Destination.Dashboard else Destination.Welcome)
+                    if (!isAuthed) {
+                        onNavigate(Destination.Welcome)
+                    } else {
+                        // R2.2: resolve the provider gate on settled data before the
+                        // cold-start product-entry decision.
+                        when (authViewModel.resolveProviderGate()) {
+                            ProviderGateState.CONFIGURED, ProviderGateState.OPTIONAL ->
+                                onNavigate(Destination.Dashboard)
+                            // Remediation: sent back to provider setup, not into a
+                            // silently degraded product.
+                            else -> onNavigate(Destination.ProviderSetup)
+                        }
+                    }
                 }
             })
         }
         Destination.Welcome -> WelcomeScreen(
             onGetStarted = { onNavigate(Destination.Auth) },
-            onSkip = { onNavigate(Destination.Dashboard) }
+            // R2.2: the welcome "skip" no longer promises product entry. It goes to
+            // auth — after signing in, the provider gate decides between the main
+            // graph and provider setup.
+            onSkip = { onNavigate(Destination.Auth) }
         )
         Destination.Auth -> AuthScreen(
             viewModel = hiltViewModel(),
@@ -265,6 +323,10 @@ private fun ScreenContent(
         Destination.Onboarding, Destination.ProviderSetup -> OnboardingScreen(
             viewModel = hiltViewModel(),
             onComplete = {
+                // R2.2: completion re-runs the central gate on the freshly
+                // persisted choice (validated provider saved, or the explicit
+                // provider-optional opt-in). Navigation follows the gate —
+                // never the step flow's own flag.
                 authViewModel.onEvent(AuthenticationUiEvent.CheckAuth)
             }
         )
@@ -278,7 +340,9 @@ private fun ScreenContent(
             onNavigateToAnalytics = { onNavigate(Destination.Analytics) },
             onNavigateToJobs = { onNavigate(Destination.Discovery) },
             onNavigateToAssistant = { onNavigate(Destination.Assistant) },
-            onNavigateToNotifications = { onNavigate(Destination.Notifications) }
+            onNavigateToNotifications = { onNavigate(Destination.Notifications) },
+            onDiscoverBySkill = { skill -> onNavigate(Destination.DiscoverBySkill(skill)) },
+            onLearnSkill = { skill -> onNavigate(Destination.LearnSkill(skill)) }
         )
         Destination.Assistant -> AssistantScreen(
             viewModel = hiltViewModel<AssistantViewModel>(),
@@ -297,6 +361,12 @@ private fun ScreenContent(
         )
         Destination.Discovery -> JobsScreen(
             viewModel = hiltViewModel(),
+            onNavigateToDetails = { onNavigate(Destination.JobDetails(it)) },
+            onNavigateToSavedJobs = { onNavigate(Destination.SavedJobs) }
+        )
+        is Destination.DiscoverBySkill -> JobsScreen(
+            viewModel = hiltViewModel(),
+            initialQuery = destination.skill,
             onNavigateToDetails = { onNavigate(Destination.JobDetails(it)) },
             onNavigateToSavedJobs = { onNavigate(Destination.SavedJobs) }
         )
@@ -340,6 +410,11 @@ private fun ScreenContent(
 
         Destination.PrepStudio -> PrepStudioScreen(
             interviewViewModel = hiltViewModel<InterviewViewModel>(),
+            onBack = onBack
+        )
+        is Destination.LearnSkill -> PrepStudioScreen(
+            interviewViewModel = hiltViewModel<InterviewViewModel>(),
+            initialLearnSkill = destination.skill,
             onBack = onBack
         )
         is Destination.Ats -> AtsScreen(

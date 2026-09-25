@@ -43,4 +43,20 @@
     <string name="dash_action_assistant">Assistant</string>
     <string name="dash_action_pipeline">Pipeline</string>
     <string name="dash_action_insights">Insights</string>
+    <string name="dash_graph_insights">Career Graph</string>
+    <string name="dash_skill_match">Skill Match</string>
+    <string name="dash_skill_match_subtitle">%1$d of %2$d target-job skills demonstrated</string>
+    <string name="dash_missing_skills">Top skills to close the gap</string>
+    <string name="dash_missing_skills_hint">Tap a skill to see jobs that want it, or the school icon for learning tips.</string>
+    <string name="dash_learn_skill_cd">Get learning recommendations for %1$s</string>
+    <string name="dash_no_skill_gaps">You demonstrate every skill your target jobs ask for. 🎯</string>
+    <string name="dash_skill_match_none">Save target jobs to measure your skill match.</string>
+    <string name="dash_no_data">—</string>
+    <string name="dash_skill_explored">Exploring matching jobs</string>
+    <string name="dash_skill_learning">Learning in progress</string>
+    <string name="dash_gap_progress">%1$d of %2$d gaps in progress</string>
+    <string name="dash_demanded_by_one_job">1 job</string>
+    <string name="dash_demanded_by_jobs">%1$d jobs</string>
+    <string name="dash_active_context">Active Applications</string>
+    <string name="dash_context_with_interviews">%1$s · %2$d interview(s)</string>
 </resources>

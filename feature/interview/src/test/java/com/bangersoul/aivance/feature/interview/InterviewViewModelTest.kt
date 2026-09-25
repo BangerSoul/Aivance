@@ -2,10 +2,12 @@ package com.bangersoul.aivance.feature.interview
 
 import com.bangersoul.aivance.core.common.enums.InterviewDifficulty
 import com.bangersoul.aivance.core.common.model.CareerState
+import com.bangersoul.aivance.core.common.model.InterviewFeedback
 import com.bangersoul.aivance.core.common.model.InterviewMessage
 import com.bangersoul.aivance.core.common.model.InterviewSession
 import com.bangersoul.aivance.core.common.result.DomainError
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.analytics.InterviewReadinessCalculator
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.InterviewRepository
 import com.bangersoul.aivance.core.domain.repository.crm.CompanyIntelligenceRepository
@@ -27,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -74,19 +77,24 @@ class InterviewViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun createViewModel() = InterviewViewModel(
+        mockRepository,
+        mockCareerStateEngine,
+        mockCompanyRepository,
+        mockGenerateStarPack,
+        mockTrackEvent,
+        InterviewReadinessCalculator()
+    )
+
     @Test
     fun `initial state is Idle`() {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
         assertTrue(viewModel.uiState.value is InterviewUiState.Idle)
     }
 
     @Test
     fun `start session transitions to Active`() = runTest(testDispatcher) {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -102,9 +110,7 @@ class InterviewViewModelTest {
             mockRepository.startSession(any(), any(), any(), any(), any(), any())
         } returns Result.Failure(DomainError("Failed to start session"))
 
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -116,9 +122,7 @@ class InterviewViewModelTest {
     fun `complete session transitions to Review`() = runTest(testDispatcher) {
         coEvery { mockRepository.completeSession(any()) } returns Result.Success(Unit)
 
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -130,9 +134,7 @@ class InterviewViewModelTest {
 
     @Test
     fun `next question increments index`() = runTest(testDispatcher) {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -146,18 +148,14 @@ class InterviewViewModelTest {
 
     @Test
     fun `reset returns to Idle`() {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
         viewModel.onEvent(InterviewUiEvent.Reset)
         assertTrue(viewModel.uiState.value is InterviewUiState.Idle)
     }
 
     @Test
     fun `generate star pack populates idle state with role pack`() = runTest(testDispatcher) {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.GenerateStarPack("Android Dev"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -173,9 +171,7 @@ class InterviewViewModelTest {
         val pack = STARPrepGenerator.generateStarPack("Android Dev", 3)
         every { mockRepository.getQuestions("session_1") } returns flowOf(Result.Success(pack))
 
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL", packQuestions = pack))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -190,9 +186,7 @@ class InterviewViewModelTest {
     fun `fallback pack is persisted when AI question generation fails`() = runTest(testDispatcher) {
         coEvery { mockRepository.generateQuestions(any(), any()) } returns Result.Failure(DomainError("No AI provider"))
 
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -205,9 +199,7 @@ class InterviewViewModelTest {
 
     @Test
     fun `submitAnswer persists the answer and stays Active`() = runTest(testDispatcher) {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -229,9 +221,7 @@ class InterviewViewModelTest {
     fun `submitAnswer failure surfaces the real cause`() = runTest(testDispatcher) {
         coEvery { mockRepository.submitAnswer(any(), any()) } returns Result.Failure(DomainError("Database busy"))
 
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.StartSession("Android Dev", "Tech Corp", "BEHAVIORAL"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -245,9 +235,7 @@ class InterviewViewModelTest {
 
     @Test
     fun `submitAnswer is ignored outside an active session`() = runTest(testDispatcher) {
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
 
         viewModel.onEvent(InterviewUiEvent.SubmitAnswer("orphaned answer"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -258,14 +246,43 @@ class InterviewViewModelTest {
     }
 
     @Test
+    fun `readiness is not measured when no session has produced feedback`() = runTest(testDispatcher) {
+        // R3-3: this is exactly the zero-data case that used to render "1%" in Prep Studio
+        // (`careerScore / 10` off a fabricated 18) while the analytics path rendered 18 for the
+        // same data. Readiness now reports the absence instead of inventing a number.
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is InterviewUiState.Idle)
+        assertNull((state as InterviewUiState.Idle).readinessScore)
+    }
+
+    @Test
+    fun `readiness is the shared calculator's mean over earned session feedback`() = runTest(testDispatcher) {
+        every { mockRepository.getSessions() } returns flowOf(
+            Result.Success(
+                listOf(
+                    sampleSession.copy(isCompleted = true, feedback = InterviewFeedback(overallScore = 90)),
+                    sampleSession.copy(id = "session_2", isCompleted = true, feedback = InterviewFeedback(overallScore = 80))
+                )
+            )
+        )
+
+        viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Same value the analytics path reports: one owner, one formula (R3-3).
+        assertEquals(85, (viewModel.uiState.value as InterviewUiState.Idle).readinessScore)
+    }
+
+    @Test
     fun `load history populates Idle state with past sessions`() = runTest(testDispatcher) {
         every { mockRepository.getSessions() } returns flowOf(
             Result.Success(listOf(sampleSession.copy(isCompleted = true)))
         )
 
-        viewModel = InterviewViewModel(
-            mockRepository, mockCareerStateEngine, mockCompanyRepository, mockGenerateStarPack, mockTrackEvent
-        )
+        viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value

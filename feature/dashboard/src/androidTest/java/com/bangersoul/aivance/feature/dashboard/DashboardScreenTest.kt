@@ -2,17 +2,26 @@ package com.bangersoul.aivance.feature.dashboard
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
+/**
+ * Instrumented dashboard rendering.
+ *
+ * The last two tests are the **UI half of the metric-integrity guard**: with zero data on screen,
+ * no rated number may be rendered at all. The JVM half lives in
+ * `DashboardZeroDataMetricGuardTest` and proves the state mapping; this proves the render.
+ */
 class DashboardScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun sampleState() = DashboardUiState(
+    private fun scoredState() = DashboardUiState(
         isLoading = false,
         greeting = "Good Morning, Azmath",
         userDesignation = "Software Engineer",
@@ -20,10 +29,32 @@ class DashboardScreenTest {
         atsScore = 92,
         activeApplications = 5,
         savedJobs = 3,
-        nextInterview = "Fri 10:00",
+        nextInterview = "Aug 12, 2026 · 10:00 AM",
         aiRecommendation = "Tailor your resume for senior roles.",
-        recentActivity = listOf(
-            ActivityItem("1", "Applied to Acme", "Aug 1")
+        graphInsights = CareerGraphInsightsUi(
+            available = true,
+            skillMatchPercent = 60,
+            demonstratedSkillCount = 3,
+            targetSkillCount = 5
+        )
+    )
+
+    /** A clean install: nothing scored, nothing counted, no jobs to match against. */
+    private fun zeroDataState() = DashboardUiState(
+        isLoading = false,
+        greeting = "Good Morning, Azmath",
+        userDesignation = "",
+        careerScore = null,
+        atsScore = null,
+        activeApplications = 0,
+        savedJobs = 0,
+        nextInterview = null,
+        aiRecommendation = null,
+        graphInsights = CareerGraphInsightsUi(
+            available = true,
+            skillMatchPercent = null,
+            demonstratedSkillCount = 0,
+            targetSkillCount = 0
         )
     )
 
@@ -44,9 +75,12 @@ class DashboardScreenTest {
         }
     }
 
+    private fun textIsRendered(text: String): Boolean =
+        composeTestRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+
     @Test
-    fun dashboardDisplaysCareerScore() {
-        renderContent(sampleState())
+    fun dashboardDisplaysCareerScoreWhenScored() {
+        renderContent(scoredState())
 
         composeTestRule.onNodeWithText("Career Score").assertIsDisplayed()
         composeTestRule.onNodeWithText("78").assertIsDisplayed()
@@ -55,7 +89,7 @@ class DashboardScreenTest {
 
     @Test
     fun dashboardDisplaysQuickStats() {
-        renderContent(sampleState())
+        renderContent(scoredState())
 
         composeTestRule.onNodeWithText("ATS Score").assertIsDisplayed()
         composeTestRule.onNodeWithText("92").assertIsDisplayed()
@@ -65,19 +99,39 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun dashboardDisplaysNextInterviewAndRecommendation() {
-        renderContent(sampleState())
+    fun dashboardDisplaysSkillMatchWhenItIsMeasurable() {
+        renderContent(scoredState())
 
-        composeTestRule.onNodeWithText("Next Interview").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Fri 10:00").assertIsDisplayed()
-        composeTestRule.onNodeWithText("AI Recommendation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Skill Match").assertIsDisplayed()
+        composeTestRule.onNodeWithText("60%").assertIsDisplayed()
+        composeTestRule.onNodeWithText("3 of 5 target-job skills demonstrated").assertIsDisplayed()
     }
 
     @Test
-    fun dashboardDisplaysRecentActivity() {
-        renderContent(sampleState())
+    fun zeroDataDashboardRendersNoRatedNumber() {
+        renderContent(zeroDataState())
 
-        composeTestRule.onNodeWithText("Recent Activity").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Applied to Acme").assertIsDisplayed()
+        // The metrics existed before this guard: 18 was the fabricated career composite and 100%
+        // the unmeasured skill match. Neither may appear again.
+        assertTrue("a career score must not be rendered at zero data", !textIsRendered("18"))
+        assertTrue("skill match must not be rendered as 100% at zero data", !textIsRendered("100%"))
+        // Counts are honest zeros and are still rendered ("Active Apps 0", "Saved Jobs 0");
+        // what must never appear is a *rated* value, so no percentage may be rendered at all.
+        assertTrue("no percentage belongs on a dashboard with nothing measured", !textIsRendered("0%"))
+    }
+
+    @Test
+    fun zeroDataDashboardExplainsThatNothingIsScoredYet() {
+        renderContent(zeroDataState())
+
+        composeTestRule.onNodeWithText("Career Score").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Unlock your score").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Not scored yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Upload a resume and run an ATS scan to unlock scoring.").assertIsDisplayed()
+
+        // Skill Match is shown as unmeasured and asks for the input it needs, rather than
+        // celebrating a profile that has no target jobs.
+        composeTestRule.onNodeWithText("Skill Match").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Save target jobs to measure your skill match.").assertIsDisplayed()
     }
 }

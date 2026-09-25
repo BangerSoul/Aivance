@@ -7,6 +7,7 @@ import com.bangersoul.aivance.core.common.enums.MessageSender
 import com.bangersoul.aivance.core.common.model.*
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.getOrNull
+import com.bangersoul.aivance.core.domain.analytics.InterviewReadinessCalculator
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.InterviewRepository
 import com.bangersoul.aivance.core.domain.repository.crm.CompanyIntelligenceRepository
@@ -25,7 +26,11 @@ sealed interface InterviewUiState {
     data class Idle(
         val history: List<InterviewSession> = emptyList(),
         val careerState: CareerState? = null,
-        val readinessScore: Int = 0,
+        /**
+         * Interview readiness from [InterviewReadinessCalculator] — the single owner shared
+         * with the analytics path — or `null` when no session has produced feedback yet.
+         */
+        val readinessScore: Int? = null,
         /**
          * Role-specific STAR pack generated for the Practice tab (R-05):
          * AI-generated via the streaming path, template fallback offline.
@@ -71,7 +76,8 @@ class InterviewViewModel @Inject constructor(
     private val careerStateEngine: CareerStateEngine,
     private val companyRepository: CompanyIntelligenceRepository,
     private val generateStarPackUseCase: GenerateStarPackUseCase,
-    private val trackEventUseCase: TrackEventUseCase
+    private val trackEventUseCase: TrackEventUseCase,
+    private val interviewReadinessCalculator: InterviewReadinessCalculator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<InterviewUiState>(InterviewUiState.Idle())
@@ -93,18 +99,16 @@ class InterviewViewModel @Inject constructor(
             careerStateEngine.state.collect { state ->
                 val current = _uiState.value
                 if (current is InterviewUiState.Idle) {
-                    _uiState.value = current.copy(
-                        careerState = state,
-                        readinessScore = calculateReadiness(state, current.history)
-                    )
+                    // Readiness is deliberately NOT derived from the career state here: it is a
+                    // function of the candidate's own mock-session feedback, owned by
+                    // [InterviewReadinessCalculator] and recomputed in [loadHistory] (R3-3).
+                    // Prep Studio used to add `careerScore / 10` to it, which is how a
+                    // fabricated career score of 18 surfaced as a "1%" readiness here while the
+                    // analytics path reported 18 for the same data.
+                    _uiState.value = current.copy(careerState = state)
                 }
             }
         }
-    }
-
-    private fun calculateReadiness(state: CareerState, history: List<InterviewSession>): Int {
-        val lastScore = history.firstOrNull { it.isCompleted }?.feedback?.overallScore ?: 0
-        return (lastScore + (state.growth.careerScore / 10)).coerceIn(0, 100)
     }
 
     fun onEvent(event: InterviewUiEvent) {
@@ -258,7 +262,10 @@ class InterviewViewModel @Inject constructor(
                     if (sessions != null) {
                         val current = _uiState.value
                         if (current is InterviewUiState.Idle) {
-                            _uiState.value = current.copy(history = sessions)
+                            _uiState.value = current.copy(
+                                history = sessions,
+                                readinessScore = interviewReadinessCalculator.calculate(sessions)
+                            )
                         }
                     }
                 }

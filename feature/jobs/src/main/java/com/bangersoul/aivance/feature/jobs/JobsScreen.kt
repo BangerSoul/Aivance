@@ -37,9 +37,18 @@ import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 fun JobsScreen(
     viewModel: JobsViewModel,
     onNavigateToDetails: (String) -> Unit,
-    onNavigateToSavedJobs: () -> Unit = {}
+    onNavigateToSavedJobs: () -> Unit = {},
+    initialQuery: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // Seed the search once when arriving from a deep link (e.g. a dashboard
+    // skill-gap chip). The ViewModel guards against re-running on the same
+    // seed after rotation/process death, so a user's later edits stick.
+    LaunchedEffect(initialQuery) {
+        if (!initialQuery.isNullOrBlank()) {
+            viewModel.onEvent(JobsUiEvent.SeedSearch(initialQuery))
+        }
+    }
     // rememberSaveable: the typed query survives rotation/process death (the
     // ViewModel also persists it in SavedStateHandle, so it stays until app
     // data is cleared).

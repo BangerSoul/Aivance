@@ -39,6 +39,13 @@ sealed interface JobsUiState {
 
 sealed interface JobsUiEvent {
     data class Search(val query: String) : JobsUiEvent
+    /**
+     * A one-shot search seed from a deep link (e.g. a dashboard skill-gap chip).
+     * Unlike [Search] it is idempotent per seed value — re-arriving with the same
+     * seed after rotation/process death won't clobber a query the user has since
+     * edited.
+     */
+    data class SeedSearch(val query: String) : JobsUiEvent
     data class UpdateFilter(val filter: JobSearchFilter) : JobsUiEvent
     data object ClearFilters : JobsUiEvent
     data class ToggleBookmark(val jobId: String) : JobsUiEvent
@@ -106,12 +113,26 @@ class JobsViewModel @Inject constructor(
     fun onEvent(event: JobsUiEvent) {
         when (event) {
             is JobsUiEvent.Search -> search(event.query)
+            is JobsUiEvent.SeedSearch -> seedSearch(event.query)
             is JobsUiEvent.UpdateFilter -> updateFilter(event.filter)
             JobsUiEvent.ClearFilters -> clearFilters()
             is JobsUiEvent.ToggleBookmark -> toggleBookmark(event.jobId)
             is JobsUiEvent.ViewDetails -> viewModelScope.launch { _effects.send(JobsUiEffect.NavigateToDetails(event.jobId)) }
             JobsUiEvent.Refresh -> search()
         }
+    }
+
+    /**
+     * Applies a deep-link search seed exactly once. Guarded by [savedStateHandle]
+     * so a configuration change or process death that replays the same seed does
+     * not overwrite a query the user has edited in the meantime.
+     */
+    private fun seedSearch(query: String) {
+        if (query.isBlank()) return
+        val alreadySeeded = savedStateHandle.get<String>(KEY_SEEDED_QUERY)
+        if (alreadySeeded == query) return
+        savedStateHandle[KEY_SEEDED_QUERY] = query
+        search(query)
     }
 
     private var searchJob: kotlinx.coroutines.Job? = null
@@ -202,5 +223,6 @@ class JobsViewModel @Inject constructor(
 
     private companion object {
         const val KEY_SAVED_QUERY = "jobs_search_query"
+        const val KEY_SEEDED_QUERY = "jobs_seeded_query"
     }
 }

@@ -34,6 +34,7 @@ class AnalyticsRepositoryImpl @Inject constructor(
     private val interviewRepository: com.bangersoul.aivance.core.domain.repository.InterviewRepository,
     private val kpiEngine: KPIEngine,
     private val scoreEngine: CareerScoreEngine,
+    private val interviewReadinessCalculator: InterviewReadinessCalculator,
     private val intelEngine: CareerIntelligenceEngine,
     private val forecastEngine: CareerForecastEngine,
     private val recommendationEngine: RecommendationEngine
@@ -80,20 +81,36 @@ class AnalyticsRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * Records a snapshot of the *measured* career score.
+     *
+     * A snapshot is a historical record of a score, so it is only written when at least one
+     * score dimension actually has evidence (R3-1). At zero data there is nothing measured to
+     * record, and a snapshot carrying a `0` would both chart a fake data point in Trends and
+     * give [getSnapshots] a fabricated value to fall back on. The caller receives a failure
+     * describing the absence, which [ensureBaseline] treats as "retry once there is real data".
+     */
     override suspend fun createSnapshot(): CoreResult<Long> = runCatchingCore {
         val apps = workflowRepository.getApplications().firstOrNull()?.getOrNull() ?: emptyList()
         val sessions = interviewRepository.getSessions().firstOrNull()?.getOrNull() ?: emptyList()
         val reports = atsDao.getAllReports().firstOrNull()?.map { it.toDomain() } ?: emptyList()
-        val readiness = calculateReadiness(sessions)
+        val readiness = interviewReadinessCalculator.calculate(sessions)
         val recruiters = collectRecruiters(apps)
 
         val interviewRate = kpiEngine.calculateInterviewRate(apps)
         val scoreBreakdown = scoreEngine.calculateCompositeScore(reports, recruiters, apps.size, readiness)
+        val overall = scoreBreakdown.overall
+            ?: throw com.bangersoul.aivance.core.common.exception.DomainException(
+                errorCode = "NO_MEASURED_SCORE",
+                message = "No measured career score yet — a snapshot is only recorded once data exists"
+            )
 
         val snapshot = AnalyticsSnapshot(
             kpis = mapOf("interview_rate" to interviewRate),
-            careerScore = scoreBreakdown["OVERALL"] ?: 0,
-            dimensionScores = scoreBreakdown
+            careerScore = overall,
+            // The composite is recorded alongside its inputs so the Trends chart keeps the
+            // same shape it had before the dimensions became evidence-gated.
+            dimensionScores = scoreBreakdown.dimensions + (CareerScoreEngine.DIM_OVERALL to overall)
         )
 
         analyticsDao.insertSnapshot(snapshot.toEntity())
@@ -145,7 +162,7 @@ class AnalyticsRepositoryImpl @Inject constructor(
                 val sessions = interviewRes.getOrNull() ?: emptyList()
                 val recruiters = collectRecruiters(apps)
                 val reports = allReports.map { it.toDomain() }
-                val readiness = calculateReadiness(sessions)
+                val readiness = interviewReadinessCalculator.calculate(sessions)
 
                 intelEngine.calculateIntelligence(
                     latestAtsReports = reports,
@@ -170,11 +187,6 @@ class AnalyticsRepositoryImpl @Inject constructor(
     // Extracted so createSnapshot and getCareerIntelligence derive the same
     // inputs from the same real data (previously duplicated inline).
 
-
-    private fun calculateReadiness(sessions: List<InterviewSession>): Int =
-        if (sessions.isNotEmpty()) {
-            sessions.mapNotNull { it.feedback?.overallScore }.takeIf { it.isNotEmpty() }?.average()?.toInt() ?: 75
-        } else 75
 
     private suspend fun collectRecruiters(apps: List<Application>): List<Recruiter> =
         apps.flatMap { app ->

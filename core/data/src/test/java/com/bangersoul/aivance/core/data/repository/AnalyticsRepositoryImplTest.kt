@@ -12,6 +12,7 @@ import com.bangersoul.aivance.core.database.model.AtsReportEntity
 import com.bangersoul.aivance.core.domain.analytics.CareerForecastEngine
 import com.bangersoul.aivance.core.domain.analytics.CareerIntelligenceEngine
 import com.bangersoul.aivance.core.domain.analytics.CareerScoreEngine
+import com.bangersoul.aivance.core.domain.analytics.InterviewReadinessCalculator
 import com.bangersoul.aivance.core.domain.analytics.KPIEngine
 import com.bangersoul.aivance.core.domain.analytics.RecommendationEngine
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
@@ -79,6 +80,7 @@ class AnalyticsRepositoryImplTest {
             interviewRepository = interviewRepository,
             kpiEngine = kpiEngine,
             scoreEngine = scoreEngine,
+            interviewReadinessCalculator = InterviewReadinessCalculator(),
             intelEngine = CareerIntelligenceEngine(kpiEngine, scoreEngine),
             forecastEngine = CareerForecastEngine(),
             recommendationEngine = recommendationEngine
@@ -116,7 +118,7 @@ class AnalyticsRepositoryImplTest {
     }
 
     @Test
-    fun `baseline for a brand-new user derives an honest empty-state snapshot`() = runTest {
+    fun `a brand-new user records no snapshot instead of a fabricated score`() = runTest {
         every { workflowRepository.getApplications() } returns flowOf(Result.Success(emptyList()))
         every { interviewRepository.getSessions() } returns flowOf(Result.Success(emptyList()))
         every { atsDao.getAllReports() } returns flowOf(emptyList())
@@ -124,10 +126,23 @@ class AnalyticsRepositoryImplTest {
         val result = repository.getSnapshots().first()
 
         assertTrue(result is Result.Success)
-        val baseline = (result as Result.Success).data.single()
-        assertEquals(0.0, baseline.kpis["interview_rate"])
-        // (ats 0 + networking 0 + consistency 0 + default readiness 75) / 4 = 18
-        assertEquals(18, baseline.careerScore)
+        // Nothing has been measured, so nothing is recorded. A snapshot used to be written here
+        // carrying (0 + 0 + 0 + hardcoded 75) / 4 = 18, which the dashboard rendered as the
+        // user's career score (R3-1).
+        assertTrue((result as Result.Success).data.isEmpty())
+        coVerify(exactly = 0) { analyticsDao.insertSnapshot(any()) }
+    }
+
+    @Test
+    fun `createSnapshot refuses to record an unmeasured career score`() = runTest {
+        every { workflowRepository.getApplications() } returns flowOf(Result.Success(emptyList()))
+        every { interviewRepository.getSessions() } returns flowOf(Result.Success(emptyList()))
+        every { atsDao.getAllReports() } returns flowOf(emptyList())
+
+        val result = repository.createSnapshot()
+
+        assertTrue(result is Result.Failure)
+        coVerify(exactly = 0) { analyticsDao.insertSnapshot(any()) }
     }
 
     @Test

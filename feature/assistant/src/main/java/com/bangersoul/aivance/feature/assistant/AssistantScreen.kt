@@ -232,13 +232,13 @@ private fun AssistantCopilotWorkspace(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MetricCard(
                     label = "Career Score",
-                    value = careerState.growth.careerScore.toString(),
+                    value = careerState.growth.careerScore?.toString() ?: "—",
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.TrendingUp
                 )
                 MetricCard(
                     label = "ATS Match",
-                    value = "${careerState.intelligence.atsScore}%",
+                    value = careerState.intelligence.atsScore?.let { "$it%" } ?: "—",
                     modifier = Modifier.weight(1f),
                     icon = Icons.Rounded.FactCheck
                 )

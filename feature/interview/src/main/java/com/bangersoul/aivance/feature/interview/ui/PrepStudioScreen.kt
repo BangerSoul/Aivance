@@ -38,6 +38,7 @@ fun PrepStudioScreen(
     interviewViewModel: InterviewViewModel,
     questionBankViewModel: QuestionBankViewModel = hiltViewModel(),
     learningViewModel: LearningHubViewModel = hiltViewModel(),
+    initialLearnSkill: String? = null,
     onBack: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -56,6 +57,14 @@ fun PrepStudioScreen(
         "Question Bank",
         "Learn"
     )
+
+    // Arriving from a dashboard skill-gap chip: jump straight to the Learn tab
+    // and let it request recommendations for the seeded skill.
+    LaunchedEffect(initialLearnSkill) {
+        if (!initialLearnSkill.isNullOrBlank()) {
+            selectedTab = 4
+        }
+    }
 
     AivanceWorkspaceScaffold(
         title = "Prep Studio",
@@ -83,7 +92,7 @@ fun PrepStudioScreen(
                 1 -> ResearchTab(interviewViewModel)
                 2 -> HistoryTab(interviewViewModel)
                 3 -> QuestionBankTab(questionBankViewModel)
-                4 -> LearnTab(learningViewModel)
+                4 -> LearnTab(learningViewModel, initialSkill = initialLearnSkill)
             }
         }
     }
@@ -148,7 +157,7 @@ private fun PracticeTab(viewModel: InterviewViewModel) {
 
 @Composable
 private fun PrepStudioHero(
-    readinessScore: Int,
+    readinessScore: Int?,
     upcomingInterview: com.bangersoul.aivance.core.common.model.UpcomingInterviewShort?,
     onQuickPractice: () -> Unit
 ) {
@@ -173,10 +182,11 @@ private fun PrepStudioHero(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ScoreGauge(score = readinessScore, size = 48.dp)
+                    // Not measured yet: an empty gauge and an em dash, never an invented score.
+                    ScoreGauge(score = readinessScore ?: 0, size = 48.dp)
                     Column {
                         Text("Readiness", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$readinessScore%", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text(readinessScore?.let { "$it%" } ?: "—", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -192,7 +202,11 @@ private fun PrepStudioHero(
                     }
                     Column {
                         Text("Practice", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${String.format("%.1f", readinessScore * 0.15)} hrs", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            readinessScore?.let { "${String.format("%.1f", it * 0.15)} hrs" } ?: "—",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
             }
@@ -796,9 +810,23 @@ private fun QuestionBankCard(
 }
 
 @Composable
-private fun LearnTab(viewModel: LearningHubViewModel) {
+private fun LearnTab(viewModel: LearningHubViewModel, initialSkill: String? = null) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var targetRole by remember { mutableStateOf("") }
+    var targetRole by remember { mutableStateOf(initialSkill.orEmpty()) }
+
+    // Seeded from a dashboard skill-gap chip: prefill and fetch recommendations
+    // once, so the user lands on results for the skill they lack.
+    LaunchedEffect(initialSkill) {
+        if (!initialSkill.isNullOrBlank()) {
+            targetRole = initialSkill
+            viewModel.onEvent(
+                LearningHubUiEvent.GetRecommendations(
+                    currentSkills = initialSkill,
+                    targetRole = initialSkill
+                )
+            )
+        }
+    }
 
     when (val state = uiState) {
         is LearningHubUiState.Idle, is LearningHubUiState.Loading -> {

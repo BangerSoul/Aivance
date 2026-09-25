@@ -101,7 +101,7 @@ private fun CareerHealthTab(
         // Hero Score & Predictions
         item {
             AivanceHeroCard(
-                title = "Hireability Score: ${intelligence.careerScore}",
+                title = "Hireability Score: ${intelligence.careerScore ?: "not scored yet"}",
                 description = intelligence.predictions.successExplanation,
                 actionLabel = "Boost Score",
                 onClick = onNavigateToIntelligence
@@ -248,7 +248,7 @@ private fun CareerSimulatorTab(
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             MetricCard(
                                 label = "Projected Score",
-                                value = displayIntel.careerScore.toString(),
+                                value = displayIntel.careerScore?.toString() ?: "—",
                                 modifier = Modifier.weight(1f)
                             )
                             MetricCard(

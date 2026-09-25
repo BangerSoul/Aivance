@@ -31,6 +31,7 @@ import com.bangersoul.aivance.feature.coverletter.CoverLetterScreen
 import com.bangersoul.aivance.feature.dashboard.DashboardScreen
 import com.bangersoul.aivance.feature.interview.InterviewViewModel
 import com.bangersoul.aivance.feature.interview.ui.PrepStudioScreen
+import com.bangersoul.aivance.feature.jobs.ApplyBrowserScreen
 import com.bangersoul.aivance.feature.jobs.CompanyDetailScreen
 import com.bangersoul.aivance.feature.jobs.CompanyDetailViewModel
 import com.bangersoul.aivance.feature.jobs.JobDetailsScreen
@@ -199,6 +200,7 @@ private fun AivanceWorkflowNavGraph(
 
                     destination is Destination.CoverLetter ||
                         destination is Destination.DiscoverBySkill ||
+                        destination is Destination.ApplyBrowser ||
                         destination is Destination.RecruiterDashboard -> Destination.Discovery
 
                     destination is Destination.LearnSkill -> Destination.PrepStudio
@@ -497,6 +499,7 @@ private fun ScreenContent(
             viewModel = hiltViewModel(),
             jobId = destination.jobId,
             onNavigateBack = onBack,
+            onNavigateToApplyBrowser = { onNavigate(Destination.ApplyBrowser(it)) },
             onNavigateToRecruiters = { onNavigate(Destination.RecruiterDashboard(it)) },
             onNavigateToCoverLetter = { jobId -> onNavigate(Destination.CoverLetter(jobId = jobId)) },
             onNavigateToPipeline = { onNavigate(Destination.Pipeline) },
@@ -511,6 +514,11 @@ private fun ScreenContent(
             onBack = onBack
         )
 
+        is Destination.ApplyBrowser -> ApplyBrowserScreen(
+            viewModel = hiltViewModel(),
+            jobId = destination.jobId,
+            onNavigateBack = onBack
+        )
 
         is Destination.CompanyDetail -> CompanyDetailScreen(
             viewModel = hiltViewModel<CompanyDetailViewModel>(),

@@ -158,6 +158,7 @@
     <string name="dest_ats">ATS Scanner</string>
     <string name="dest_cover_letter">Cover Letter</string>
     <string name="dest_job_details">Job Details</string>
+    <string name="dest_apply">Apply</string>
     <string name="dest_recruiter_discovery">Recruiter Discovery</string>
     <string name="dest_prep_studio">Prep Studio</string>
     <string name="dest_saved_jobs">Saved Jobs</string>

@@ -138,6 +138,16 @@ sealed interface Destination : NavKey {
         override val label = "Recruiter Discovery"
     }
 
+    /**
+     * In-app apply surface — hosts the real external apply page in a WebView
+     * alongside an AI suggestions panel (ATS score, cover letter, recruiter
+     * emails) so the user never has to leave the app to apply.
+     */
+    @Serializable
+    data class ApplyBrowser(val jobId: String) : Destination {
+        override val label = "Apply"
+    }
+
     @Serializable
     data object SavedJobs : Destination {
         override val label = "Saved Jobs"
@@ -226,6 +236,7 @@ fun Destination.isAuthenticatedDestination(): Boolean =
         this is Destination.ResumeDetail ||
         this is Destination.JobDetails ||
         this is Destination.RecruiterDashboard ||
+        this is Destination.ApplyBrowser ||
         this is Destination.Ats ||
         this is Destination.CoverLetter ||
         this is Destination.ResumeEngine ||
@@ -240,6 +251,7 @@ val Destination.icon: ImageVector?
         Destination.Auth,
         Destination.ProviderSetup,
         is Destination.JobDetails,
+        is Destination.ApplyBrowser,
         is Destination.CompanyDetail,
         is Destination.ResumeDetail -> null
 
@@ -278,6 +290,7 @@ val Destination.labelRes: Int
         is Destination.Ats -> R.string.dest_ats
         is Destination.CoverLetter -> R.string.dest_cover_letter
         is Destination.JobDetails -> R.string.dest_job_details
+        is Destination.ApplyBrowser -> R.string.dest_apply
         is Destination.RecruiterDashboard -> R.string.dest_recruiter_discovery
         Destination.SavedJobs -> R.string.dest_saved_jobs
         Destination.Pipeline, is Destination.TrackApplication -> R.string.dest_pipeline

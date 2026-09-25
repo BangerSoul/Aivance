@@ -10,6 +10,9 @@ interface UserPreferencesRepository {
     val userPreferences: Flow<UserPreferences>
     suspend fun updateGeminiApiKey(apiKey: String)
     suspend fun updateOnboardingCompleted(completed: Boolean)
+
+    /** Persists the explicit provider-optional choice made in onboarding (R2.2). */
+    suspend fun updateProviderOptional(optional: Boolean)
     suspend fun updateThemeConfig(themeConfig: ThemeConfig)
     suspend fun updateAccentSeed(accentSeed: String)
     suspend fun updateDynamicColor(enabled: Boolean)
@@ -47,6 +50,12 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override suspend fun updateOnboardingCompleted(completed: Boolean) {
         dataStore.updateData {
             it.copy(onboardingCompleted = completed)
+        }
+    }
+
+    override suspend fun updateProviderOptional(optional: Boolean) {
+        dataStore.updateData {
+            it.copy(providerOptional = optional)
         }
     }
 

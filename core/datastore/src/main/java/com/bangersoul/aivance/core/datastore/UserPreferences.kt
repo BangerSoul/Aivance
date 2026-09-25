@@ -5,6 +5,20 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UserPreferences(
     val onboardingCompleted: Boolean = false,
+
+    /**
+     * Deliberate provider-optional choice recorded by onboarding's "Continue
+     * without AI" (the former silent Skip All).
+     *
+     * This is a product contract, not an error state: job discovery works
+     * through free keyless providers (Arbeitnow/Jobicy/Adzuna/USAJobs) and the
+     * assistant has a deterministic local Copilot fallback
+     * ([com.bangersoul.aivance.core.domain.usecase.assistant.GetAssistantResponseUseCase]),
+     * so a user who explicitly declines AI must still be able to use the app.
+     * The central gate reads this only through that explicit choice — it is never
+     * inferred from a missing provider, and never written by auth completion.
+     */
+    val providerOptional: Boolean = false,
     val themeConfig: ThemeConfig = ThemeConfig.FOLLOW_SYSTEM,
     val accentSeed: String = "INDIGO",
     val dynamicColor: Boolean = true,

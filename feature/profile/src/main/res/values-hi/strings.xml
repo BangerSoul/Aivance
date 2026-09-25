@@ -124,8 +124,8 @@
     <string name="job_provider_desc">चुनें कि आप नौकरी लिस्टिंग और भर्तीकर्ता विवरण कहां से प्राप्त करना चाहते हैं।</string>
     <string name="enrichment_optional">एनरिचमेंट सेवा (वैकल्पिक)</string>
     <string name="enrichment_desc">सत्यापित भर्तीकर्ता संपर्क और कंपनी इंटेलिजेंस खोजें। आउटरीच के लिए अत्यधिक अनुशंसित।</string>
-    <string name="skip_all">सभी छोड़ें — मैं बाद में कॉन्फ़िगर करूंगा</string>
-    <string name="configure_later">आप बाद में सेटिंग्स में प्रदाता कॉन्फ़िगर कर सकते हैं।</string>
+    <string name="skip_all">AI प्रदाताओं के बिना जारी रखें</string>
+    <string name="configure_later">जॉब खोज मुफ़्त प्रदाताओं से काम करती रहेगी; असिस्टेंट अपने बिल्ट-इन फ़ॉलबैक का उपयोग करेगा। आप AI प्रदाता कभी भी सेटिंग्स में कॉन्फ़िगर कर सकते हैं।</string>
     <string name="validate_continue">सत्यापित करें और जारी रखें</string>
     <string name="all_set">सब तैयार है!</string>
     <string name="ai_engine">AI इंजन</string>

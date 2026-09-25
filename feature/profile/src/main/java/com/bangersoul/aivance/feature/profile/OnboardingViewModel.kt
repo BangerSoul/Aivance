@@ -82,8 +82,13 @@ sealed interface OnboardingUiState {
 sealed interface OnboardingUiEvent {
     data object Start : OnboardingUiEvent
 
-    /** Skip provider configuration entirely — providers can be set up later in Settings. */
-    data object SkipAll : OnboardingUiEvent
+    /**
+     * Explicit provider-optional choice (R2.2): job discovery keeps working
+     * through the free keyless providers and the assistant uses its local
+     * Copilot fallback; AI-dependent features surface their "needs a provider"
+     * states. Persisted and honoured by the central provider gate.
+     */
+    data object ContinueWithoutProviders : OnboardingUiEvent
     data class SelectAiProvider(val providerId: String) : OnboardingUiEvent
     data class UpdateAiConfig(val key: String, val value: String) : OnboardingUiEvent
     data object ValidateAiProvider : OnboardingUiEvent
@@ -103,6 +108,7 @@ sealed interface OnboardingUiEvent {
     data object SkipEnrichment : OnboardingUiEvent
 
     data object Finish : OnboardingUiEvent
+
     data object Back : OnboardingUiEvent
 }
 
@@ -196,7 +202,7 @@ class OnboardingViewModel @Inject constructor(
                         .map { it.metadata }
                 )
             }
-            OnboardingUiEvent.SkipAll -> skipAll()
+            OnboardingUiEvent.ContinueWithoutProviders -> acknowledgeProviderOptional()
             is OnboardingUiEvent.SelectAiProvider -> {
                 // Drafts are per-step, not per-provider: never leak the previous
                 // provider's key into a newly selected one's config screen.
@@ -274,6 +280,11 @@ class OnboardingViewModel @Inject constructor(
                         // Persist completion so a restart doesn't re-show onboarding, and the
                         // auth guard treats the user as onboarded.
                         userPreferencesRepository.updateOnboardingCompleted(true)
+                        // R2.2: exit the provider-optional mode the user may have
+                        // chosen earlier — reaching Finish means a provider was
+                        // actually configured and validated, which is a stronger
+                        // contract than the deliberate opt-out.
+                        userPreferencesRepository.updateProviderOptional(false)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -291,16 +302,23 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    private fun skipAll() {
+    /**
+     * R2.2: persisting the explicit provider-optional choice is what makes
+     * provider-free product entry legal under the central gate
+     * (AuthenticationViewModel.evaluateProviderGate). Completing the onboarding
+     * steps alone never does.
+     */
+    private fun acknowledgeProviderOptional() {
         viewModelScope.launch {
             try {
-                trackEventUseCase(TrackEventRequest(eventName = "onboarding_skip_all"))
+                trackEventUseCase(TrackEventRequest(eventName = "onboarding_provider_optional"))
+                userPreferencesRepository.updateProviderOptional(true)
                 userPreferencesRepository.updateOnboardingCompleted(true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Non-blocking: skipping must complete even if tracking hiccups.
-                android.util.Log.w("Onboarding", "Skip-all tracking failed", e)
+                // Non-blocking: the choice must complete even if tracking hiccups.
+                android.util.Log.w("Onboarding", "Provider-optional persistence failed", e)
             } finally {
                 _uiState.value = OnboardingUiState.Complete
             }

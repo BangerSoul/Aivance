@@ -66,8 +66,7 @@ fun OnboardingScreen(
                 title = stringResource(R.string.choose_ai_provider),
                 description = stringResource(R.string.ai_provider_desc),
                 providers = state.providers,
-                onSelect = { viewModel.onEvent(OnboardingUiEvent.SelectAiProvider(it)) },
-                onSkipAll = { viewModel.onEvent(OnboardingUiEvent.SkipAll) }
+                onSelect = { viewModel.onEvent(OnboardingUiEvent.SelectAiProvider(it)) },                onSkipAll = { viewModel.onEvent(OnboardingUiEvent.ContinueWithoutProviders) }
             )
 
             is OnboardingUiState.ConfigureAiProvider -> ProviderConfigStep(
@@ -92,10 +91,9 @@ fun OnboardingScreen(
                 title = stringResource(R.string.choose_job_provider),
                 description = stringResource(R.string.job_provider_desc),
                 providers = state.providers,
-                onSelect = { viewModel.onEvent(OnboardingUiEvent.SelectJobProvider(it)) },
-                onSkipAll = { viewModel.onEvent(OnboardingUiEvent.SkipAll) }
+                onSelect = { viewModel.onEvent(OnboardingUiEvent.SelectJobProvider(it)) },                onSkipAll = { viewModel.onEvent(OnboardingUiEvent.ContinueWithoutProviders) }
             )
-
+
             is OnboardingUiState.ConfigureJobProvider -> ProviderConfigStep(
                 title = "Configure ${state.provider.name}",
                 provider = state.provider,

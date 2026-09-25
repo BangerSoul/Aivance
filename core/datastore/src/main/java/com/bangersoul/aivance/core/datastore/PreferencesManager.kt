@@ -80,6 +80,13 @@ class PreferencesManager @Inject constructor(
         return dataStore.data.first()[stringPreferencesKey(key)] ?: default
     }
 
+    /** Live variant of [getString] — re-emits whenever the value changes. */
+    fun getStringFlow(key: String, default: String): Flow<String> {
+        return dataStore.data.map { prefs ->
+            prefs[stringPreferencesKey(key)] ?: default
+        }
+    }
+
     suspend fun putString(key: String, value: String) {
         dataStore.edit { prefs ->
             prefs[stringPreferencesKey(key)] = value

@@ -193,11 +193,11 @@ combine(CareerStateEngine.state, _insightsRefresh)
 | Active Apps | `state.pipeline.activeApplications` (status == ACTIVE) | ✅ | Room `applications` | 0 `RT` |
 | **Saved Jobs** | `state.discovery.savedJobsCount` = `applications.count { currentStageId == "SAVED" }` | ⚠️ **wrong table** | derived | 0 `RT` |
 | next interview | `pipeline.upcomingInterviews.first().dateTime` ← **`application.dateApplied`** | ⚠️ **mislabeled** | derived | — |
-| AI Tip | `state.recommendations.first().title` | ✅ | Room `recommendations` | absent at zero data |
+| AI Tip | `state.recommendations.first().title` → `aiRecommendation = "AI Tip: <title>"` | ✅ real, nullable | Room `recommendations` (written only by AI-backed `RecommendationEngine` via weekly `AnalyticsSnapshotWorker`) | **null at zero data → hero shows static "The next step in your career journey."** (verified `RT` 2026-09-25) |
 | Next Best Action | `NavigationWorkflowEngine.getRecommendedDestination(state)` | ✅ | computed | rendered `RT` |
 | Career Graph / Skill Match | `GetCareerGraphInsightsUseCase` → `analyzeSkillGaps` | ⚠️ **degenerate at zero data** | Room `graph_nodes/edges` | **`100%` + "You demonstrate every skill your target jobs ask for 🎯"** `RT` |
-| `agentMissions` (3 hardcoded) | literal constants: "Global Job Scan", "Resume Optimization", "Interview Prep" | ❌ **fabricated** | no | **never rendered** |
-| `activeTask` ("Scraping LinkedIn for Senior Android roles…") | literal constant | ❌ **fabricated** | no | **never rendered** |
+| ~~`agentMissions` (3 hardcoded)~~ | **REMOVED** (commit 6b98396) — was fabricated, never rendered | — | — | — |
+| ~~`activeTask`~~ | **REMOVED** (commit 6b98396) — was fabricated, never rendered | — | — | — |
 
 `RT` dashboard traversal captured exactly: `ATS Score 0`, `Career Score 18`, `Active Apps 0`, `Saved Jobs 0`, `Building`, `Skill Match 100%`, `0 of 0 target-job skills demonstrated`.
 

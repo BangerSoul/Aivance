@@ -116,6 +116,7 @@ projection (CareerStateEngine) remain separate.
 | Interview Readiness | `InterviewReadinessCalculator` | derived | single owner; analytics + Prep Studio both call it |
 | Saved jobs count | `JobRepository.getSavedJobs()` | Room `saved_jobs` | not the SAVED application stage |
 | Upcoming interviews | interview sessions (`!isCompleted`) | Room interview tables | not `application.dateApplied` |
+| AI recommendation (Dashboard hero) | `RecommendationEngine` (AI-provider-backed), persisted by weekly `AnalyticsSnapshotWorker` | Room `recommendations` table | nullable; empty table → null tip, hero falls back to a static non-claiming string |
 
 ## 5. What stays isolated (dormant V2)
 

@@ -41,6 +41,7 @@ fun DashboardScreen(
     onNavigateToJobs: () -> Unit = {},
     onNavigateToAssistant: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToProviderSetup: () -> Unit = {},
     onDiscoverBySkill: (String) -> Unit = {},
     onLearnSkill: (String) -> Unit = {}
 ) {
@@ -87,7 +88,9 @@ fun DashboardScreen(
                     "resume_import" -> onNavigateToResume()
                     "job_search" -> onNavigateToJobs()
                     "prep_studio" -> onNavigateToInterview()
-                    "provider_setup" -> onNavigateToAssistant()
+                    // The lifecycle engine's onboarding intent targets provider
+                    // setup — the assistant is not a remediation surface.
+                    "provider_setup" -> onNavigateToProviderSetup()
                     "ats_scanner" -> onNavigateToResume()
                 }
             }
@@ -115,12 +118,13 @@ internal fun DashboardContent(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // 1. Next Best Action (Hero Card)
+        // 1. Next Best Action (Hero Card) — no invented copy: the description
+        // shows only what the engine actually produced.
         (state.nextBestAction as? com.bangersoul.aivance.core.domain.engine.NavigationIntent.Action)?.let { action ->
             item {
                 AivanceHeroCard(
                     title = action.label,
-                    description = state.aiRecommendation ?: "The next step in your career journey.",
+                    description = state.aiRecommendation.orEmpty(),
                     actionLabel = action.label,
                     onClick = { onActionClick(action.route) }
                 )
@@ -173,7 +177,6 @@ internal fun DashboardContent(
                 onResume = onNavigateToResume,
                 onJobs = onNavigateToJobs,
                 onInterview = onNavigateToInterview,
-                onAssistant = onNavigateToAssistant,
                 onTracker = onNavigateToTracker,
                 onAnalytics = onNavigateToAnalytics
             )
@@ -565,7 +568,6 @@ private fun QuickActionsGrid(
     onResume: () -> Unit,
     onJobs: () -> Unit,
     onInterview: () -> Unit,
-    onAssistant: () -> Unit,
     onTracker: () -> Unit,
     onAnalytics: () -> Unit
 ) {
@@ -595,29 +597,20 @@ private fun QuickActionsGrid(
                 modifier = Modifier.weight(1f)
             )
             QuickActionTile(
-                label = stringResource(R.string.dash_action_assistant),
-                icon = Icons.Rounded.SmartToy,
-                tint = AivanceTheme.colors.success,
-                onClick = onAssistant,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            QuickActionTile(
                 label = stringResource(R.string.dash_action_pipeline),
                 icon = Icons.Rounded.ViewKanban,
                 tint = MaterialTheme.colorScheme.primary,
                 onClick = onTracker,
                 modifier = Modifier.weight(1f)
             )
-            QuickActionTile(
-                label = stringResource(R.string.dash_action_insights),
-                icon = Icons.Rounded.BarChart,
-                tint = MaterialTheme.colorScheme.secondary,
-                onClick = onAnalytics,
-                modifier = Modifier.weight(1f)
-            )
         }
+        QuickActionTile(
+            label = stringResource(R.string.dash_action_insights),
+            icon = Icons.Rounded.BarChart,
+            tint = MaterialTheme.colorScheme.secondary,
+            onClick = onAnalytics,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

@@ -137,6 +137,30 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `aiRecommendation is the first persisted recommendation and null when there are none`() =
+        runTest(testDispatcher) {
+            // The recommendations list is the sole source: it is loaded from the
+            // `recommendations` Room table via AnalyticsRepository.getActiveRecommendations,
+            // populated only by RecommendationEngine (an AI-provider-backed generator run by
+            // the weekly AnalyticsSnapshotWorker). A zero-data / no-provider user therefore has
+            // an empty table, and aiRecommendation must be null rather than a hardcoded string.
+            every { mockStateEngine.state } returns MutableStateFlow(
+                sampleCareerState().copy(recommendations = emptyList())
+            )
+            viewModel = createViewModel()
+
+            viewModel.uiState.test {
+                skipItems(1)
+                val state = awaitItem()
+                assertNull(
+                    "empty recommendations must not become a fabricated AI tip",
+                    state.aiRecommendation
+                )
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
     fun `surfaces career graph skill-gap insights when the reader returns them`() = runTest(testDispatcher) {
         coEvery { mockGraphInsights.invoke() } returns CareerGraphInsights(
             hasGraph = true,

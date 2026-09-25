@@ -2,6 +2,7 @@ package com.bangersoul.aivance.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
@@ -9,6 +10,12 @@ import kotlinx.serialization.Serializable
 
 /**
  * All navigation destinations in the application.
+ *
+ * Layers:
+ *  1. Gate — splash, welcome, auth, provider remediation (no tab bar)
+ *  2. Workspaces — the five primary tabs, one independent backstack each
+ *  3. Spokes — detail screens that live on a workspace backstack
+ *  4. System — settings surfaces reachable from the Identity Hub
  */
 @Serializable
 sealed interface Destination : NavKey {
@@ -32,12 +39,11 @@ sealed interface Destination : NavKey {
         override val label = "Sign In"
     }
 
-    @Serializable
-    data object Onboarding : Destination {
-        override val label = "Onboarding"
-    }
-
-    /** Provider configuration flow — reachable from first launch AND Identity Hub. */
+    /**
+     * Provider configuration flow — the single onboarding surface. Reachable
+     * from first launch AND as mid-session remediation when the provider
+     * contract becomes unconfigured/invalid.
+     */
     @Serializable
     data object ProviderSetup : Destination {
         override val label = "Provider Setup"
@@ -128,11 +134,6 @@ sealed interface Destination : NavKey {
     }
 
     @Serializable
-    data object JobComparison : Destination {
-        override val label = "Job Comparison"
-    }
-
-    @Serializable
     data class RecruiterDashboard(val jobId: String) : Destination {
         override val label = "Recruiter Discovery"
     }
@@ -207,11 +208,11 @@ sealed interface Destination : NavKey {
             Dashboard, Intelligence, Discovery, Pipeline, PrepStudio,
             Assistant, Analytics, IdentityHub, About,
             ProviderManagement, Notifications, PrivacyCenter, Appearance,
-            SavedJobs, JobComparison
+            SavedJobs
         )
 
         val authDestinations = setOf(
-            Splash, Welcome, Auth, Onboarding, ProviderSetup
+            Splash, Welcome, Auth, ProviderSetup
         )
     }
 }
@@ -234,33 +235,29 @@ fun Destination.isAuthenticatedDestination(): Boolean =
 
 val Destination.icon: ImageVector?
     get() = when (this) {
-        Destination.Splash -> null
-        Destination.Welcome -> null
-        Destination.Onboarding -> null
-        Destination.Dashboard -> Icons.Rounded.GridView
+        Destination.Splash,
+        Destination.Welcome,
+        Destination.Auth,
+        Destination.ProviderSetup,
+        is Destination.JobDetails,
+        is Destination.CompanyDetail,
+        is Destination.ResumeDetail -> null
+
+        Destination.Dashboard -> Icons.Outlined.GridView
         Destination.Assistant -> Icons.Rounded.AutoAwesome
-        Destination.Intelligence, is Destination.ResumeEngine -> Icons.Rounded.Description
-        Destination.Discovery -> Icons.Rounded.WorkOutline
-        Destination.IdentityHub -> Icons.Rounded.PersonOutline
-        is Destination.Ats -> Icons.Rounded.Assessment
-        is Destination.CoverLetter -> Icons.Rounded.Assignment
-        is Destination.JobDetails -> null
+        Destination.Intelligence, is Destination.ResumeEngine -> Icons.Outlined.Description
+        Destination.Discovery, is Destination.DiscoverBySkill -> Icons.Outlined.WorkOutline
+        Destination.IdentityHub -> Icons.Outlined.PersonOutline
+        is Destination.Ats -> Icons.Outlined.Assessment
+        is Destination.CoverLetter -> Icons.Outlined.Assignment
         is Destination.RecruiterDashboard -> Icons.Rounded.PersonSearch
         Destination.SavedJobs -> Icons.Rounded.BookmarkBorder
-        is Destination.TrackApplication -> Icons.Rounded.ViewKanban
-        is Destination.DiscoverBySkill -> Icons.Rounded.WorkOutline
-        is Destination.LearnSkill -> Icons.Rounded.School
+        Destination.Pipeline, is Destination.TrackApplication -> Icons.Outlined.ViewKanban
+        is Destination.LearnSkill, Destination.PrepStudio -> Icons.Outlined.School
         Destination.Appearance -> Icons.Rounded.Palette
         Destination.ProviderManagement -> Icons.Rounded.Tune
         Destination.Notifications -> Icons.Rounded.Notifications
         Destination.PrivacyCenter -> Icons.Rounded.PrivacyTip
-        Destination.Auth -> null
-        Destination.ProviderSetup -> null
-        Destination.PrepStudio -> Icons.Rounded.School
-        Destination.Pipeline -> Icons.Rounded.ViewKanban
-        is Destination.CompanyDetail -> null
-        is Destination.ResumeDetail -> null
-        Destination.JobComparison -> Icons.Rounded.Compare
         Destination.Analytics -> Icons.Rounded.BarChart
         Destination.About -> Icons.Rounded.Info
         Destination.Resources -> Icons.Rounded.MenuBook
@@ -273,31 +270,26 @@ val Destination.labelRes: Int
     @StringRes get() = when (this) {
         Destination.Splash -> R.string.dest_splash
         Destination.Welcome -> R.string.dest_welcome
-        Destination.Onboarding -> R.string.dest_onboarding
         Destination.Dashboard -> R.string.dest_dashboard
         Destination.Assistant -> R.string.dest_assistant
         Destination.Intelligence, is Destination.ResumeEngine -> R.string.dest_intelligence
-        Destination.Discovery -> R.string.dest_discovery
+        Destination.Discovery, is Destination.DiscoverBySkill -> R.string.dest_discovery
         Destination.IdentityHub -> R.string.dest_profile
         is Destination.Ats -> R.string.dest_ats
         is Destination.CoverLetter -> R.string.dest_cover_letter
         is Destination.JobDetails -> R.string.dest_job_details
         is Destination.RecruiterDashboard -> R.string.dest_recruiter_discovery
         Destination.SavedJobs -> R.string.dest_saved_jobs
-        is Destination.TrackApplication -> R.string.dest_pipeline
-        is Destination.DiscoverBySkill -> R.string.dest_discovery
-        is Destination.LearnSkill -> R.string.dest_prep_studio
+        Destination.Pipeline, is Destination.TrackApplication -> R.string.dest_pipeline
+        is Destination.LearnSkill, Destination.PrepStudio -> R.string.dest_prep_studio
         Destination.Appearance -> R.string.dest_appearance
         Destination.ProviderManagement -> R.string.dest_providers
         Destination.Notifications -> R.string.dest_notifications
         Destination.PrivacyCenter -> R.string.dest_privacy
         Destination.Auth -> R.string.dest_sign_in
         Destination.ProviderSetup -> R.string.dest_provider_setup
-        Destination.PrepStudio -> R.string.dest_prep_studio
-        Destination.Pipeline -> R.string.dest_pipeline
         is Destination.CompanyDetail -> R.string.dest_company
         is Destination.ResumeDetail -> R.string.dest_resume_detail
-        Destination.JobComparison -> R.string.dest_job_comparison
         Destination.Analytics -> R.string.dest_analytics
         Destination.About -> R.string.dest_about
         Destination.Resources -> R.string.dest_resources

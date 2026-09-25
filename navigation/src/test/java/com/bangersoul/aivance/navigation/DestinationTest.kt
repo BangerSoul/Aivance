@@ -38,6 +38,12 @@ class DestinationTest {
     }
 
     @Test
+    fun `provider setup is not an authenticated workspace destination`() {
+        // ProviderSetup is the gate's remediation surface, never a workspace.
+        assertFalse(Destination.ProviderSetup.isAuthenticatedDestination())
+    }
+
+    @Test
     fun `auth graph destinations are not authenticated and have no icon`() {
         Destination.authDestinations.forEach { dest ->
             assertFalse("${dest.label} must not be authenticated", dest.isAuthenticatedDestination())
@@ -103,6 +109,13 @@ class DestinationTest {
         assertEquals(42L, Destination.Ats(reportId = 42L).reportId)
         assertEquals("JD", Destination.Ats(jobDescription = "JD", reportId = 42L).jobDescription)
         assertEquals(42L, Destination.Ats(jobDescription = "JD", reportId = 42L).reportId)
+    }
+
+    @Test
+    fun `provider setup is the single onboarding gate`() {
+        // Onboarding was removed as a separate destination — ProviderSetup is
+        // the only onboarding/provider-remediation surface.
+        assertEquals("Provider Setup", Destination.ProviderSetup.label)
     }
 
     @Test

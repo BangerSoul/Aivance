@@ -182,7 +182,9 @@ private fun PipelineContent(
         Column(modifier = Modifier.padding(16.dp)) {
             AivanceHeroCard(
                 title = "Pipeline Performance",
-                description = "You have ${metrics.activeCount} active applications. Your interview conversion is ${metrics.interviewRate}%.",
+                description = metrics.interviewRate?.let {
+                    "You have ${metrics.activeCount} active applications. Your interview conversion is $it%."
+                } ?: "You have ${metrics.activeCount} active applications. Apply to a role to start tracking your interview conversion.",
                 actionLabel = "View Analytics",
                 onClick = onNavigateToAnalytics
             )

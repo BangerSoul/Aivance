@@ -5,6 +5,7 @@ import com.bangersoul.aivance.core.common.model.Application
 import com.bangersoul.aivance.core.common.model.ApplicationStage
 import com.bangersoul.aivance.core.common.model.CareerState
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.analytics.KPIEngine
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.AnalyticsRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationPreferencesRepository
@@ -28,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -55,7 +57,7 @@ class TrackerViewModelTest {
         )
         return TrackerViewModel(
             mockRepository, workflowEngine, mockCareerStateEngine, mockTrackEvent, mockJobRepository,
-            mockApplicationPreferences
+            mockApplicationPreferences, KPIEngine()
         )
     }
 
@@ -108,6 +110,35 @@ class TrackerViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is TrackerUiState.Success)
         assertEquals(0, (state as TrackerUiState.Success).applications.size)
+    }
+
+    @Test
+    fun `pipeline metrics report null conversion when nothing applied`() = runTest {
+        // Only a bookmarked (SAVED) job: the interview/offer ratios are 0/0 and must be null
+        // so the UI renders "not enough data" instead of a fabricated 0% conversion (R2).
+        coEvery { mockRepository.getApplications() } returns flowOf(Result.Success(listOf(sampleApp("SAVED"))))
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertNull(state.pipelineMetrics.interviewRate)
+        assertNull(state.pipelineMetrics.offerRate)
+    }
+
+    @Test
+    fun `pipeline metrics compute conversion over applied applications`() = runTest {
+        coEvery { mockRepository.getApplications() } returns flowOf(
+            Result.Success(listOf(sampleApp("APPLIED"), sampleApp("INTERVIEW")))
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        // 1 of 2 applied reached the interview stage.
+        assertEquals(50, state.pipelineMetrics.interviewRate)
+        assertEquals(0, state.pipelineMetrics.offerRate)
     }
 
     @Test

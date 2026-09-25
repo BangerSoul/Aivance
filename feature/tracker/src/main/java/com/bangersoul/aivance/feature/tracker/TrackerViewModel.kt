@@ -7,6 +7,7 @@ import com.bangersoul.aivance.core.common.model.ApplicationStage
 import com.bangersoul.aivance.core.common.model.CareerState
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.analytics.KPIEngine
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.ApplicationPreferencesRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
@@ -41,8 +42,10 @@ sealed interface TrackerUiState {
 
 data class PipelineMetrics(
     val activeCount: Int = 0,
-    val interviewRate: Int = 0,
-    val offerRate: Int = 0
+    /** Interview conversion (0..100), or `null` when nothing has been applied yet (0/0). */
+    val interviewRate: Int? = null,
+    /** Offer conversion (0..100), or `null` when nothing has been applied yet (0/0). */
+    val offerRate: Int? = null
 )
 
 sealed interface TrackerUiEvent {
@@ -69,7 +72,8 @@ class TrackerViewModel @Inject constructor(
     private val careerStateEngine: CareerStateEngine,
     private val trackEventUseCase: TrackEventUseCase,
     private val jobRepository: JobRepository,
-    private val applicationPreferencesRepository: ApplicationPreferencesRepository
+    private val applicationPreferencesRepository: ApplicationPreferencesRepository,
+    private val kpiEngine: KPIEngine
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TrackerUiState>(TrackerUiState.Loading)
@@ -122,13 +126,12 @@ class TrackerViewModel @Inject constructor(
 
     private fun calculateMetrics(apps: List<Application>): PipelineMetrics {
         val active = apps.filter { it.status == "ACTIVE" }
-        val interviewCount = apps.count { it.currentStageId.contains("INTERVIEW", ignoreCase = true) }
-        val offerCount = apps.count { it.currentStageId.contains("OFFER", ignoreCase = true) }
-
+        // KPIEngine is the single owner of conversion ratios (R4): it returns `null` for the
+        // undefined 0/0 case so the UI renders "not enough data" instead of a fake 0%.
         return PipelineMetrics(
             activeCount = active.size,
-            interviewRate = if (apps.isNotEmpty()) (interviewCount * 100 / apps.size) else 0,
-            offerRate = if (apps.isNotEmpty()) (offerCount * 100 / apps.size) else 0
+            interviewRate = kpiEngine.calculateInterviewRate(apps)?.toInt(),
+            offerRate = kpiEngine.calculateOfferRate(apps)?.toInt()
         )
     }
 

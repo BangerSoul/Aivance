@@ -29,6 +29,8 @@ class CareerIntelligenceEngine @Inject constructor(
         val dimensions = breakdown.dimensions
         val overallScore = breakdown.overall
 
+        // `null` when nothing has been applied yet (0/0) — the offer forecast then rests on
+        // readiness alone instead of treating an undefined ratio as a measured 0%.
         val interviewRate = kpiEngine.calculateInterviewRate(applications)
 
         val interviewProb = calculateInterviewProbability(latestAtsReports.firstOrNull(), recruiters.size)
@@ -72,8 +74,8 @@ class CareerIntelligenceEngine @Inject constructor(
         return (atsWeight + networkingWeight).toInt().coerceIn(0, 100)
     }
 
-    private fun calculateOfferProbability(readiness: Int?, interviewRate: Double): Int {
-        return (((readiness ?: 0) * 0.6) + (interviewRate * 0.4)).toInt().coerceIn(0, 100)
+    private fun calculateOfferProbability(readiness: Int?, interviewRate: Double?): Int {
+        return (((readiness ?: 0) * 0.6) + ((interviewRate ?: 0.0) * 0.4)).toInt().coerceIn(0, 100)
     }
 
     private fun generateExplanation(overall: Int?, intProb: Int, offerProb: Int): String {

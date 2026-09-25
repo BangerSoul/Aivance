@@ -97,6 +97,8 @@ class AnalyticsRepositoryImpl @Inject constructor(
         val readiness = interviewReadinessCalculator.calculate(sessions)
         val recruiters = collectRecruiters(apps)
 
+        // `null` when nothing has been applied yet (0/0). The KPI is only recorded when it was
+        // actually measurable, so the Trends chart never plots an undefined ratio as 0%.
         val interviewRate = kpiEngine.calculateInterviewRate(apps)
         val scoreBreakdown = scoreEngine.calculateCompositeScore(reports, recruiters, apps.size, readiness)
         val overall = scoreBreakdown.overall
@@ -106,7 +108,7 @@ class AnalyticsRepositoryImpl @Inject constructor(
             )
 
         val snapshot = AnalyticsSnapshot(
-            kpis = mapOf("interview_rate" to interviewRate),
+            kpis = interviewRate?.let { mapOf("interview_rate" to it) } ?: emptyMap(),
             careerScore = overall,
             // The composite is recorded alongside its inputs so the Trends chart keeps the
             // same shape it had before the dimensions became evidence-gated.

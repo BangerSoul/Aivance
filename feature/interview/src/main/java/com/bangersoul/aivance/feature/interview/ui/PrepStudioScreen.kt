@@ -39,7 +39,7 @@ fun PrepStudioScreen(
     questionBankViewModel: QuestionBankViewModel = hiltViewModel(),
     learningViewModel: LearningHubViewModel = hiltViewModel(),
     initialLearnSkill: String? = null,
-    onBack: () -> Unit = {}
+    onBack: (() -> Unit)? = null
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -73,8 +73,11 @@ fun PrepStudioScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            TabRow(
+            // Scrollable: five domain tabs must never wrap mid-label at
+            // narrow widths (fixed TabRow wrapped "Question Bank" on Inter).
+            ScrollableTabRow(
                 selectedTabIndex = selectedTab,
+                edgePadding = 0.dp,
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.primary,
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }

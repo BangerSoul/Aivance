@@ -31,7 +31,7 @@ fun IntelligenceHubScreen(
     viewModel: IntelligenceHubViewModel,
     onNavigateToEngine: () -> Unit,
     onNavigateToAts: (Long) -> Unit,
-    onBack: () -> Unit
+    onBack: (() -> Unit)?
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var pendingDelete by remember { mutableStateOf<AtsScanItem?>(null) }

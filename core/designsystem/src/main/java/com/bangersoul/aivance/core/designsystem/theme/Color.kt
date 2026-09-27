@@ -185,6 +185,41 @@ object AccentPalettes {
     }
 }
 
+/**
+ * Kit B — Aurora Glass dark scheme. Cool blue-slate neutrals replace zinc so
+ * glass panels carry hue; primary is the teal aurora end with a deep-slate
+ * onPrimary (≥ 4.5:1 on both teal and indigo accents).
+ */
+fun buildAuroraDarkScheme(amoled: Boolean = false) = darkColorScheme(
+    primary = AuroraColors.accentTeal,
+    onPrimary = AuroraColors.onAccent,
+    primaryContainer = Color(0xFF0E4F4A),
+    onPrimaryContainer = Color(0xFFB8F1EA),
+    secondary = AuroraColors.accentIndigo,
+    onSecondary = Color(0xFF10143A),
+    secondaryContainer = Color(0xFF343E7A),
+    onSecondaryContainer = Color(0xFFE0E7FF),
+    tertiary = Color(0xFF38BDF8),
+    onTertiary = Color(0xFF082F49),
+    tertiaryContainer = Color(0xFF0C4A6E),
+    onTertiaryContainer = Color(0xFFE0F2FE),
+    background = if (amoled) Color.Black else AuroraColors.bg,
+    onBackground = AuroraColors.textPrimary,
+    surface = if (amoled) Color.Black else AuroraColors.surface,
+    onSurface = AuroraColors.textPrimary,
+    surfaceVariant = if (amoled) AuroraColors.surface else AuroraColors.surfaceHigh,
+    onSurfaceVariant = AuroraColors.textSecondary,
+    surfaceContainer = if (amoled) Color(0xFF0A0E1A) else AuroraColors.surface,
+    surfaceContainerHigh = AuroraColors.surfaceHigh,
+    surfaceContainerHighest = AuroraColors.surfaceHighest,
+    outline = AuroraColors.stroke,
+    outlineVariant = AuroraColors.strokeSoft,
+    error = AuroraColors.error,
+    onError = Color(0xFF2B0708),
+    errorContainer = Color(0xFF7F1D1D),
+    onErrorContainer = Color(0xFFFECACA)
+)
+
 // ─────────────────────────────────────────────────────────────
 // Semantic extended colors (success / warning / info)
 // ─────────────────────────────────────────────────────────────

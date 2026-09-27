@@ -36,6 +36,7 @@ fun AivanceTheme(
     dynamicColor: Boolean = true,
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     accentSeed: AccentSeed = AccentSeed.INDIGO,
+    designKit: DesignKit = DesignKit.AURORA_GLASS,
     content: @Composable () -> Unit
 ) {
     val isDark = when (themeMode) {
@@ -49,6 +50,9 @@ fun AivanceTheme(
     val accent = if (isDark) AccentPalettes.dark(accentSeed) else AccentPalettes.light(accentSeed)
 
     val colorScheme = when {
+        // Aurora is a self-contained glass language: Material You recoloring
+        // would dissolve the kit's hue system, so dynamic color is bypassed.
+        designKit == DesignKit.AURORA_GLASS -> buildAuroraDarkScheme(amoled = isAmoled)
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && themeMode != ThemeMode.AMOLED -> {
             val context = LocalContext.current
             if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -57,17 +61,23 @@ fun AivanceTheme(
         else -> buildAccentLightScheme(accent)
     }
 
-    val extendedColors = extendedColorsFor(isDark).copy(
-        accent = accent.primary,
-        onAccent = accent.onPrimary
-    )
+    val extendedColors = extendedColorsFor(isDark).let {
+        if (designKit == DesignKit.AURORA_GLASS) {
+            it.copy(accent = AuroraColors.accentTeal, onAccent = AuroraColors.onAccent)
+        } else {
+            it.copy(accent = accent.primary, onAccent = accent.onPrimary)
+        }
+    }
+
+    val kitTokens = AivanceDesignTokens.forKit(designKit)
 
     CompositionLocalProvider(
         LocalAivanceSpacing provides AivanceSpacing(),
-        LocalAivanceShapes provides AivanceShapes(),
+        LocalAivanceShapes provides kitTokens.shapes,
         LocalAivanceMotion provides AivanceMotion(),
         LocalAivanceElevation provides AivanceElevation(),
         LocalAivanceExtendedColors provides extendedColors,
+        LocalDesignTokens provides kitTokens,
         LocalThemeMode provides themeMode
     ) {
         MaterialTheme(
@@ -111,4 +121,10 @@ object AivanceTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalThemeMode.current
+
+    /** Kit-expressive structural tokens of the active design language. */
+    val designTokens: AivanceDesignTokens
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalDesignTokens.current
 }

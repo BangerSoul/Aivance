@@ -16,11 +16,14 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.bangersoul.aivance.core.common.model.AssistantJobContext
+import com.bangersoul.aivance.core.designsystem.icon.AiOrbIcon
+import com.bangersoul.aivance.core.designsystem.icon.IconVariant
 import com.bangersoul.aivance.core.designsystem.shell.LocalAppShellState
 import com.bangersoul.aivance.feature.analytics.AnalyticsScreen
 import com.bangersoul.aivance.feature.analytics.AnalyticsViewModel
@@ -130,14 +133,32 @@ private fun AivanceWorkflowNavGraph(
 
     // ── Backstacks ──────────────────────────────────────────────────────────
 
+    // One backstack per workspace destination. The four N1 tabs own their own;
+    // the legacy Intelligence/PrepStudio roots alias onto Studio's backstack
+    // so deep links seed the Studio host instead of forking a fifth backstack.
     val backstacks = Destination.rootDestinations.associateWith { root ->
         @Suppress("UNCHECKED_CAST")
         rememberNavBackStack(root) as NavBackStack<Destination>
     }
 
+    // Segment seeded whenever Studio is entered through a legacy entry point
+    // (Intelligence → Resumes, PrepStudio / LearnSkill → Practice).
+    var studioSegmentSeed by remember { mutableStateOf(StudioSegment.RESUMES) }
+    fun seedStudioFor(destination: Destination) {
+        when (destination) {
+            Destination.PrepStudio, is Destination.LearnSkill -> studioSegmentSeed = StudioSegment.PRACTICE
+            Destination.Intelligence -> studioSegmentSeed = StudioSegment.RESUMES
+            else -> Unit
+        }
+    }
+
     val authBackstack = rememberNavBackStack(
         if (initialDestination in Destination.authDestinations) initialDestination else Destination.Splash
     ) as NavBackStack<Destination>
+
+    // The AI orb owns a dedicated backstack so assistant conversations survive
+    // workspace switches without polluting a workspace's history.
+    val orbBackstack = rememberNavBackStack(Destination.Assistant) as NavBackStack<Destination>
 
     // When a settled gate denies entry while the user is signed in (provider
     // removed/invalidated mid-session, or the persisted contract changed), the
@@ -161,7 +182,10 @@ private fun AivanceWorkflowNavGraph(
     // entry. A signed-in user whose configuration became invalid is held on the
     // auth backstack (provider setup) even though `isAuthed` is true.
     val currentBackstack = if (isAuthed && productEntryAllowed) {
-        backstacks[activeWorkspace] ?: backstacks[Destination.Dashboard]!!
+        when {
+            activeWorkspace == Destination.AssistantOrb -> orbBackstack
+            else -> backstacks[Destination.workspaceKey(activeWorkspace)] ?: backstacks[Destination.Dashboard]!!
+        }
     } else {
         authBackstack
     }
@@ -181,12 +205,21 @@ private fun AivanceWorkflowNavGraph(
             destination.isAuthenticatedDestination() && !productEntryAllowed ->
                 authBackstack.add(Destination.ProviderSetup)
 
-            // Tab destinations switch workspaces instead of pushing.
-            destination in Destination.rootDestinations ->
-                activeWorkspace = destination
+            // Tab destinations switch workspaces instead of pushing. Legacy
+            // workspace roots (Intelligence/PrepStudio) activate the Studio
+            // workspace and seed its matching segment.
+            destination in Destination.workspaceDestinations -> {
+                seedStudioFor(destination)
+                activeWorkspace = Destination.workspaceKey(destination)
+            }
 
             destination in Destination.authDestinations ->
                 authBackstack.add(destination)
+
+            // The assistant has a home now — navigate to the orb workspace
+            // instead of pushing a duplicate instance onto a workspace stack.
+            destination == Destination.Assistant || destination == Destination.AssistantOrb ->
+                activeWorkspace = Destination.AssistantOrb
 
             else -> {
                 // Detail destinations belong to the workspace that owns them;
@@ -196,19 +229,23 @@ private fun AivanceWorkflowNavGraph(
                     destination is Destination.Ats ||
                         destination is Destination.ResumeDetail ||
                         destination is Destination.ResumeEngine ||
-                        destination == Destination.Intelligence -> Destination.Intelligence
+                        destination == Destination.Intelligence ||
+                        destination == Destination.Studio -> Destination.Studio
 
                     destination is Destination.CoverLetter ||
                         destination is Destination.DiscoverBySkill ||
                         destination is Destination.ApplyBrowser ||
                         destination is Destination.RecruiterDashboard -> Destination.Discovery
 
-                    destination is Destination.LearnSkill -> Destination.PrepStudio
+                    destination is Destination.LearnSkill ||
+                        destination == Destination.PrepStudio -> Destination.Studio
 
                     destination is Destination.TrackApplication -> Destination.Pipeline
 
                     else -> null
                 }
+
+                if (targetWorkspace == Destination.Studio) seedStudioFor(destination)
 
                 if (targetWorkspace != null && activeWorkspace != targetWorkspace) {
                     activeWorkspace = targetWorkspace
@@ -225,8 +262,12 @@ private fun AivanceWorkflowNavGraph(
     }
 
     LaunchedEffect(initialDestination) {
-        if (initialDestination in Destination.rootDestinations) {
-            activeWorkspace = initialDestination
+        when {
+            initialDestination == Destination.AssistantOrb -> activeWorkspace = Destination.AssistantOrb
+            initialDestination in Destination.workspaceDestinations -> {
+                seedStudioFor(initialDestination)
+                activeWorkspace = Destination.workspaceKey(initialDestination)
+            }
         }
     }
 
@@ -246,15 +287,27 @@ private fun AivanceWorkflowNavGraph(
     if (isAuthed && productEntryAllowed && !isAuthSurface) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
+                // ── Aurora orb slot (N1) — the Assistant as a permanent nav
+                // surface, rendered with the kit's gradient instead of a tab icon.
+                item(
+                    selected = activeWorkspace == Destination.AssistantOrb,
+                    onClick = { activeWorkspace = Destination.AssistantOrb },
+                    icon = { AiOrbIcon(size = 24.dp, contentDescription = null) },
+                    label = { Text(stringResource(Destination.AssistantOrb.labelRes)) }
+                )
+
+                // ── Workspaces — duotone icons (I3): outlined when inactive,
+                // filled when active.
                 Destination.rootDestinations.forEach { workspace ->
                     item(
                         selected = activeWorkspace == workspace,
                         onClick = { activeWorkspace = workspace },
                         icon = {
                             val selected = activeWorkspace == workspace
-                            workspace.icon?.let {
+                            val variant = if (selected) IconVariant.FILLED else IconVariant.OUTLINED
+                            workspace.iconIntent.forVariant(variant)?.let { vector ->
                                 Icon(
-                                    it,
+                                    vector,
                                     contentDescription = null,
                                     tint = if (selected) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant
@@ -266,10 +319,10 @@ private fun AivanceWorkflowNavGraph(
                 }
             }
         ) {
-            NavHostContent(currentBackstack, onNavigate, authViewModel)
+            NavHostContent(currentBackstack, onNavigate, authViewModel, studioSegmentSeed)
         }
     } else {
-        NavHostContent(currentBackstack, onNavigate, authViewModel)
+        NavHostContent(currentBackstack, onNavigate, authViewModel, studioSegmentSeed)
     }
 }
 
@@ -277,7 +330,8 @@ private fun AivanceWorkflowNavGraph(
 private fun NavHostContent(
     backStack: NavBackStack<Destination>,
     onNavigate: (Destination) -> Unit,
-    authViewModel: AuthenticationViewModel
+    authViewModel: AuthenticationViewModel,
+    studioSegmentSeed: StudioSegment
 ) {
     val currentDestination = if (backStack.isNotEmpty()) backStack.last() else return
     AnimatedContent(
@@ -290,7 +344,7 @@ private fun NavHostContent(
         label = "NavTransition"
     ) { destination ->
         Box(Modifier.fillMaxSize()) {
-            ScreenContent(destination, onNavigate, authViewModel) {
+            ScreenContent(destination, onNavigate, authViewModel, studioSegmentSeed) {
                 if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
             }
         }
@@ -302,6 +356,7 @@ private fun ScreenContent(
     destination: Destination?,
     onNavigate: (Destination) -> Unit,
     authViewModel: AuthenticationViewModel,
+    studioSegmentSeed: StudioSegment,
     onBack: () -> Unit
 ) {
     val shellState = LocalAppShellState.current
@@ -375,13 +430,13 @@ private fun ScreenContent(
             onLearnSkill = { skill -> onNavigate(Destination.LearnSkill(skill)) }
         )
 
-        Destination.Assistant -> AssistantScreen(
+        Destination.Assistant, Destination.AssistantOrb -> AssistantScreen(
             viewModel = hiltViewModel<AssistantViewModel>(),
             onSwitchProvider = { onNavigate(Destination.ProviderSetup) }
         )
 
-        Destination.Intelligence -> IntelligenceHubScreen(
-            viewModel = hiltViewModel<IntelligenceHubViewModel>(),
+        Destination.Studio, Destination.Intelligence -> StudioWorkspaceScreen(
+            initialSegment = studioSegmentSeed,
             onNavigateToEngine = { onNavigate(Destination.ResumeEngine()) },
             onNavigateToAts = { reportId -> onNavigate(Destination.Ats(reportId = reportId)) },
             onBack = onBack
@@ -448,14 +503,11 @@ private fun ScreenContent(
             onNavigateToIntelligence = { onNavigate(Destination.Intelligence) }
         )
 
-        Destination.PrepStudio -> PrepStudioScreen(
-            interviewViewModel = hiltViewModel<InterviewViewModel>(),
-            onBack = onBack
-        )
-
-        is Destination.LearnSkill -> PrepStudioScreen(
-            interviewViewModel = hiltViewModel<InterviewViewModel>(),
-            initialLearnSkill = destination.skill,
+        Destination.PrepStudio, is Destination.LearnSkill -> StudioWorkspaceScreen(
+            initialSegment = studioSegmentSeed,
+            initialLearnSkill = (destination as? Destination.LearnSkill)?.skill,
+            onNavigateToEngine = { onNavigate(Destination.ResumeEngine()) },
+            onNavigateToAts = { reportId -> onNavigate(Destination.Ats(reportId = reportId)) },
             onBack = onBack
         )
 

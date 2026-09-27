@@ -153,6 +153,9 @@
     <string name="dest_dashboard">Dashboard</string>
     <string name="dest_assistant">Assistant</string>
     <string name="dest_intelligence">Intelligence</string>
+    <string name="dest_studio">Studio</string>
+    <string name="studio_segment_resumes">Resumes</string>
+    <string name="studio_segment_practice">Practice</string>
     <string name="dest_discovery">Discovery</string>
     <string name="dest_profile">Identity Hub</string>
     <string name="dest_ats">ATS Scanner</string>

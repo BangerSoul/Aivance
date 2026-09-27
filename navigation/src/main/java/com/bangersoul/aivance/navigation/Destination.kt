@@ -2,10 +2,14 @@ package com.bangersoul.aivance.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
+import com.bangersoul.aivance.core.designsystem.icon.AiNavIcons
+import com.bangersoul.aivance.core.designsystem.icon.DestinationIconIntent
+import com.bangersoul.aivance.core.designsystem.icon.IconVariant
 import kotlinx.serialization.Serializable
 
 /**
@@ -13,7 +17,7 @@ import kotlinx.serialization.Serializable
  *
  * Layers:
  *  1. Gate — splash, welcome, auth, provider remediation (no tab bar)
- *  2. Workspaces — the five primary tabs, one independent backstack each
+ *  2. Workspaces — the four primary tabs plus the AI orb, one backstack each
  *  3. Spokes — detail screens that live on a workspace backstack
  *  4. System — settings surfaces reachable from the Identity Hub
  */
@@ -78,6 +82,25 @@ sealed interface Destination : NavKey {
     @Serializable
     data object PrepStudio : Destination {
         override val label = "Prep Studio"
+    }
+
+    /**
+     * Studio workspace (N1) — the merged Intelligence + Prep Studio tab with
+     * segmented sub-tabs (Resumes · ATS · Practice). Entering via the legacy
+     * [Intelligence]/[PrepStudio] destinations seeds the initial segment.
+     */
+    @Serializable
+    data object Studio : Destination {
+        override val label = "Studio"
+    }
+
+    /**
+     * AI orb tab (N1) — the Assistant elevated to a permanent nav surface.
+     * Rendered by the nav shell as the aurora orb, never a standard tab item.
+     */
+    @Serializable
+    data object AssistantOrb : Destination {
+        override val label = "Assistant"
     }
 
     // ── Layer 3: Secondary & Detail Screens ──────────────────────────────
@@ -207,16 +230,34 @@ sealed interface Destination : NavKey {
 
     companion object {
         /**
-         * Bottom-navigation tabs of the Main Career OS graph.
-         * The loop: HQ -> Intel -> Discover -> Pipeline -> Practice.
+         * Bottom-navigation tabs of the Main Career OS graph (N1):
+         * HQ -> Discover -> Pipeline -> Studio, with the AI orb (Assistant)
+         * inserted between HQ and the workspaces by the nav shell.
+         *
+         * N1 merges Intelligence (resumes/ATS) and Prep Studio (practice) into
+         * the Studio workspace with segmented sub-tabs. The legacy
+         * [Intelligence]/[PrepStudio] destinations remain valid entry points —
+         * they host inside Studio and seed its initial segment.
          */
         val rootDestinations = listOf(
-            Dashboard, Intelligence, Discovery, Pipeline, PrepStudio
+            Dashboard, Discovery, Pipeline, Studio
         )
+
+        /**
+         * Every destination that owns a workspace backstack — the four N1 tabs
+         * plus the legacy Intel/Prep roots (each maps onto Studio's backstack).
+         */
+        val workspaceDestinations = rootDestinations + listOf(Intelligence, PrepStudio)
+
+        /** Owning workspace for a tab/legacy-root destination (N1 aliasing). */
+        fun workspaceKey(root: Destination): Destination = when (root) {
+            Intelligence, PrepStudio -> Studio
+            else -> root
+        }
 
         val authenticatedDestinations = setOf(
             Dashboard, Intelligence, Discovery, Pipeline, PrepStudio,
-            Assistant, Analytics, IdentityHub, About,
+            Studio, Assistant, AssistantOrb, Analytics, IdentityHub, About,
             ProviderManagement, Notifications, PrivacyCenter, Appearance,
             SavedJobs
         )
@@ -244,7 +285,13 @@ fun Destination.isAuthenticatedDestination(): Boolean =
         this is Destination.DiscoverBySkill ||
         this is Destination.LearnSkill
 
-val Destination.icon: ImageVector?
+/**
+ * I3 icon intent — paired outlined/filled variants so the nav shell can render
+ * a duotone selected state. Workspaces use the custom 1.7dp AiNavIcons set;
+ * secondary surfaces pair Material outlined/filled icons; gate and detail
+ * surfaces carry no vector (empty intent).
+ */
+val Destination.iconIntent: DestinationIconIntent
     get() = when (this) {
         Destination.Splash,
         Destination.Welcome,
@@ -253,27 +300,94 @@ val Destination.icon: ImageVector?
         is Destination.JobDetails,
         is Destination.ApplyBrowser,
         is Destination.CompanyDetail,
-        is Destination.ResumeDetail -> null
+        is Destination.ResumeDetail,
+        Destination.AssistantOrb -> DestinationIconIntent()
 
-        Destination.Dashboard -> Icons.Outlined.GridView
-        Destination.Assistant -> Icons.Rounded.AutoAwesome
-        Destination.Intelligence, is Destination.ResumeEngine -> Icons.Outlined.Description
-        Destination.Discovery, is Destination.DiscoverBySkill -> Icons.Outlined.WorkOutline
-        Destination.IdentityHub -> Icons.Outlined.PersonOutline
-        is Destination.Ats -> Icons.Outlined.Assessment
-        is Destination.CoverLetter -> Icons.Outlined.Assignment
-        is Destination.RecruiterDashboard -> Icons.Rounded.PersonSearch
-        Destination.SavedJobs -> Icons.Rounded.BookmarkBorder
-        Destination.Pipeline, is Destination.TrackApplication -> Icons.Outlined.ViewKanban
-        is Destination.LearnSkill, Destination.PrepStudio -> Icons.Outlined.School
-        Destination.Appearance -> Icons.Rounded.Palette
-        Destination.ProviderManagement -> Icons.Rounded.Tune
-        Destination.Notifications -> Icons.Rounded.Notifications
-        Destination.PrivacyCenter -> Icons.Rounded.PrivacyTip
-        Destination.Analytics -> Icons.Rounded.BarChart
-        Destination.About -> Icons.Rounded.Info
-        Destination.Resources -> Icons.Rounded.MenuBook
+        Destination.Dashboard -> DestinationIconIntent(
+            outlined = AiNavIcons.DashboardOutlined,
+            filled = AiNavIcons.DashboardFilled
+        )
+        Destination.Assistant -> DestinationIconIntent(
+            outlined = AiNavIcons.Orb,
+            isAccent = true
+        )
+        Destination.Intelligence,
+        is Destination.ResumeEngine,
+        Destination.Studio -> DestinationIconIntent(
+            outlined = Icons.Outlined.Description,
+            filled = Icons.Filled.Description
+        )
+        Destination.Discovery,
+        is Destination.DiscoverBySkill -> DestinationIconIntent(
+            outlined = AiNavIcons.DiscoveryOutlined,
+            filled = AiNavIcons.DiscoveryFilled
+        )
+        Destination.IdentityHub -> DestinationIconIntent(
+            outlined = Icons.Outlined.PersonOutline,
+            filled = Icons.Filled.Person
+        )
+        is Destination.Ats -> DestinationIconIntent(
+            outlined = Icons.Outlined.Assessment,
+            filled = Icons.Filled.Assessment
+        )
+        is Destination.CoverLetter -> DestinationIconIntent(
+            outlined = Icons.Outlined.Assignment,
+            filled = Icons.Filled.Assignment
+        )
+        is Destination.RecruiterDashboard -> DestinationIconIntent(
+            outlined = Icons.Rounded.PersonSearch,
+            filled = Icons.Filled.PersonSearch
+        )
+        Destination.SavedJobs -> DestinationIconIntent(
+            outlined = Icons.Rounded.BookmarkBorder,
+            filled = Icons.Filled.Bookmark
+        )
+        Destination.Pipeline,
+        is Destination.TrackApplication -> DestinationIconIntent(
+            outlined = AiNavIcons.PipelineOutlined,
+            filled = AiNavIcons.PipelineFilled
+        )
+        is Destination.LearnSkill,
+        Destination.PrepStudio -> DestinationIconIntent(
+            outlined = Icons.Outlined.School,
+            filled = Icons.Filled.School
+        )
+        Destination.Appearance -> DestinationIconIntent(
+            outlined = Icons.Rounded.Palette,
+            filled = Icons.Filled.Palette
+        )
+        Destination.ProviderManagement -> DestinationIconIntent(
+            outlined = Icons.Rounded.Tune,
+            filled = Icons.Filled.Tune
+        )
+        Destination.Notifications -> DestinationIconIntent(
+            outlined = Icons.Rounded.Notifications,
+            filled = Icons.Filled.Notifications
+        )
+        Destination.PrivacyCenter -> DestinationIconIntent(
+            outlined = Icons.Rounded.PrivacyTip,
+            filled = Icons.Filled.PrivacyTip
+        )
+        Destination.Analytics -> DestinationIconIntent(
+            outlined = Icons.Rounded.BarChart,
+            filled = Icons.Filled.BarChart
+        )
+        Destination.About -> DestinationIconIntent(
+            outlined = Icons.Rounded.Info,
+            filled = Icons.Filled.Info
+        )
+        Destination.Resources -> DestinationIconIntent(
+            outlined = Icons.Rounded.MenuBook,
+            filled = Icons.Filled.MenuBook
+        )
     }
+
+/**
+ * Legacy single-icon accessor for call sites without a selection state
+ * (tests, secondary chrome). Resolves the outlined variant.
+ */
+val Destination.icon: ImageVector?
+    get() = iconIntent.forVariant(IconVariant.OUTLINED)
 
 /**
  * Localized label resource for each destination.
@@ -284,7 +398,9 @@ val Destination.labelRes: Int
         Destination.Welcome -> R.string.dest_welcome
         Destination.Dashboard -> R.string.dest_dashboard
         Destination.Assistant -> R.string.dest_assistant
-        Destination.Intelligence, is Destination.ResumeEngine -> R.string.dest_intelligence
+        Destination.Intelligence,
+        is Destination.ResumeEngine -> R.string.dest_intelligence
+        Destination.Studio -> R.string.dest_studio
         Destination.Discovery, is Destination.DiscoverBySkill -> R.string.dest_discovery
         Destination.IdentityHub -> R.string.dest_profile
         is Destination.Ats -> R.string.dest_ats
@@ -306,4 +422,5 @@ val Destination.labelRes: Int
         Destination.Analytics -> R.string.dest_analytics
         Destination.About -> R.string.dest_about
         Destination.Resources -> R.string.dest_resources
+        Destination.AssistantOrb -> R.string.dest_assistant
     }

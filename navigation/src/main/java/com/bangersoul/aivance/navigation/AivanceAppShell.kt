@@ -60,7 +60,8 @@ fun AivanceAppShell(
     AivanceTheme(
         themeMode = themeState.themeMode,
         accentSeed = themeState.accentSeed,
-        dynamicColor = themeState.dynamicColor
+        dynamicColor = themeState.dynamicColor,
+        designKit = themeState.designKit
     ) {
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()

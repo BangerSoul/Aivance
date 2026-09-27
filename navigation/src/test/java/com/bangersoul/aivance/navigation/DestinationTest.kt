@@ -10,17 +10,35 @@ import org.junit.Test
 class DestinationTest {
 
     @Test
-    fun `root destinations are exactly the five main tabs`() {
+    fun `root destinations are exactly the four N1 workspaces`() {
         assertEquals(
             listOf(
                 Destination.Dashboard,
-                Destination.Intelligence,
                 Destination.Discovery,
                 Destination.Pipeline,
-                Destination.PrepStudio
+                Destination.Studio
             ),
             Destination.rootDestinations
         )
+    }
+
+    @Test
+    fun `AI orb is not a standard root tab`() {
+        assertFalse(
+            "AssistantOrb must not be in rootDestinations (rendered as the orb slot)",
+            Destination.AssistantOrb in Destination.rootDestinations
+        )
+    }
+
+    @Test
+    fun `legacy intel and prep roots alias onto the Studio workspace`() {
+        assertEquals(Destination.Studio, Destination.workspaceKey(Destination.Intelligence))
+        assertEquals(Destination.Studio, Destination.workspaceKey(Destination.PrepStudio))
+        assertEquals(Destination.Dashboard, Destination.workspaceKey(Destination.Dashboard))
+        assertEquals(Destination.Pipeline, Destination.workspaceKey(Destination.Pipeline))
+        Destination.rootDestinations.forEach { root ->
+            assertEquals(root, Destination.workspaceKey(root))
+        }
     }
 
     @Test
@@ -31,10 +49,50 @@ class DestinationTest {
     }
 
     @Test
-    fun `every root destination has an icon`() {
+    fun `every root destination resolves duotone variants in both states`() {
         Destination.rootDestinations.forEach { dest ->
-            assertNotNull("${dest.label} must have an icon", dest.icon)
+            assertNotNull(
+                "${dest.label} must resolve an outlined icon",
+                dest.iconIntent.forVariant(com.bangersoul.aivance.core.designsystem.icon.IconVariant.OUTLINED)
+            )
+            assertNotNull(
+                "${dest.label} must resolve a filled icon",
+                dest.iconIntent.forVariant(com.bangersoul.aivance.core.designsystem.icon.IconVariant.FILLED)
+            )
         }
+    }
+
+    @Test
+    fun `workspace icons are custom paired vectors with distinct variants`() {
+        val intents = Destination.rootDestinations.map { it.iconIntent }
+        intents.forEach { intent ->
+            assertNotNull("workspace must have custom outlined icon", intent.outlined)
+            assertNotNull("workspace must have custom filled icon", intent.filled)
+        }
+        // Duotone contract: the filled twin must be a different vector, not a tint flip.
+        intents.forEach { intent ->
+            assertTrue(
+                "outlined and filled variants must be distinct vectors",
+                intent.outlined !== intent.filled
+            )
+        }
+    }
+
+    @Test
+    fun `assistant orb carries an accent intent without standard tab icon`() {
+        val intent = Destination.AssistantOrb.iconIntent
+        assertNull("orb renders via AiOrbIcon, not a vector", intent.outlined)
+        assertNull(intent.filled)
+
+        val assistant = Destination.Assistant.iconIntent
+        assertNotNull(assistant.outlined)
+        assertTrue("assistant icon uses the accent tint", assistant.isAccent)
+    }
+
+    @Test
+    fun `orb and studio are authenticated surfaces`() {
+        assertTrue(Destination.AssistantOrb.isAuthenticatedDestination())
+        assertTrue(Destination.Studio.isAuthenticatedDestination())
     }
 
     @Test

@@ -161,6 +161,9 @@
     <string name="dest_dashboard">डैशबोर्ड</string>
     <string name="dest_assistant">सहायक</string>
     <string name="dest_intelligence">इंटेलिजेंस</string>
+    <string name="dest_studio">स्टूडियो</string>
+    <string name="studio_segment_resumes">रिज़्यूमे</string>
+    <string name="studio_segment_practice">अभ्यास</string>
     <string name="dest_discovery">डिस्कवरी</string>
     <string name="dest_resume">रिज़्यूमे</string>
     <string name="dest_jobs">नौकरियां</string>

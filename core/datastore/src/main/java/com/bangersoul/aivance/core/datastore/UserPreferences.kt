@@ -19,6 +19,12 @@ data class UserPreferences(
      * inferred from a missing provider, and never written by auth completion.
      */
     val providerOptional: Boolean = false,
+    /**
+     * Design language (BYOX P2): selects the token set — geometry, gradients,
+     * glass luminance — composed by [AivanceTheme]. Serialized by name so
+     * removing a kit in future builds falls back to the Aurora default.
+     */
+    val designKit: String = "AURORA_GLASS",
     val themeConfig: ThemeConfig = ThemeConfig.FOLLOW_SYSTEM,
     val accentSeed: String = "INDIGO",
     val dynamicColor: Boolean = true,
@@ -30,8 +36,7 @@ data class UserPreferences(
     val interviewRemindersEnabled: Boolean = true,
     val followUpRemindersEnabled: Boolean = true,
 
-    /**
-     * Persisted identity-provider subject for the v2 auth flow. SplashScreen
+    /** Persisted identity-provider subject for the v2 auth flow. SplashScreen
      * uses this to auto-login returning users without re-hitting the provider
      * on every cold start.
      */

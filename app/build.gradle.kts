@@ -68,7 +68,18 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
+            // By default the debug build installs as a distinct app id
+            // (com.bangersoul.aivance.debug). Pass
+            // -Paivance.useRegisteredAppId=true to build the debug variant
+            // under the already-registered release applicationId
+            // (com.bangersoul.aivance) so a single Firebase app entry — with
+            // the debug keystore SHA-1 added — covers Google sign-in on the
+            // emulator without registering a separate .debug app.
+            val useRegisteredAppId =
+                providers.gradleProperty("aivance.useRegisteredAppId").orNull == "true"
+            if (!useRegisteredAppId) {
+                applicationIdSuffix = ".debug"
+            }
             versionNameSuffix = "-debug"
 
             // Phase 4 integration-test keys (see local.properties). Debug-only:

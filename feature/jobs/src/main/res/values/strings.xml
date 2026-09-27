@@ -89,6 +89,7 @@
     <string name="apply_email_copied">Email copied</string>
     <string name="apply_no_resume">Import a resume first to use AI assistance.</string>
     <string name="apply_no_company_domain">No company domain available to search recruiters.</string>
+    <string name="apply_tracked">Tracked in Pipeline</string>
     <string name="apply_verified">Verified</string>
     <string name="apply_confidence">%1$d%% confidence</string>
 

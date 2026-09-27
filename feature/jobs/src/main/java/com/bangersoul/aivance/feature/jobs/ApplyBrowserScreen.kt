@@ -3,7 +3,9 @@ package com.bangersoul.aivance.feature.jobs
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -65,6 +67,20 @@ fun ApplyBrowserScreen(
         viewModel.effects.collect { effect ->
             when (effect) {
                 is ApplyBrowserUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+                is ApplyBrowserUiEffect.ShowUndoableSnackbar -> {
+                    // Dismiss any in-flight snackbar so the actionable one isn't
+                    // queued behind it and the Undo window starts immediately.
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    val result = snackbarHostState.showSnackbar(
+                        message = effect.message,
+                        actionLabel = effect.actionLabel,
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Long
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel.undoTracking()
+                    }
+                }
                 is ApplyBrowserUiEffect.CopyText -> clipboard.setText(AnnotatedString(effect.text))
                 is ApplyBrowserUiEffect.OpenExternalUrl -> openExternally(context, effect.url)
             }
@@ -112,12 +128,24 @@ fun ApplyBrowserScreen(
                 icon = Icons.Rounded.LinkOff
             )
         } else if (applyUrl != null) {
-            HardenedApplyWebView(
-                url = applyUrl,
-                onWebViewCreated = { webView = it },
-                onOpenExternally = { url -> openExternally(context, url) },
-                modifier = Modifier.fillMaxSize()
-            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                HardenedApplyWebView(
+                    url = applyUrl,
+                    onWebViewCreated = { webView = it },
+                    onOpenExternally = { url -> openExternally(context, url) },
+                    onSubmissionDetected = viewModel::onApplicationSubmitted,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Persistent confirmation once the submission has been recorded
+                // in the Pipeline. Overlaid so it never reflows the apply page.
+                if (uiState.applicationTracked) {
+                    ApplicationTrackedChip(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(12.dp)
+                    )
+                }
+            }
         }
     }
 
@@ -139,16 +167,113 @@ fun ApplyBrowserScreen(
 }
 
 /**
+ * Name the [ApplySubmitBridge] is exposed under to page JavaScript. Kept short
+ * and app-specific so it doesn't collide with page globals.
+ */
+private const val SUBMIT_BRIDGE_NAME = "AivanceApply"
+
+/**
+ * Injected once per page load. Hooks the capture-phase `submit` event (covers
+ * classic form posts) and clicks on submit-like controls (covers SPA/XHR apply
+ * flows on Greenhouse/Workday-style portals that never fire a real `submit`),
+ * calling back into the native bridge. Guarded so repeated injection on the
+ * same document is a no-op.
+ */
+private val SUBMIT_LISTENER_JS = """
+(function() {
+  if (window.__aivanceSubmitHooked) { return; }
+  window.__aivanceSubmitHooked = true;
+  document.addEventListener('submit', function() {
+    try { $SUBMIT_BRIDGE_NAME.onFormSubmit(); } catch (e) {}
+  }, true);
+  document.addEventListener('click', function(ev) {
+    var el = ev.target && ev.target.closest
+      ? ev.target.closest('button, input[type=submit], [role=button], a')
+      : null;
+    if (!el) { return; }
+    var label = (el.innerText || el.value || el.getAttribute('aria-label') || '').toLowerCase();
+    if (/(submit application|submit your application|send application|apply now|submit)/.test(label)) {
+      try { $SUBMIT_BRIDGE_NAME.onSubmitIntent(); } catch (e) {}
+    }
+  }, true);
+})();
+""".trimIndent()
+
+/**
+ * Heuristic matcher for confirmation/thank-you landing pages that ATS portals
+ * redirect to after a successful submission. Combined with the JS submit hook
+ * and the ViewModel's idempotency guard, so an over-match here only risks
+ * tracking the very job the user opened — never a spurious external effect.
+ */
+private val CONFIRMATION_URL_REGEX = Regex(
+    "thank[-_]?you|confirmation|/confirm|application[-_]?(submitted|complete|received)|/submitted|/success|apply/complete",
+    RegexOption.IGNORE_CASE
+)
+
+/**
+ * Minimal JS→native bridge exposing only two zero-arg callbacks. No reflection
+ * surface and no data crosses the boundary, so a hostile page can at most
+ * trigger a Pipeline entry for the job already on screen. Bridge methods run on
+ * a background JS thread; callers marshal back to the UI thread.
+ */
+private class ApplySubmitBridge(private val onSubmit: () -> Unit) {
+    @JavascriptInterface
+    fun onFormSubmit() = onSubmit()
+
+    @JavascriptInterface
+    fun onSubmitIntent() = onSubmit()
+}
+
+/**
+ * Persistent "Tracked in Pipeline" confirmation shown once the apply-page
+ * submission has been recorded as an Application at the APPLIED stage. Uses the
+ * design system success tone so it reads as a positive, terminal state.
+ */
+@Composable
+private fun ApplicationTrackedChip(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = AivanceTheme.colors.successContainer,
+        contentColor = AivanceTheme.colors.onSuccessContainer,
+        tonalElevation = 3.dp,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                Icons.Rounded.CheckCircle,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = AivanceTheme.colors.success
+            )
+            Text(
+                stringResource(R.string.apply_tracked),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+/**
  * Builds a [WebView] locked down for loading untrusted third-party apply pages.
  */
-@SuppressLint("SetJavaScriptEnabled")
+@SuppressLint("SetJavaScriptEnabled", "JavascriptInterface")
 @Composable
 private fun HardenedApplyWebView(
     url: String,
     onWebViewCreated: (WebView) -> Unit,
     onOpenExternally: (String) -> Unit,
+    onSubmissionDetected: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Keep a stable reference so the JS bridge and page callbacks always reach
+    // the latest callback without recreating the WebView.
+    val currentOnSubmit by rememberUpdatedState(onSubmissionDetected)
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
@@ -171,7 +296,29 @@ private fun HardenedApplyWebView(
                             true
                         }
                     }
+
+                    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                        // A redirect to a confirmation/thank-you page is a strong
+                        // signal the submission went through, even when no JS
+                        // `submit` event fired (SPA/XHR portals). Runs on the UI
+                        // thread already.
+                        if (url != null && CONFIRMATION_URL_REGEX.containsMatchIn(url)) {
+                            currentOnSubmit()
+                        }
+                    }
+
+                    override fun onPageFinished(view: WebView, url: String?) {
+                        // Re-inject the submit hook on every finished navigation
+                        // so client-side route changes stay covered.
+                        view.evaluateJavascript(SUBMIT_LISTENER_JS, null)
+                    }
                 }
+                addJavascriptInterface(
+                    // Bridge callbacks fire on a background JS thread; hop back to
+                    // the WebView's UI thread before touching the ViewModel.
+                    ApplySubmitBridge { post { currentOnSubmit() } },
+                    SUBMIT_BRIDGE_NAME
+                )
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true

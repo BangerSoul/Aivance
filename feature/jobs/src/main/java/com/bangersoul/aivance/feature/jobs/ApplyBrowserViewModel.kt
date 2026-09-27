@@ -2,9 +2,12 @@ package com.bangersoul.aivance.feature.jobs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bangersoul.aivance.core.common.model.Application
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.Recruiter
+import com.bangersoul.aivance.core.common.model.TimelineEvent
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import com.bangersoul.aivance.core.domain.repository.AtsStreamEvent
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
@@ -42,7 +45,13 @@ data class ApplyBrowserUiState(
     val applyUrl: String? = null,
     val ats: AtsSuggestionState = AtsSuggestionState.Idle,
     val coverLetter: CoverLetterSuggestionState = CoverLetterSuggestionState.Idle,
-    val recruiters: RecruiterSuggestionState = RecruiterSuggestionState.Idle
+    val recruiters: RecruiterSuggestionState = RecruiterSuggestionState.Idle,
+    /**
+     * True once a submission on the apply page has been detected and the job
+     * has been recorded in the Pipeline at the APPLIED stage. Set once and
+     * never cleared for the life of the screen.
+     */
+    val applicationTracked: Boolean = false
 )
 
 sealed interface AtsSuggestionState {
@@ -72,6 +81,11 @@ sealed interface RecruiterSuggestionState {
 
 sealed interface ApplyBrowserUiEffect {
     data class ShowSnackbar(val message: String) : ApplyBrowserUiEffect
+    /**
+     * A snackbar with a single reversible action. [actionLabel] is the button
+     * copy; when the user taps it the screen calls [ApplyBrowserViewModel.undoTracking].
+     */
+    data class ShowUndoableSnackbar(val message: String, val actionLabel: String) : ApplyBrowserUiEffect
     data class CopyText(val text: String) : ApplyBrowserUiEffect
     data class OpenExternalUrl(val url: String) : ApplyBrowserUiEffect
 }
@@ -80,6 +94,7 @@ sealed interface ApplyBrowserUiEffect {
 class ApplyBrowserViewModel @Inject constructor(
     private val getJobDetailsUseCase: GetJobDetailsUseCase,
     private val jobRepository: JobRepository,
+    private val applicationWorkflowRepository: ApplicationWorkflowRepository,
     private val resumeRepository: ResumeRepository,
     private val companyIntelligenceRepository: CompanyIntelligenceRepository,
     private val recruiterIntelligenceRepository: RecruiterIntelligenceRepository,
@@ -124,6 +139,142 @@ class ApplyBrowserViewModel @Inject constructor(
     fun openExternal() {
         val url = _uiState.value.applyUrl ?: return
         viewModelScope.launch { _effects.send(ApplyBrowserUiEffect.OpenExternalUrl(url)) }
+    }
+
+    // ── Submission detection → Pipeline entry ────────────────────────────
+
+    /**
+     * Guards against the many redundant signals a single application submit
+     * produces (form `submit` event + confirmation-page navigation + reloads),
+     * so the Pipeline entry is created exactly once per screen visit.
+     */
+    private var submissionHandled = false
+
+    /**
+     * Everything the last successful tracking created, captured so [undoTracking]
+     * can reverse *exactly* that and nothing a user did before. For a brand-new
+     * Application we delete the row (its timeline cascades); for one that already
+     * existed we restore the prior stage/dateApplied/lastModified and delete only
+     * the timeline event this action appended.
+     */
+    private data class TrackingUndo(
+        val applicationId: Long,
+        val timelineEventId: Long?,
+        val wasNewApplication: Boolean,
+        val previous: Application?
+    )
+
+    private var lastTrackingUndo: TrackingUndo? = null
+
+    /**
+     * Called when the WebView detects the user submitted the application —
+     * either a form `submit` event fired inside the page or a navigation to a
+     * confirmation/thank-you URL. Caches the job (so the FK is valid), then
+     * moves an existing Application for this job to APPLIED or creates one,
+     * and appends a timeline event. Idempotent within a screen visit.
+     *
+     * Trust note: the form-submit signal originates from an untrusted page via
+     * a JS bridge, so the worst a hostile page can do is create one Pipeline
+     * row for the job the user chose to open — no external side effects.
+     */
+    fun onApplicationSubmitted() {
+        if (submissionHandled) return
+        val job = _uiState.value.job ?: return
+        submissionHandled = true
+
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest("apply_browser_submitted"))
+
+            val dbJobId = (jobRepository.cacheJob(job) as? Result.Success)?.data ?: run {
+                submissionHandled = false
+                return@launch
+            }
+
+            // Reuse an existing tracked application for this job so a manual
+            // "Apply & Track" followed by an in-app submit doesn't duplicate.
+            val existing = (applicationWorkflowRepository.getApplications().first() as? Result.Success)
+                ?.data
+                ?.firstOrNull { it.jobId == dbJobId }
+
+            val now = System.currentTimeMillis()
+            val application = (existing ?: Application(jobId = dbJobId)).copy(
+                currentStageId = "APPLIED",
+                status = "ACTIVE",
+                dateApplied = existing?.dateApplied ?: now,
+                lastModified = now
+            )
+
+            when (val saveResult = applicationWorkflowRepository.saveApplication(application)) {
+                is Result.Success -> {
+                    val applicationId = saveResult.data
+                    val timelineEventId = (
+                        applicationWorkflowRepository.addTimelineEvent(
+                            TimelineEvent(
+                                applicationId = applicationId,
+                                eventType = "APPLIED",
+                                title = "Applied in-app",
+                                description = job.title
+                            )
+                        ) as? Result.Success
+                    )?.data
+                    lastTrackingUndo = TrackingUndo(
+                        applicationId = applicationId,
+                        timelineEventId = timelineEventId,
+                        wasNewApplication = existing == null,
+                        previous = existing
+                    )
+                    _uiState.update { it.copy(applicationTracked = true) }
+                    _effects.send(
+                        ApplyBrowserUiEffect.ShowUndoableSnackbar(
+                            message = "Application tracked in your Pipeline.",
+                            actionLabel = "Undo"
+                        )
+                    )
+                }
+                is Result.Failure -> {
+                    // Allow a later signal to retry the tracking.
+                    submissionHandled = false
+                }
+            }
+        }
+    }
+
+    /**
+     * Reverses the most recent auto-tracking. If tracking created a fresh
+     * Application the whole row is deleted (its timeline events cascade); if it
+     * moved an application that already existed, the prior stage/dates are
+     * restored and only the timeline event this action added is removed, so a
+     * user's earlier history is never touched. Clears [applicationTracked] and
+     * re-arms submission detection so a later submit can track again.
+     */
+    fun undoTracking() {
+        val undo = lastTrackingUndo ?: return
+        lastTrackingUndo = null
+
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest("apply_browser_undo_track"))
+
+            val reverted = if (undo.wasNewApplication || undo.previous == null) {
+                applicationWorkflowRepository.deleteApplication(undo.applicationId) is Result.Success
+            } else {
+                // Remove only the timeline event we added, then restore the
+                // application's pre-tracking state.
+                undo.timelineEventId?.let {
+                    applicationWorkflowRepository.deleteTimelineEvent(it)
+                }
+                applicationWorkflowRepository.saveApplication(undo.previous) is Result.Success
+            }
+
+            if (reverted) {
+                submissionHandled = false
+                _uiState.update { it.copy(applicationTracked = false) }
+                _effects.send(ApplyBrowserUiEffect.ShowSnackbar("Removed from your Pipeline."))
+            } else {
+                // Restore undo affordance so the user can retry the reversal.
+                lastTrackingUndo = undo
+                _effects.send(ApplyBrowserUiEffect.ShowSnackbar("Couldn't undo — try again."))
+            }
+        }
     }
 
     // ── ATS scoring ──────────────────────────────────────────────────────

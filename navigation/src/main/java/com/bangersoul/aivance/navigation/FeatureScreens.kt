@@ -82,11 +82,11 @@ import com.bangersoul.aivance.feature.profile.ProviderCategory
 import com.bangersoul.aivance.feature.profile.ProviderHealthStatus
 import com.bangersoul.aivance.feature.profile.ProviderManagementUiEvent
 import com.bangersoul.aivance.feature.profile.ProviderManagementUiState
-import com.bangersoul.aivance.feature.profile.NotificationItem
+import com.bangersoul.aivance.core.common.model.NotificationItem
 import com.bangersoul.aivance.feature.profile.NotificationsUiEvent
 import com.bangersoul.aivance.feature.profile.NotificationsUiState
 import com.bangersoul.aivance.feature.profile.NotificationsViewModel
-import com.bangersoul.aivance.feature.profile.NotificationType
+import com.bangersoul.aivance.core.common.model.NotificationType
 import com.bangersoul.aivance.feature.profile.ProviderManagementViewModel
 import java.util.Locale
 

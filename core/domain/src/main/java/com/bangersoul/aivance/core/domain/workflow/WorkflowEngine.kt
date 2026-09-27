@@ -1,11 +1,13 @@
 package com.bangersoul.aivance.core.domain.workflow
 
 import com.bangersoul.aivance.core.common.model.*
+import com.bangersoul.aivance.core.common.model.NotificationType
 import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.runCatchingCore
 import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.core.domain.repository.AnalyticsRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
+import com.bangersoul.aivance.core.domain.repository.NotificationRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,7 +16,8 @@ class WorkflowEngine @Inject constructor(
     private val repository: ApplicationWorkflowRepository,
     private val analyticsRepository: AnalyticsRepository,
     private val taskGenerator: com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase,
-    private val careerEventDispatcher: CareerEventDispatcher
+    private val careerEventDispatcher: CareerEventDispatcher,
+    private val notificationRepository: NotificationRepository
 ) {
     fun determineLifecycleStage(state: CareerState): CareerLifecycleStage {
         return when {
@@ -51,6 +54,19 @@ class WorkflowEngine @Inject constructor(
         )
 
         taskGenerator(updated)
+
+        // Persist the stage change in the notifications inbox so the user sees
+        // pipeline progress outside the tracker. Recorded only when the stage
+        // actually changed (the no-op early return above emits nothing) and
+        // independent of the tray/notification settings — this is the durable
+        // pipeline log, not a push notification.
+        notificationRepository.record(
+            id = "pipeline_stage_${application.id}_$nextStageId",
+            type = NotificationType.APPLICATION_UPDATE,
+            title = "Pipeline update",
+            message = "Moved from ${application.currentStageId} to $nextStageId",
+            timestamp = updated.lastModified
+        )
 
         analyticsRepository.createSnapshot()
 

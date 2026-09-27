@@ -66,8 +66,11 @@ object EngineModule {
         repository: ApplicationWorkflowRepository,
         analyticsRepository: AnalyticsRepository,
         taskGenerator: com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase,
-        careerEventDispatcher: com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
-    ): WorkflowEngine = WorkflowEngine(repository, analyticsRepository, taskGenerator, careerEventDispatcher)
+        careerEventDispatcher: com.bangersoul.aivance.core.domain.events.CareerEventDispatcher,
+        notificationRepository: NotificationRepository
+    ): WorkflowEngine = WorkflowEngine(
+        repository, analyticsRepository, taskGenerator, careerEventDispatcher, notificationRepository
+    )
 
     @Provides
     @Singleton

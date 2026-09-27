@@ -57,9 +57,10 @@ import com.bangersoul.aivance.core.database.model.*
         GraphNodeEntity::class,
         GraphEdgeEntity::class,
         CareerEventLogEntity::class,
-        CareerMemoryEntity::class
+        CareerMemoryEntity::class,
+        NotificationEntity::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = true
 )
 @TypeConverters(AivanceConverters::class)
@@ -84,6 +85,7 @@ abstract class AivanceDatabase : RoomDatabase() {
     abstract fun graphDao(): GraphDao
     abstract fun careerEventLogDao(): CareerEventLogDao
     abstract fun careerMemoryDao(): CareerMemoryDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -439,6 +441,22 @@ abstract class AivanceDatabase : RoomDatabase() {
          *
          * Rollback: none. Restore from a backup taken before v28, or re-seed.
          */
+        /**
+         * v28 -> v29: Persisted notifications inbox.
+         *
+         * STRICTLY ADDITIVE / NON-DESTRUCTIVE. Creates the single `notifications`
+         * table and its timestamp index with `CREATE ... IF NOT EXISTS` — no ALTER,
+         * no data rewrite, no destructive fallback. Every pre-existing v28 table and
+         * all user data are left completely intact; the inbox simply starts empty on
+         * upgrade and fills as workers and pipeline events record entries.
+         */
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `notifications` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `message` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isRead` INTEGER NOT NULL, `type` TEXT NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_notifications_timestamp` ON `notifications` (`timestamp`)")
+            }
+        }
+
         val MIGRATION_27_28 = object : Migration(27, 28) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // 1. Additive column so no legacy payload is lost on import.

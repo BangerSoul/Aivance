@@ -56,7 +56,8 @@ object DatabaseModule {
             AivanceDatabase.MIGRATION_24_25,
             AivanceDatabase.MIGRATION_25_26,
             AivanceDatabase.MIGRATION_26_27,
-            AivanceDatabase.MIGRATION_27_28
+            AivanceDatabase.MIGRATION_27_28,
+            AivanceDatabase.MIGRATION_28_29
         )
         .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
         .setQueryExecutor(Executors.newFixedThreadPool(4))
@@ -123,4 +124,8 @@ object DatabaseModule {
     @Provides
     fun provideCareerMemoryDao(database: AivanceDatabase): CareerMemoryDao =
         database.careerMemoryDao()
+
+    @Provides
+    fun provideNotificationDao(database: AivanceDatabase): NotificationDao =
+        database.notificationDao()
 }

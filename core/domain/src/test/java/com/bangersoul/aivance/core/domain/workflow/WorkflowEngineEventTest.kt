@@ -8,6 +8,7 @@ import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.core.domain.repository.AnalyticsRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
+import com.bangersoul.aivance.core.domain.repository.NotificationRepository
 import com.bangersoul.aivance.core.domain.usecase.workflow.TaskGeneratorUseCase
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -50,7 +51,10 @@ class WorkflowEngineEventTest {
         taskGenerator = mockk(relaxed = true)
         eventBus = CareerEventBus()
         dispatcher = CareerEventDispatcher(eventBus, mockk(relaxed = true))
-        engine = WorkflowEngine(repository, analyticsRepository, taskGenerator, dispatcher)
+        engine = WorkflowEngine(
+            repository, analyticsRepository, taskGenerator, dispatcher,
+            notificationRepository = mockk(relaxed = true)
+        )
 
         coEvery { repository.saveApplication(any()) } returns Result.Success(42L)
         coEvery { repository.addTimelineEvent(any()) } returns Result.Success(1L)

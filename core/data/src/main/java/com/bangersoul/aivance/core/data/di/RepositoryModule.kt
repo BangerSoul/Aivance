@@ -85,6 +85,10 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindNotificationRepository(impl: NotificationRepositoryImpl): NotificationRepository
+
+    @Binds
+    @Singleton
     abstract fun bindSkillGapProgressRepository(impl: SkillGapProgressRepositoryImpl): SkillGapProgressRepository
 
     // CRM / Networking Repositories

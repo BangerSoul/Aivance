@@ -86,6 +86,10 @@ class ApplicationWorkflowRepositoryImpl @Inject constructor(
         workflowDao.insertTimelineEvent(event.toEntity())
     }
 
+    override suspend fun deleteTimelineEvent(id: Long): CoreResult<Unit> = runCatchingCore {
+        workflowDao.deleteTimelineEvent(id)
+    }
+
     override suspend fun addTask(task: ApplicationTask): CoreResult<Long> = runCatchingCore {
         workflowDao.insertTask(task.toEntity())
     }

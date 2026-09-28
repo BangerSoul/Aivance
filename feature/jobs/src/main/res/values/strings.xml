@@ -10,10 +10,6 @@
     <string name="search_placeholder">Search roles, skills, or companies</string>
     <string name="clear_search">Clear search</string>
     <string name="search">Search</string>
-    <string name="jobs_unavailable">Jobs unavailable</string>
-    <string name="country">Country</string>
-    <string name="state">State</string>
-    <string name="city">City</string>
     <string name="type">Type</string>
     <string name="workplace">Workplace</string>
     <string name="experience">Experience</string>
@@ -54,24 +50,15 @@
     <string name="must_include_placeholder">e.g. Kotlin, remote</string>
     <string name="exclude">Exclude</string>
     <string name="exclude_placeholder">e.g. unpaid, senior</string>
-    <string name="no_matches_found">No matches found</string>
     <string name="no_jobs_yet">No jobs yet</string>
-    <string name="no_matches_desc">Try a different keyword or filter — or refresh to pull the latest roles.</string>
     <string name="no_jobs_desc">Configure a job provider to start discovering roles matched to your profile.</string>
     <string name="saved_jobs">Saved Jobs</string>
-    <string name="ats_match">ATS Match %1$d%%</string>
     <string name="save_job">Save job</string>
 
     <!-- Job details -->
     <string name="job_details_title">Job Details</string>
     <string name="bookmark">Bookmark</string>
-    <string name="apply_on_provider_site">Apply on Provider Site</string>
-    <string name="apply_and_track">Apply &amp; Track in Pipeline</string>
     <string name="find_recruiters">Find Recruiters</string>
-    <string name="cover_letter">Cover Letter</string>
-    <string name="ai_compatibility_check">AI Compatibility Check</string>
-    <string name="ai_compatibility_sub">Check how well your resume matches this job.</string>
-    <string name="check">Check</string>
     <string name="job_description">Job Description</string>
 
     <!-- In-app Apply (WebView + AI suggestions) -->
@@ -92,12 +79,10 @@
     <string name="apply_cover_generate">Generate cover letter</string>
     <string name="apply_cover_generating">Writing your cover letter…</string>
     <string name="apply_cover_copy">Copy</string>
-    <string name="apply_cover_copied">Cover letter copied</string>
     <string name="apply_recruiters_find">Find recruiter emails</string>
     <string name="apply_recruiters_finding">Searching for hiring contacts…</string>
     <string name="apply_recruiters_none">No verified recruiter emails found for this company.</string>
     <string name="apply_recruiters_copy_email">Copy email</string>
-    <string name="apply_email_copied">Email copied</string>
     <string name="apply_no_resume">Import a resume first to use AI assistance.</string>
     <string name="apply_no_company_domain">No company domain available to search recruiters.</string>
     <string name="apply_tracked">Tracked in Pipeline</string>
@@ -110,7 +95,6 @@
     <string name="open_roles_count">Open Roles (%1$d)</string>
     <string name="no_open_roles">No open roles found</string>
     <string name="no_open_roles_desc">This company currently has no indexed roles in your job feed.</string>
-    <string name="company_remote_policy">Remote policy</string>
     <string name="company_company_size">Company size</string>
     <string name="company_region">Region</string>
     <string name="company_technologies">Tech stack</string>

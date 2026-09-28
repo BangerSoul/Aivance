@@ -3,10 +3,8 @@
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
     <string name="add">Add</string>
-    <string name="delete">Delete</string>
 
     <string name="career_pipeline_title">Career Pipeline</string>
-    <string name="pipeline_unavailable">Pipeline unavailable</string>
     <string name="add_application">Add application</string>
     <string name="add_application_title">Add Application</string>
     <string name="company">Company</string>
@@ -20,14 +18,4 @@
     <string name="unknown_company">Unknown Company</string>
     <string name="ats_optimized">ATS Optimized</string>
     <string name="open_tasks">%1$d open task%2$s</string>
-    <string name="timeline">Timeline</string>
-    <string name="no_activity">No activity recorded yet.</string>
-    <string name="notes">Notes</string>
-    <string name="notes_placeholder">Add follow-up notes, contact details, links…</string>
-    <string name="notes_autosave">Saved automatically as you type.</string>
-    <string name="open_job_listing">Open Job Listing</string>
-    <string name="delete_application">Delete Application</string>
-    <string name="delete_application_title">Delete application?</string>
-    <string name="delete_application_body">This removes "%1$s" and its entire history from your pipeline. This cannot be undone.</string>
-    <string name="updated">Updated %1$s</string>
 </resources>

@@ -233,26 +233,28 @@ does not own. About keeps its brand header, contact rows, "How AiVance is
 made", and licenses; the single Resources entry stays the System-tab link, and
 the `Destination.Resources` route is untouched.
 
-## G19 — No orphaned string resources in navigation, feature/interview, feature/profile (AUDIT §3.2 follow-up)
+## G19 — No orphaned string resources anywhere in the project (AUDIT §3.2 follow-up)
 ```bash
-grep -q '"feature/profile"' navigation/src/test/java/com/bangersoul/aivance/navigation/StringResourceReferenceTest.kt && echo "guard covers the feature modules: ok"
+grep -q "modulesWithStringResources" navigation/src/test/java/com/bangersoul/aivance/navigation/StringResourceReferenceTest.kt && echo "guard is repo-wide: ok"
 ./gradlew :navigation:testDebugUnitTest --console=plain
 ```
 EXPECT: the guard prints `ok` and BUILD SUCCESSFUL, with
-`StringResourceReferenceTest` green for all three modules. Per guarded module the
-test fails when a string declared in its `src/main/res/values/strings.xml` has no
-`R.string.<name>` or `@string/<name>` reference anywhere in the repository, or
-when one of its `res/values-*/` overlays translates a name no default locale
-declares. Each module also carries a canary, so a scan that loses sight of a
-module's own `R.string` references fails loudly instead of reporting every
-resource as orphaned.
+`StringResourceReferenceTest` green. The test discovers every module that ships
+string resources, and every locale overlay, from the file tree — there is no
+hand-maintained module list to fall out of date — and fails when either
+invariant breaks: a string declared by some default locale has no
+`R.string.<name>` / `@string/<name>` reference anywhere in the repository, or a
+locale overlay translates a name no default locale declares. A global canary
+fails if fewer than half the declared names resolve, so a scan that cannot see
+references reports itself instead of masquerading as a clean project.
 An unreferenced `<string>` is invisible to both the compiler and the runtime, so
-orphans accumulate silently. The subtractions themselves caused most of the rot —
-the workspace prune (§3.2), the providers merge (row 22), the Export row (row 24)
-and the About Resources card (row 25) each deleted UI without deleting the strings
-that labelled it — and Prep Studio left its whole session vocabulary behind in
-`feature/interview` when those screens moved out of `navigation`. The gate is a
-floor: delete a dead resource, never add it to an allowlist.
+orphans accumulate silently. The subtractions caused most of the rot — the
+workspace prune (§3.2), the providers merge (row 22), the Export row (row 24) and
+the About Resources card (row 25) each deleted UI without deleting the strings
+that labelled it — and whole screen vocabularies (Prep Studio, the Analytics
+Insights entry, the dashboard's Quick Actions) stayed behind when their screens
+were rewritten.
+The gate is a floor: delete a dead resource, never add it to an allowlist.
 
 ## G6 — Whole-graph verification (all touched modules)
 ```bash

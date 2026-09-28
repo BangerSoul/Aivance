@@ -10,10 +10,6 @@
     <string name="search_placeholder">भूमिकाएं, कौशल या कंपनियां खोजें</string>
     <string name="clear_search">खोज साफ़ करें</string>
     <string name="search">खोजें</string>
-    <string name="jobs_unavailable">नौकरियां अनुपलब्ध</string>
-    <string name="country">देश</string>
-    <string name="state">राज्य</string>
-    <string name="city">शहर</string>
     <string name="type">प्रकार</string>
     <string name="workplace">कार्यस्थल</string>
     <string name="experience">अनुभव</string>
@@ -36,24 +32,15 @@
     <string name="employment_other">अन्य</string>
     <string name="remote_on_site">ऑन-साइट</string>
     <string name="remote_hybrid">हाइब्रिड</string>
-    <string name="no_matches_found">कोई मिलान नहीं मिला</string>
     <string name="no_jobs_yet">अभी कोई नौकरी नहीं</string>
-    <string name="no_matches_desc">कोई अलग कीवर्ड या फ़िल्टर आज़माएं — या नवीनतम भूमिकाएं प्राप्त करने के लिए रीफ़्रेश करें।</string>
     <string name="no_jobs_desc">अपनी प्रोफ़ाइल से मेल खाती भूमिकाएं खोजने के लिए नौकरी प्रदाता कॉन्फ़िगर करें।</string>
     <string name="saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="ats_match">ATS मिलान %1$d%%</string>
     <string name="save_job">नौकरी सहेजें</string>
 
     <!-- Job details -->
     <string name="job_details_title">नौकरी विवरण</string>
     <string name="bookmark">बुकमार्क</string>
-    <string name="apply_on_provider_site">प्रदाता साइट पर आवेदन करें</string>
-    <string name="apply_and_track">आवेदन करें और पाइपलाइन में ट्रैक करें</string>
     <string name="find_recruiters">भर्तीकर्ता खोजें</string>
-    <string name="cover_letter">कवर लेटर</string>
-    <string name="ai_compatibility_check">AI संगतता जांच</string>
-    <string name="ai_compatibility_sub">जांचें कि आपका रिज़्यूमे इस नौकरी से कितना मेल खाता है।</string>
-    <string name="check">जांचें</string>
     <string name="job_description">नौकरी विवरण</string>
 
     <!-- Company detail -->

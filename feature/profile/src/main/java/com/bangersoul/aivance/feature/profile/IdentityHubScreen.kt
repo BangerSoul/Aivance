@@ -55,11 +55,11 @@ fun IdentityHubScreen(
     onTabChange: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    // Four tabs: Preferences is a section of Identity (AUDIT 20), and the
-    // provider surface is now a single hub (AUDIT 22) — the tab is the only
-    // place providers appear, with AI first then Job boards, no duplicate
-    // Provider Management route.
-    val tabs = listOf("Identity", "Providers", "Vault", "System")
+    // Three tabs: Preferences is a section of Identity (AUDIT 20), the provider
+    // surface is a single hub (AUDIT 22), and the document vault folded into
+    // Studio ▸ Resumes (AUDIT 23) — which already owns the same resume list from
+    // ResumeRepository, so the hub no longer carries a second document surface.
+    val tabs = listOf("Identity", "Providers", "System")
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -100,8 +100,7 @@ fun IdentityHubScreen(
                     label = "IdentityHubTransition"
                 ) { tab ->                    when (tab) {
                         1 -> ProvidersTab()
-                        2 -> DocumentVaultTab(viewModel)
-                        3 -> SystemTab(
+                        2 -> SystemTab(
                             viewModel,
                             onNavigateToAbout = onNavigateToAbout,
                             onNavigateToResources = onNavigateToResources,
@@ -109,7 +108,7 @@ fun IdentityHubScreen(
                             onNavigateToPrivacy = onNavigateToPrivacy
                         )
                         // Identity is also the fallback: a tab index saved before
-                        // the Preferences merge would otherwise land nowhere.
+                        // the Preferences/Vault merges would otherwise land nowhere.
                         else -> IdentityTab(viewModel)
                     }
                 }
@@ -929,60 +928,6 @@ private fun ModelDownloadConfirmationDialog(
     )
 }
 
-
-@Composable
-private fun DocumentVaultTab(viewModel: IdentityHubViewModel) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text("Document Vault", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Securely manage your career assets.", style = MaterialTheme.typography.bodySmall)
-        }
-
-        if (uiState.documents.isEmpty()) {
-            item {
-                AivanceEmptyState(
-                    title = "No documents found",
-                    description = "Upload your resumes or certificates to keep them organized.",
-                    icon = Icons.Rounded.Description
-                )
-            }
-        } else {
-            items(uiState.documents) { resume ->
-                AivanceWorkspaceCard {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(Icons.Rounded.Description, null, tint = MaterialTheme.colorScheme.primary)
-                        Column(Modifier.weight(1f)) {
-                            Text(resume.name, fontWeight = FontWeight.Bold)
-                            Text("Resume · ${resume.fileName}", style = MaterialTheme.typography.labelSmall)
-                        }
-                        IconButton(onClick = {}) {
-                            Icon(Icons.Rounded.MoreVert, null)
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            AivanceSecondaryButton(
-                text = "Upload Document",
-                onClick = { /* Open Picker */ },
-                modifier = Modifier.fillMaxWidth(),
-                icon = Icons.Rounded.Upload
-            )
-        }
-    }
-}
 
 @Composable
 private fun SystemTab(

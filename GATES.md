@@ -183,6 +183,23 @@ download/delete for on-device models, Test connection, and Save. The config is
 still the single source of truth (`ProviderRepository.getProviderConfigs()`),
 so no provider list can drift from what is persisted.
 
+## G16 — Vault folds into Studio ▸ Resumes; the hub is three tabs (AUDIT 23)
+```bash
+! grep -rqE --include=*.kt --exclude-dir=build "DocumentVaultTab|Document Vault" feature/profile && echo "vault tab gone: ok"
+grep -q 'val tabs = listOf("Identity", "Providers", "System")' feature/profile/src/main/java/com/bangersoul/aivance/feature/profile/IdentityHubScreen.kt && echo "three tabs: ok"
+./gradlew :feature:profile:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: both guards print `ok` — the `DocumentVaultTab` composable and the
+"Vault" tab are deleted, and the Identity Hub is three tabs
+(Identity, Providers, System) — and BUILD SUCCESSFUL. The vault was a second
+document surface over the same `ResumeRepository.getResumes()` that Studio ▸
+Resumes already owns, but with dead Upload / More-options stubs the resume flow
+never used. Studio ▸ Resumes stays the single documents surface (import via its
+FAB, real ATS history), so the hub drops the tab and its `documents` state
+rather than duplicating the list. Tab indices shift again (Providers stays 1,
+System 3→2), and the `when` still falls back to Identity so a `selectedTab`
+saved before the merge cannot land on a blank screen.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

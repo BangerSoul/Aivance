@@ -29,7 +29,6 @@ data class IdentityHubUiState(
     val draftProfile: UserProfile? = null,
     val settings: AppSettings = AppSettings(),
     val providers: List<ProviderInfo> = emptyList(),
-    val documents: List<Resume> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSaving: Boolean = false,
@@ -65,7 +64,6 @@ class IdentityHubViewModel @Inject constructor(
     private val providerRegistry: ProviderRegistry,
     private val providerManager: ProviderManager,
     private val providerRepository: ProviderRepository,
-    private val resumeRepository: com.bangersoul.aivance.core.domain.repository.ResumeRepository,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -87,16 +85,14 @@ class IdentityHubViewModel @Inject constructor(
             combine(
                 loadProfileUseCase(),
                 loadSettingsFlow(),
-                loadProvidersFlow(),
-                resumeRepository.getResumes()
-            ) { profileRes, settings, providers, resumesRes ->
+                loadProvidersFlow()
+            ) { profileRes, settings, providers ->
                 val profile = profileRes.getOrNull()
                 _uiState.update { it.copy(
                     profile = profile,
                     draftProfile = profile,
                     settings = settings,
                     providers = providers,
-                    documents = resumesRes.getOrNull() ?: emptyList(),
                     isLoading = false,
                     error = if (profileRes is Result.Failure) profileRes.error.message else null
                 ) }

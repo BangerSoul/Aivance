@@ -5,7 +5,6 @@ import com.bangersoul.aivance.core.common.model.UserProfile
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.datastore.UserPreferencesRepository
 import com.bangersoul.aivance.core.domain.repository.ProviderRepository
-import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
 import com.bangersoul.aivance.core.domain.usecase.settings.LoadSettingsUseCase
 import com.bangersoul.aivance.core.domain.usecase.settings.ResetSettingsUseCase
@@ -45,7 +44,6 @@ class IdentityHubViewModelTest {
     private val mockProviderRegistry: ProviderRegistry = mockk(relaxed = true)
     private val mockProviderManager: ProviderManager = mockk(relaxed = true)
     private val mockProviderRepository: ProviderRepository = mockk(relaxed = true)
-    private val mockResumeRepository: ResumeRepository = mockk(relaxed = true)
     private val mockTrackEvent: TrackEventUseCase = mockk(relaxed = true)
 
     @Before
@@ -65,12 +63,11 @@ class IdentityHubViewModelTest {
             flowOf(mockk<com.bangersoul.aivance.core.datastore.UserPreferences>(relaxed = true))
         every { mockProviderManager.providerStatuses } returns MutableStateFlow(emptyMap())
         every { mockProviderRegistry.getAllProviders() } returns emptyList()
-        every { mockResumeRepository.getResumes() } returns flowOf(Result.Success(emptyList()))
 
         return IdentityHubViewModel(
             mockLoadProfile, mockUpdateProfile, mockLoadSettings, mockSaveSettings,
             mockResetSettings, mockUserPreferences, mockProviderRegistry, mockProviderManager,
-            mockProviderRepository, mockResumeRepository, mockTrackEvent
+            mockProviderRepository, mockTrackEvent
         )
     }
 

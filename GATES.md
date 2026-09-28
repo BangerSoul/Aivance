@@ -39,8 +39,34 @@ has a non-null outlined AND filled resolution, gate destinations an empty intent
 ./gradlew :navigation:testDebugUnitTest --console=plain
 ```
 EXPECT: BUILD SUCCESSFUL; DestinationTest asserts rootDestinations is exactly
-[Dashboard, Discovery, Pipeline, Studio], the orb is not a root, every root is
-authenticated, and no auth/authenticated overlap.
+[Dashboard, Discovery(), Pipeline(), Studio()], the orb is not a root, every root
+is authenticated, and no auth/authenticated overlap.
+
+## G5b — Subtraction-first nav prune (AUDIT §3.2)
+```bash
+grep -rn --include=*.kt --exclude-dir=build -E "Destination\.(Assistant|Intelligence|PrepStudio|LearnSkill|DiscoverBySkill|TrackApplication)\b" app feature core navigation
+./gradlew :navigation:testDebugUnitTest :navigation:compileDebugAndroidTestKotlin --console=plain
+```
+EXPECT: the grep prints **no matches** (the six legacy destinations are gone);
+BUILD SUCCESSFUL; seeded variants (`Studio(PRACTICE)`, `Discovery(query)`,
+`Pipeline(jobId)`) still resolve as authenticated, `Resources` is in
+`authenticatedDestinations`, and DeepLinkHandler maps chat → AssistantOrb,
+interview → Studio ▸ Practice, resume → Studio ▸ Resumes.
+
+## G7 — Blocker remediation (B1–B5)
+```bash
+./gradlew :feature:resume:testDebugUnitTest :feature:jobs:testDebugUnitTest --console=plain
+```
+EXPECT: BUILD SUCCESSFUL; ResumeEngineViewModelTest asserts an imported JSON/OCR
+resume is persisted as a draft (preview carries the stored resume + version ids,
+so ATS and Save have FK parents), and JobsViewModelTest asserts Discovery opens
+on the cached corpus when no search has run.
+
+## G8 — Whole-suite release gate
+```bash
+./gradlew testDebugUnitTest --console=plain
+```
+EXPECT: `BUILD SUCCESSFUL` across every module — zero test breakages.
 
 ## G6 — Whole-graph verification (all touched modules)
 ```bash

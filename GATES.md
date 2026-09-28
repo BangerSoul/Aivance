@@ -80,6 +80,17 @@ type / workplace / remote policy / tech stack / must-include / exclude behind
 one Filters sheet; the Discovery hero card is gone; Quick Match is guarded and
 offers "Set target role" when the profile has none.
 
+## G10 — One assistant surface, and a badge that tells the truth (AUDIT 15/32/41)
+```bash
+grep -rn --include=*.kt --exclude-dir=build "showAssistantAction = true" feature core navigation
+./gradlew :feature:assistant:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: the grep matches **only JobDetailsScreen** — the one job-context entry;
+every other top-bar assistant action is gone (the orb owns the plain
+assistant). BUILD SUCCESSFUL; AssistantViewModelTest asserts a provider that is
+`Ready` but has no persisted configuration does not light the badge, and a
+configured + ready provider does.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

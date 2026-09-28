@@ -28,7 +28,12 @@ fun AivanceWorkspaceScaffold(
     emptyDescription: String? = null,
     onRetry: () -> Unit = {},
     onBack: (() -> Unit)? = null,
-    showAssistantAction: Boolean = true,
+    /**
+     * Job-context assistant entry in the top bar. Defaults to **false**: the AI
+     * orb in the nav bar owns the plain assistant, so opting in here is only for
+     * screens that hand the assistant a specific job (AUDIT 15/32).
+     */
+    showAssistantAction: Boolean = false,
     /** Custom assistant action; when null the global assistant overlay opens. */
     onAssistantClick: (() -> Unit)? = null,
     topBarActions: @Composable () -> Unit = {},

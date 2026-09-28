@@ -478,7 +478,6 @@ private fun ScreenContent(
             onNavigateToInterview = { onNavigate(Destination.Studio(segment = StudioSegment.PRACTICE)) },
             onNavigateToAnalytics = { onNavigate(Destination.Analytics) },
             onNavigateToJobs = { onNavigate(Destination.Discovery()) },
-            onNavigateToAssistant = { onNavigate(Destination.AssistantOrb) },
             onNavigateToNotifications = { onNavigate(Destination.Notifications) },
             onNavigateToProviderSetup = { onNavigate(Destination.ProviderSetup) },
             onDiscoverBySkill = { skill -> onNavigate(Destination.Discovery(query = skill)) },

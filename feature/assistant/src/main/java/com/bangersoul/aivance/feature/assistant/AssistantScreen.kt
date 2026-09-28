@@ -222,26 +222,33 @@ private fun AssistantCopilotWorkspace(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // 1. Career Snapshot
-        item {
-            Text(
-                text = "Career Snapshot",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard(
-                    label = "Career Score",
-                    value = careerState.growth.careerScore?.toString() ?: "—",
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.TrendingUp
+        // Career Snapshot renders only once something has actually been
+        // measured — an unpopulated "— / —" pair told the user nothing and only
+        // padded the workspace (AUDIT 15).
+        val careerScore = careerState.growth.careerScore
+        val atsScore = careerState.intelligence.atsScore
+        if (careerScore != null || atsScore != null) {
+            item {
+                Text(
+                    text = "Career Snapshot",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                MetricCard(
-                    label = "ATS Match",
-                    value = careerState.intelligence.atsScore?.let { "$it%" } ?: "—",
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.FactCheck
-                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricCard(
+                        label = "Career Score",
+                        value = careerScore?.toString() ?: "—",
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Rounded.TrendingUp
+                    )
+                    MetricCard(
+                        label = "ATS Match",
+                        value = atsScore?.let { "$it%" } ?: "—",
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Rounded.FactCheck
+                    )
+                }
             }
         }
 

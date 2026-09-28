@@ -39,7 +39,6 @@ fun DashboardScreen(
     onNavigateToInterview: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToJobs: () -> Unit = {},
-    onNavigateToAssistant: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProviderSetup: () -> Unit = {},
     onDiscoverBySkill: (String) -> Unit = {},
@@ -53,7 +52,8 @@ fun DashboardScreen(
         isLoading = uiState.isLoading,
         error = uiState.error,
         onRetry = { viewModel.onEvent(DashboardUiEvent.Retry) },
-        onAssistantClick = onNavigateToAssistant,
+        // No assistant action in this header: the nav bar's orb is the same
+        // destination 50 dp below it (AUDIT 4/32).
         topBarActions = {
             IconButton(onClick = onNavigateToNotifications) {
                 Icon(Icons.Rounded.Notifications, contentDescription = "Notifications")
@@ -68,7 +68,6 @@ fun DashboardScreen(
             onNavigateToResume = onNavigateToResume,
             onNavigateToJobs = onNavigateToJobs,
             onNavigateToInterview = onNavigateToInterview,
-            onNavigateToAssistant = onNavigateToAssistant,
             onNavigateToTracker = onNavigateToTracker,
             onNavigateToProfile = onNavigateToProfile,
             onNavigateToAnalytics = onNavigateToAnalytics,
@@ -104,7 +103,6 @@ internal fun DashboardContent(
     onNavigateToResume: () -> Unit,
     onNavigateToJobs: () -> Unit,
     onNavigateToInterview: () -> Unit,
-    onNavigateToAssistant: () -> Unit,
     onNavigateToTracker: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToAnalytics: () -> Unit = {},
@@ -619,7 +617,6 @@ private fun DashboardContentPreview() {
             onNavigateToResume = {},
             onNavigateToJobs = {},
             onNavigateToInterview = {},
-            onNavigateToAssistant = {},
             onNavigateToTracker = {},
             onNavigateToProfile = {},
             onNavigateToAnalytics = {}

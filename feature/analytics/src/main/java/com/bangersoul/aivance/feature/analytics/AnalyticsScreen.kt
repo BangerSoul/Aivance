@@ -37,8 +37,7 @@ fun AnalyticsScreen(
     AivanceWorkspaceScaffold(
         title = "Intelligence Center",
         subtitle = "Predictive Career Insights",
-        onBack = onBack,
-        showAssistantAction = true
+        onBack = onBack
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TabRow(

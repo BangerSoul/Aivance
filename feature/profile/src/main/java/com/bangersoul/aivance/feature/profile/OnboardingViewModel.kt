@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface OnboardingUiState {
-    // v2: Welcome is its own destination (WelcomeScreen); the provider flow
-    // starts directly at AI provider selection.
+    // The provider flow starts directly at AI provider selection; there is no
+    // separate Welcome step any more (AUDIT 6 — the brand lives on Auth).
 
     data class ChooseAiProvider(
         val providers: List<ProviderMetadata>
@@ -134,8 +134,7 @@ class OnboardingViewModel @Inject constructor(
     private var selectedEnrichmentProviderId: String? = null
 
     init {
-        // v2: begin directly at AI provider selection — the Welcome step now
-        // lives in the standalone WelcomeScreen destination.
+        // v2: begin directly at AI provider selection.
         _uiState.value = OnboardingUiState.ChooseAiProvider(
             providers = providerRegistry.getAllProviders()
                 .filter { it.metadata.type == ProviderType.AI }

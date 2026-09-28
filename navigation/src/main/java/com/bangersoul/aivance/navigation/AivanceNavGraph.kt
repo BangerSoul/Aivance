@@ -52,7 +52,6 @@ import com.bangersoul.aivance.feature.profile.PrivacyViewModel
 import com.bangersoul.aivance.feature.profile.ProviderGateState
 import com.bangersoul.aivance.feature.profile.RemoteResourcesScreen
 import com.bangersoul.aivance.feature.profile.SplashScreen
-import com.bangersoul.aivance.feature.profile.WelcomeScreen
 import com.bangersoul.aivance.feature.recruiter.RecruiterDashboardScreen
 import com.bangersoul.aivance.feature.recruiter.RecruiterViewModel
 import com.bangersoul.aivance.feature.resume.ResumeDetailScreen
@@ -228,8 +227,15 @@ private fun AivanceWorkflowNavGraph(
             destination.isAuthenticatedDestination() && !productEntryAllowed ->
                 authBackstack.add(Destination.ProviderSetup)
 
-            destination in Destination.authDestinations ->
+            destination in Destination.authDestinations -> {
+                // Splash is a one-shot gate, not a screen to return to. Replacing
+                // it as it hands off keeps the first pre-auth destination as the
+                // auth stack root, so `BackHandler(enabled = size > 1)` stays off
+                // and system back leaves the app instead of popping to the splash
+                // and re-running it (which would re-push this destination).
+                if (authBackstack.lastOrNull() == Destination.Splash) authBackstack.clear()
                 authBackstack.add(destination)
+            }
 
             else -> {
                 val owner = workspaceOwnerOf(destination)
@@ -428,7 +434,10 @@ private fun ScreenContent(
                     val isAuthed =
                         (settled ?: authViewModel.uiState.value) is AuthenticationUiState.Authenticated
                     if (!isAuthed) {
-                        onNavigate(Destination.Welcome)
+                        // The marketing Welcome screen is gone (AUDIT 6): the
+                        // sign-in screen carries the brand, so the splash hands
+                        // off to it directly.
+                        onNavigate(Destination.Auth)
                     } else {
                         // Resolve the provider gate on settled data before the
                         // cold-start product-entry decision. Remediation goes to
@@ -443,20 +452,12 @@ private fun ScreenContent(
             })
         }
 
-        Destination.Welcome -> WelcomeScreen(
-            // Both affordances make the same product promise — sign in. The
-            // provider gate, not this screen, decides what happens next.
-            onGetStarted = { onNavigate(Destination.Auth) },
-            onSkip = { onNavigate(Destination.Auth) }
-        )
-
         Destination.Auth -> AuthScreen(
             viewModel = hiltViewModel(),
             onNewUser = { onNavigate(Destination.ProviderSetup) },
             onReturningUser = {
                 authViewModel.onEvent(AuthenticationUiEvent.CheckAuth)
-            },
-            onBackToWelcome = { onNavigate(Destination.Welcome) }
+            }
         )
 
         Destination.ProviderSetup -> OnboardingScreen(

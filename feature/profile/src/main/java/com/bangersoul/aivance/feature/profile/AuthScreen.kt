@@ -40,14 +40,18 @@ import com.bangersoul.aivance.feature.profile.AuthViewModel
  * Routing contract (consumed by [AivanceNavGraph]):
  *  - [AuthUiState.NewUser]      → ProviderSetup (first launch)
  *  - [AuthUiState.ReturningUser] → Dashboard
+ *
+ * This is the single pre-auth surface (AUDIT 6): the standalone Welcome screen
+ * was deleted and its brand mark folded in here, so the product introduces
+ * itself on the same screen that signs the user in — instead of a marketing
+ * page whose "Get Started" and "Skip for now" both led to exactly this screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
     onNewUser: () -> Unit = {},
-    onReturningUser: () -> Unit = {},
-    onBackToWelcome: () -> Unit = {}
+    onReturningUser: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var isCreateMode by remember { mutableStateOf(false) }
@@ -101,7 +105,19 @@ fun AuthScreen(
                 )
             }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.welcome_brand),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.welcome_tagline),
+            style = MaterialTheme.typography.bodyMedium,
+            color = DarkAccent
+        )
+        Spacer(Modifier.height(24.dp))
         Text(
             if (isCreateMode) {
                 stringResource(R.string.auth_create_account_title)
@@ -278,9 +294,5 @@ fun AuthScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        TextButton(onClick = onBackToWelcome) {
-            Text(stringResource(R.string.back), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }

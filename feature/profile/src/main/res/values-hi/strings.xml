@@ -20,15 +20,6 @@
     <!-- Welcome -->
     <string name="welcome_brand">✦  AiVance</string>
     <string name="welcome_tagline">AI संचालित करियर ऑपरेटिंग सिस्टम</string>
-    <string name="welcome_quote">“एक नौकरी चाहने वाले द्वारा, हम सबके लिए ❤️”</string>
-    <string name="welcome_headline">AI के साथ अपना अगला अवसर तेजी से पाएं।</string>
-    <string name="feature_resume_intelligence">रिज़्यूमे इंटेलिजेंस</string>
-    <string name="feature_ats_optimization">ATS अनुकूलन</string>
-    <string name="feature_job_discovery">नौकरी खोज</string>
-    <string name="feature_recruiter_intelligence">भर्तीकर्ता इंटेलिजेंस</string>
-    <string name="feature_interview_preparation">इंटरव्यू तैयारी</string>
-    <string name="feature_career_analytics">करियर एनालिटिक्स</string>
-    <string name="get_started">शुरू करें</string>
     <string name="skip_for_now">अभी के लिए छोड़ें</string>
 
     <!-- Login -->

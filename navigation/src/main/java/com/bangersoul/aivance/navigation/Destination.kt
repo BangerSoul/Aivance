@@ -39,11 +39,6 @@ sealed interface Destination : NavKey {
         override val label = "Splash"
     }
 
-    @Serializable
-    data object Welcome : Destination {
-        override val label = "Welcome"
-    }
-
     /** Sign-in / create-account screen. */
     @Serializable
     data object Auth : Destination {
@@ -242,7 +237,7 @@ sealed interface Destination : NavKey {
         )
 
         val authDestinations = setOf(
-            Splash, Welcome, Auth, ProviderSetup
+            Splash, Auth, ProviderSetup
         )
     }
 }
@@ -278,7 +273,6 @@ fun Destination.isAuthenticatedDestination(): Boolean =
 val Destination.iconIntent: DestinationIconIntent
     get() = when (this) {
         Destination.Splash,
-        Destination.Welcome,
         Destination.Auth,
         Destination.ProviderSetup,
         is Destination.JobDetails,
@@ -370,7 +364,6 @@ val Destination.icon: ImageVector?
 val Destination.labelRes: Int
     @StringRes get() = when (this) {
         Destination.Splash -> R.string.dest_splash
-        Destination.Welcome -> R.string.dest_welcome
         Destination.Dashboard -> R.string.dest_dashboard
         is Destination.Studio -> R.string.dest_studio
         is Destination.ResumeEngine -> R.string.dest_intelligence

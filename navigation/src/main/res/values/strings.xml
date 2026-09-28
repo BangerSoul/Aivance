@@ -149,7 +149,6 @@
 
     <!-- Destinations (bottom-nav & screen titles) -->
     <string name="dest_splash">Splash</string>
-    <string name="dest_welcome">Welcome</string>
     <string name="dest_dashboard">Dashboard</string>
     <string name="dest_assistant">Assistant</string>
     <string name="dest_intelligence">Intelligence</string>

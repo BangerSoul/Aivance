@@ -155,7 +155,6 @@
 
     <!-- Destinations (bottom-nav & screen titles) -->
     <string name="dest_splash">स्प्लैश</string>
-    <string name="dest_welcome">स्वागत है</string>
     <string name="dest_login">लॉगिन</string>
     <string name="dest_onboarding">ऑनबोर्डिंग</string>
     <string name="dest_dashboard">डैशबोर्ड</string>

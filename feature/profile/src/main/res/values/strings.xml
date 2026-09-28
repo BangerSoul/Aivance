@@ -20,15 +20,6 @@
     <!-- Welcome -->
     <string name="welcome_brand">✦  AiVance</string>
     <string name="welcome_tagline">AI Powered Career Operating System</string>
-    <string name="welcome_quote">“Made by a Job Seeker, For Us ❤️”</string>
-    <string name="welcome_headline">Land your next opportunity faster with AI.</string>
-    <string name="feature_resume_intelligence">Resume Intelligence</string>
-    <string name="feature_ats_optimization">ATS Optimization</string>
-    <string name="feature_job_discovery">Job Discovery</string>
-    <string name="feature_recruiter_intelligence">Recruiter Intelligence</string>
-    <string name="feature_interview_preparation">Interview Preparation</string>
-    <string name="feature_career_analytics">Career Analytics</string>
-    <string name="get_started">Get Started</string>
     <string name="skip_for_now">Skip for now</string>
 
     <!-- Login -->

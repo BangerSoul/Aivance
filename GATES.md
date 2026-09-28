@@ -145,6 +145,26 @@ when the user leaves without pressing the second Save. Tab indices shift
 (Providers 2→1, Vault 3→2, System 4→3), and the `when` falls back to Identity so
 a `selectedTab` saved before the merge cannot land on a blank screen.
 
+## G14 — One pre-auth entry: Welcome is gone, Auth carries the brand (AUDIT 6)
+```bash
+! grep -rq --include=*.kt --exclude-dir=build "WelcomeScreen\|Destination\.Welcome" feature core app navigation && echo "welcome gone: ok"
+./gradlew :navigation:testDebugUnitTest :feature:profile:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: the guard prints `ok` — `WelcomeScreen`, its `Destination.Welcome`
+label arm and its membership of `authDestinations` are all deleted — and BUILD
+SUCCESSFUL. `Splash`'s unauthenticated arm now resolves to `Destination.Auth`
+directly, and Auth absorbs the brand wordmark + tagline that Welcome carried,
+single-sourcing the pre-auth surface. Welcome's two affordances went to the same
+place ("Skip for now" and "Get Started" were both `Destination.Auth`), and its
+six marketing bullets and shimmer CTA are deleted with the screen.
+
+**Back-integrity:** because Splash was the screen *below* Welcome, Auth's
+`onBackToWelcome` return path is gone; `onNavigate` now replaces Splash when it
+hands off to the first pre-auth destination. The auth stack root becomes the
+destination itself (single entry), so `BackHandler(enabled = size > 1)` leaves
+system back alone and it exits the app, instead of popping to Splash and
+re-running the splash forever.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

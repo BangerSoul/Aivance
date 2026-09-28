@@ -2,6 +2,10 @@
 <resources>
     <string name="prep_studio">Prep Studio</string>
     <string name="practice">Practice</string>
+    <!-- Folded out of the deleted Research tab: one card carrying the only
+         signals that come from the user's own profile (AUDIT 11). -->
+    <string name="practice_role_intelligence">Role Intelligence</string>
+    <string name="practice_role_intelligence_body">%1$s interviews reward demonstrating %2$s and technical leadership.</string>
     <string name="history">History</string>
     <string name="question_bank">Question Bank</string>
     <string name="learn">Learn</string>

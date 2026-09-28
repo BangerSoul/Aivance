@@ -91,6 +91,22 @@ assistant). BUILD SUCCESSFUL; AssistantViewModelTest asserts a provider that is
 `Ready` but has no persisted configuration does not light the badge, and a
 configured + ready provider does.
 
+## G11 — Studio ▸ Practice is two tabs, not five (AUDIT 10–14)
+```bash
+grep -c "stringResource(R.string.practice)\|stringResource(R.string.question_bank)" \
+  feature/interview/src/main/java/com/bangersoul/aivance/feature/interview/ui/PrepStudioScreen.kt
+grep -rn --include=*.kt --exclude-dir=build -E "ResearchTab|HistoryTab" feature navigation app core
+./gradlew :feature:interview:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: the first grep prints **2** (the tab row is Practice + Question Bank
+only); the second grep prints **no matches** (the Research and History tab
+composables are gone). BUILD SUCCESSFUL. Research is folded into Practice as the
+`RoleIntelligenceCard` (rendered only when `targetRole` + `skills` are non-blank),
+History is folded in as `HistorySection`, and `LearnTab` is reachable only when a
+skill seed arrives from the dashboard skill-gap chip — the tab-jump
+`LaunchedEffect` that used to switch tabs on seed is removed. Practice keeps one
+`verticalScroll` surface (no nested same-direction scroll).
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

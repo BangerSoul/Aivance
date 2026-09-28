@@ -107,6 +107,25 @@ skill seed arrives from the dashboard skill-gap chip — the tab-jump
 `LaunchedEffect` that used to switch tabs on seed is removed. Practice keeps one
 `verticalScroll` surface (no nested same-direction scroll).
 
+## G12 — Analytics is one surface, showing only measured numbers (AUDIT 19)
+```bash
+! grep -q "TabRow" feature/analytics/src/main/java/com/bangersoul/aivance/feature/analytics/AnalyticsScreen.kt && echo "no tab row: ok"
+! grep -rq --include=*.kt --exclude-dir=build -E "CareerTrendsTab|CareerSimulatorTab|buildHeatMapData|RecommendationCard" feature/analytics && echo "legacy sections gone: ok"
+./gradlew :feature:analytics:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: both guards print `ok` — the 3-tab row is gone, and the
+Trends/Simulator tab composables plus the two dead helpers
+(`buildHeatMapData`, `RecommendationCard`) are deleted — and BUILD SUCCESSFUL.
+The single surface folds the Trends **Score Progression** chart in as a section
+rendered only when two or more snapshots exist (one point is the empty 160 dp
+canvas the audit flagged, `AnalyticsCharts.LineChart` bails on empty values); the
+"Dimension Trends" bar chart is dropped because it duplicates Health Dimensions
+from the same source. The Outcome Simulator renders only when `careerScore !=
+null` — the model's own "nothing has been measured" signal (R3-1) — and its
+projected score falls back to the current score instead of `—`. When nothing is
+measured the surface shows one honest empty state pointing at scoring, rather
+than the `—` / `0%` placeholders across three tabs.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

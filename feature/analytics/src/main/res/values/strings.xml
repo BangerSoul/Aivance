@@ -13,7 +13,10 @@
     <string name="analytics_recommendations">Priority Recommendations</string>
     <string name="analytics_no_recommendations">No recommendations yet</string>
     <string name="analytics_no_recommendations_detail">As you use the app, the intelligence engine will surface prioritized actions.</string>
-    <string name="analytics_dismiss">Dismiss</string>
+    <!-- Shown instead of three tabs of `—` / `0%` placeholders (AUDIT 19). -->
+    <string name="analytics_not_measured">Nothing scored yet</string>
+    <string name="analytics_not_measured_detail">Career health, progression and the outcome simulator all read from your scoring history, so they stay hidden until there is something real to show.</string>
+    <string name="analytics_not_measured_action">Score my resume</string>
     <string name="analytics_funnel_applications">Applications</string>
     <string name="analytics_funnel_interviews">Interviews</string>
     <string name="analytics_funnel_offers">Offers</string>

@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Terminal
-import androidx.compose.material.icons.rounded.WorkOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -51,8 +50,7 @@ import com.bangersoul.aivance.core.designsystem.theme.DarkAccent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
-    onBack: () -> Unit,
-    onNavigateToResources: () -> Unit = {}
+    onBack: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -118,51 +116,6 @@ fun AboutScreen(
                             stringResource(R.string.version_placeholder),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White.copy(alpha = 0.55f)
-                        )
-                    }
-                }
-            }
-
-            // ── Remote Work Resources (R-06) ─────────────────────────────
-            item { AboutSectionHeader(stringResource(R.string.about_resources_title)) }
-            item {
-                DashboardCard(
-                    onClick = onNavigateToResources,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = AivanceTheme.colors.info.copy(alpha = 0.12f)
-                        ) {
-                            Icon(
-                                Icons.Rounded.WorkOutline,
-                                contentDescription = null,
-                                modifier = Modifier.padding(10.dp).size(22.dp),
-                                tint = AivanceTheme.colors.info
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                stringResource(R.string.about_resources_title),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                stringResource(R.string.about_resources_subtitle),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Icon(
-                            Icons.Rounded.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -546,10 +546,7 @@ private fun ScreenContent(
             onSignedOut = { authViewModel.onEvent(AuthenticationUiEvent.Logout) }
         )
 
-        Destination.About -> AboutScreen(
-            onBack = onBack,
-            onNavigateToResources = { onNavigate(Destination.Resources) }
-        )
+        Destination.About -> AboutScreen(onBack = onBack)
 
         Destination.Resources -> RemoteResourcesScreen(onBack = onBack)
 

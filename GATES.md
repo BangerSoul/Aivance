@@ -214,8 +214,22 @@ Center stays the single backup surface: it exports the whole account as an
 encrypted, passphrase-protected backup through `BackupExporter.exportBackup()`
 and restores it through `BackupImporter.importBackup()`, so there is one
 authoritative, secure path for the user's data instead of two with different
-formats and security properties. The System tab keeps Reset All Settings and
-Sign Out under Data Management.
+formats and security properties. The System tab keepsReset All Settings and Sign Out under Data Management.
+
+## G18 — About drops the duplicate Resources card, keeps the link (AUDIT 25)
+```bash
+! grep -rqE --include=*.kt --exclude-dir=build "about_resources_title|onNavigateToResources" feature/profile/src/main/java/com/bangersoul/aivance/feature/profile/AboutScreen.kt && echo "about card gone: ok"
+grep -q "Destination.Resources -> RemoteResourcesScreen" navigation/src/main/java/com/bangersoul/aivance/navigation/AivanceNavGraph.kt && echo "resources screen intact: ok"
+./gradlew :feature:profile:testDebugUnitTest :navigation:compileDebugKotlin :app:compileDebugKotlin --console=plain
+```
+EXPECT: both guards print `ok` — the About screen's "Remote Work Resources"
+section header + `DashboardCard` and its `onNavigateToResources` parameter are
+deleted — and BUILD SUCCESSFUL. The card opened the very same
+`RemoteResourcesScreen` (`Destination.Resources`) that the Identity Hub ▸
+System tab already links to, so About carried a second entry into a screen it
+does not own. About keeps its brand header, contact rows, "How AiVance is
+made", and licenses; the single Resources entry stays the System-tab link, and
+the `Destination.Resources` route is untouched.
 
 ## G6 — Whole-graph verification (all touched modules)
 ```bash

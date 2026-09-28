@@ -72,6 +72,7 @@ fun IdentityHubScreen(
     AivanceWorkspaceScaffold(
         title = "Identity Hub",
         subtitle = "Control your career operating system",
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         isLoading = uiState.isLoading,
         error = uiState.error,

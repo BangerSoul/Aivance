@@ -114,4 +114,5 @@
     <string name="create_tailored_resume">Create Tailored Resume</string>
     <string name="track_application">Track Application</string>
     <string name="ask_ai">Ask AI</string>
+    <string name="ai_assistant">AI Assistant</string>
 </resources>

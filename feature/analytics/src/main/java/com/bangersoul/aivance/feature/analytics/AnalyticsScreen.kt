@@ -31,9 +31,10 @@ fun AnalyticsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     AivanceWorkspaceScaffold(
-        title = "Intelligence Center",
-        subtitle = "Predictive Career Insights",
-        onBack = onBack
+        title = stringResource(R.string.analytics_intelligence_center),
+        subtitle = stringResource(R.string.analytics_predictive_insights),
+        onBack = onBack,
+        backContentDescription = stringResource(R.string.back)
     ) {
         AnimatedContent(
             targetState = uiState,
@@ -187,12 +188,13 @@ private fun ProgressionSection(snapshots: List<AnalyticsSnapshot>) {
     val ordered = snapshots.sortedBy { it.timestamp }
 
     Column {
-        SectionHeader(title = "Score Progression")
+        SectionHeader(title = stringResource(R.string.analytics_score_progression))
         Spacer(Modifier.height(8.dp))
         AivanceWorkspaceCard {
             Column(Modifier.padding(16.dp)) {
                 LineChart(
                     values = ordered.map { it.careerScore.toFloat() },
+                    contentDescription = stringResource(R.string.analytics_score_progression_chart),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -216,8 +218,8 @@ private fun SimulatorSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Column {
-            Text("Outcome Simulator", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Adjust values to see projected impacts on your career.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.analytics_outcome_simulator), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.analytics_outcome_simulator_detail), style = MaterialTheme.typography.bodySmall)
         }
 
         AivanceWorkspaceCard {
@@ -247,7 +249,7 @@ private fun SimulatorSection(
             border = BorderStroke(1.dp, AivanceTheme.colors.accent.copy(alpha = 0.3f))
         ) {
             Column(Modifier.padding(20.dp)) {
-                Text("Simulated Outcome", fontWeight = FontWeight.Bold, color = AivanceTheme.colors.accent)
+                Text(stringResource(R.string.analytics_simulated_outcome), fontWeight = FontWeight.Bold, color = AivanceTheme.colors.accent)
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MetricCard(

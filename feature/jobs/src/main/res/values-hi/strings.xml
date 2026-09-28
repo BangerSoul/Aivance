@@ -58,4 +58,5 @@
     <string name="create_tailored_resume">अनुकूलित रिज़्यूमे बनाएं</string>
     <string name="track_application">आवेदन ट्रैक करें</string>
     <string name="ask_ai">AI से पूछें</string>
+    <string name="ai_assistant">एआई सहायक</string>
 </resources>

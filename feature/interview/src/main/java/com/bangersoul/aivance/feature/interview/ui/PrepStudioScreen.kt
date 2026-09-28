@@ -61,6 +61,7 @@ fun PrepStudioScreen(
     AivanceWorkspaceScaffold(
         title = "Prep Studio",
         subtitle = "Master your next interview",
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) {

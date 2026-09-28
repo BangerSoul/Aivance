@@ -64,6 +64,7 @@ fun IntelligenceHubScreen(
     AivanceWorkspaceScaffold(
         title = "Intelligence Hub",
         subtitle = "Manage your career product",
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         floatingActionButton = {
             FloatingActionButton(

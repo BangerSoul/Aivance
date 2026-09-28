@@ -28,12 +28,16 @@ fun AivanceWorkspaceScaffold(
     emptyDescription: String? = null,
     onRetry: () -> Unit = {},
     onBack: (() -> Unit)? = null,
+    /** Accessible name for the back button; caller-supplied so it can be localized. */
+    backContentDescription: String? = null,
     /**
      * Job-context assistant entry in the top bar. Defaults to **false**: the AI
      * orb in the nav bar owns the plain assistant, so opting in here is only for
      * screens that hand the assistant a specific job (AUDIT 15/32).
      */
     showAssistantAction: Boolean = false,
+    /** Accessible name for the assistant icon; caller-supplied so it can be localized. */
+    assistantContentDescription: String? = null,
     /** Custom assistant action; when null the global assistant overlay opens. */
     onAssistantClick: (() -> Unit)? = null,
     topBarActions: @Composable () -> Unit = {},
@@ -48,6 +52,7 @@ fun AivanceWorkspaceScaffold(
             AivanceTopBar(
                 title = title,
                 subtitle = subtitle,
+                backContentDescription = backContentDescription,
                 onBack = onBack,
                 actions = {
                     topBarActions()
@@ -58,7 +63,7 @@ fun AivanceWorkspaceScaffold(
                         ) {
                             Icon(
                                 Icons.Rounded.AutoAwesome,
-                                contentDescription = "AI Assistant",
+                                contentDescription = assistantContentDescription,
                                 tint = AivanceTheme.colors.accent
                             )
                         }

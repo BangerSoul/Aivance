@@ -81,6 +81,7 @@ fun TrackerScreen(
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.career_pipeline_title),
         subtitle = "Manage your execution pipeline",
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         isLoading = uiState is TrackerUiState.Loading,
         error = (uiState as? TrackerUiState.Error)?.message,

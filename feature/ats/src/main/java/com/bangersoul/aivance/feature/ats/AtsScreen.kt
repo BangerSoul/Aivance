@@ -103,6 +103,7 @@ fun AtsScreen(
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.ats_intelligence_title),
         subtitle = "Match analysis",
+        backContentDescription = stringResource(R.string.back),
         onBack = onNavigateBack,
         isLoading = uiState is AtsUiState.Analyzing,
         error = (uiState as? AtsUiState.Error)?.message,

@@ -130,6 +130,7 @@ fun ResumeEngineScreen(
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.resume_engine_title),
         subtitle = stringResource(R.string.resume_engine_subtitle),
+        backContentDescription = stringResource(R.string.back),
         onBack = {
             if (state is ResumeEngineState.Import) onBack()
             else viewModel.onEvent(ResumeEngineEvent.Back)

@@ -73,6 +73,7 @@ fun JobDetailsScreen(
         title = stringResource(R.string.job_details_title),
         onBack = onNavigateBack,
         showAssistantAction = true,
+        assistantContentDescription = stringResource(R.string.ai_assistant),
         onAssistantClick = {
             // Surface the assistant with this job as context so replies stay
             // on-target for the role being viewed.

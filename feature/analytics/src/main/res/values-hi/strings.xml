@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="analytics_not_measured">अभी कुछ स्कोर नहीं</string>
+    <string name="analytics_not_measured_detail">करियर हेल्थ, प्रगति और आउटकम सिम्युलेटर सभी आपके स्कोरिंग इतिहास से पड़ते हैं, इसलिए जब तक कुछ वास्तविक न हो, वे छिपे रहते हैं।</string>
+    <string name="analytics_not_measured_action">मेरा रिज़्यूमे स्कोर करें</string>
+    <string name="analytics_intelligence_center">इंटेलिजेंस सेंटर</string>
+    <string name="analytics_predictive_insights">पूर्वानुमानित करियर इनसाइट्स</string>
+    <string name="analytics_score_progression">स्कोर प्रगति</string>
+    <string name="analytics_score_progression_chart">स्कोर प्रगति चार्ट</string>
+    <string name="analytics_outcome_simulator">आउटकम सिम्युलेटर</string>
+    <string name="analytics_outcome_simulator_detail">अपने करियर पर अनुमानित प्रभाव देखने के लिए मान समायोजित करें।</string>
+    <string name="analytics_simulated_outcome">सिम्युलेटेड परिणाम</string>
+    <string name="back">वापस</string>
+</resources>

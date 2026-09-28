@@ -23,6 +23,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -33,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -128,6 +130,39 @@ class JobsViewModelTest {
         assertTrue(state is JobsUiState.Success)
         assertEquals(2, (state as JobsUiState.Success).jobs.size)
         assertEquals("Android", state.filter.query)
+    }
+
+    @Test
+    fun `a search in flight reports progress instead of a settled zero state`() = runTest {
+        // The Discovery screen renders a skeleton while `isSearching` is true and
+        // no results are on screen, so a cold query must never resolve to a
+        // settled zero-state frame first (AUDIT 49).
+        // A search that has not answered yet — exactly the window the screen
+        // must cover with a skeleton.
+        coEvery { mockSearchJobs.invoke(any()) } coAnswers {
+            delay(500)
+            Result.Success(emptyList<JobListing>())
+        }
+
+        val viewModel = createViewModel()
+        collectStates(viewModel, backgroundScope)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val idle = viewModel.uiState.value as JobsUiState.Success
+        assertFalse("nothing is in flight on a settled screen", idle.isSearching)
+
+        viewModel.onEvent(JobsUiEvent.Search("android"))
+        testDispatcher.scheduler.advanceTimeBy(50)
+
+        val inFlight = viewModel.uiState.value as JobsUiState.Success
+        assertTrue("the pending search must report progress", inFlight.isSearching)
+        assertTrue("and must still be empty on screen", inFlight.jobs.isEmpty())
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val settled = viewModel.uiState.value as JobsUiState.Success
+        assertTrue("no matches were configured", settled.jobs.isEmpty())
+        assertFalse("the search has resolved", settled.isSearching)
     }
 
     @Test

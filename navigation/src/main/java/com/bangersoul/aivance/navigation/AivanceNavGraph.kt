@@ -513,7 +513,10 @@ private fun ScreenContent(
             viewModel = hiltViewModel(),
             initialQuery = destination.query,
             onNavigateToDetails = { onNavigate(Destination.JobDetails(it)) },
-            onNavigateToSavedJobs = { onNavigate(Destination.SavedJobs) }
+            onNavigateToSavedJobs = { onNavigate(Destination.SavedJobs) },
+            // Quick Match can only run with a target role; without one the chip
+            // sends the user to the profile that defines it.
+            onSetTargetRole = { onNavigate(Destination.IdentityHub) }
         )
 
         is Destination.Pipeline -> TrackerScreen(

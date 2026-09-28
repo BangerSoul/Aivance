@@ -68,6 +68,18 @@ on the cached corpus when no search has run.
 ```
 EXPECT: `BUILD SUCCESSFUL` across every module — zero test breakages.
 
+## G9 — Discovery is selection-first, not filter-first (AUDIT 46/48/49)
+```bash
+./gradlew :feature:jobs:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: BUILD SUCCESSFUL; JobsViewModelTest asserts a pending search reports
+`isSearching` with nothing on screen (so the skeleton — never "No matches
+found" — covers the wait) and that a settled empty search clears it. The screen
+keeps four controls (keywords, location, experience, remote-only) and pushes
+type / workplace / remote policy / tech stack / must-include / exclude behind
+one Filters sheet; the Discovery hero card is gone; Quick Match is guarded and
+offers "Set target role" when the profile has none.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

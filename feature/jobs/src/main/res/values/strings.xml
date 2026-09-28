@@ -19,6 +19,17 @@
     <string name="experience">Experience</string>
     <string name="all">All</string>
     <string name="clear_all_filters">Clear all filters</string>
+    <!-- Selection-first Discovery controls (AUDIT 46/48): four high-signal
+         controls stay visible, everything else lives behind one Filters sheet. -->
+    <string name="filters">Filters</string>
+    <string name="filters_active_count">Filters (%1$d)</string>
+    <string name="filters_active_hint">Filters are narrowing your results.</string>
+    <string name="location">Location</string>
+    <string name="location_placeholder">City, region, or Remote</string>
+    <string name="remote_only">Remote only</string>
+    <string name="quick_match">Quick Match</string>
+    <string name="set_target_role">Set target role</string>
+    <string name="best_match">Best match</string>
     <string name="exp_0_2">0–2 years</string>
     <string name="exp_3_5">3–5 years</string>
     <string name="exp_6_10">6–10 years</string>

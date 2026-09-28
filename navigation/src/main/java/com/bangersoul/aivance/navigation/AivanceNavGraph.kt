@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -32,8 +33,6 @@ import com.bangersoul.aivance.feature.assistant.AssistantViewModel
 import com.bangersoul.aivance.feature.ats.AtsScreen
 import com.bangersoul.aivance.feature.coverletter.CoverLetterScreen
 import com.bangersoul.aivance.feature.dashboard.DashboardScreen
-import com.bangersoul.aivance.feature.interview.InterviewViewModel
-import com.bangersoul.aivance.feature.interview.ui.PrepStudioScreen
 import com.bangersoul.aivance.feature.jobs.ApplyBrowserScreen
 import com.bangersoul.aivance.feature.jobs.CompanyDetailScreen
 import com.bangersoul.aivance.feature.jobs.CompanyDetailViewModel
@@ -56,8 +55,6 @@ import com.bangersoul.aivance.feature.profile.SplashScreen
 import com.bangersoul.aivance.feature.profile.WelcomeScreen
 import com.bangersoul.aivance.feature.recruiter.RecruiterDashboardScreen
 import com.bangersoul.aivance.feature.recruiter.RecruiterViewModel
-import com.bangersoul.aivance.feature.resume.IntelligenceHubScreen
-import com.bangersoul.aivance.feature.resume.IntelligenceHubViewModel
 import com.bangersoul.aivance.feature.resume.ResumeDetailScreen
 import com.bangersoul.aivance.feature.resume.ResumeDetailViewModel
 import com.bangersoul.aivance.feature.resume.ResumeEngineScreen
@@ -71,11 +68,16 @@ import kotlinx.coroutines.withTimeoutOrNull
 /**
  * Top-level navigation for AiVance v2 — workflow-driven.
  *
- * Architecture:
- *  - One independent backstack per primary workspace (Dashboard, Intelligence,
- *    Discovery, Pipeline, Prep Studio) so context switching never loses state.
+ * Architecture (post subtraction-first pruning, AUDIT §3.2):
+ *  - One independent backstack per workspace — Dashboard, Discovery, Pipeline
+ *    and Studio — plus a dedicated orb backstack for the Assistant, so context
+ *    switching never loses state.
  *  - A single gate backstack owns the unauthenticated surface: splash, welcome,
  *    auth and provider setup (the only onboarding flow).
+ *  - Seeded hand-offs (`Studio(PRACTICE)`, `Discovery(query)`,
+ *    `Pipeline(jobId)`) are nav arguments on the workspace that owns them, not
+ *    separate destinations: they land on the tab's own stack and never fork a
+ *    duplicate.
  *  - The provider gate is the sole authority for product entry: an
  *    unconfigured/invalid contract routes to provider setup regardless of
  *    auth state.
@@ -109,6 +111,23 @@ fun AivanceNavGraph() {
     }
 }
 
+/**
+ * The workspace that owns [destination]'s backstack, or `null` when the
+ * destination is a spoke, a gate surface or the Assistant orb.
+ *
+ * Seeded variants resolve to the canonical tab instance they belong to — that
+ * is what keeps one backstack per tab while the seed still travels as a nav
+ * argument.
+ */
+private fun workspaceOwnerOf(destination: Destination): Destination? = when (destination) {
+    Destination.Dashboard -> Destination.Dashboard
+    Destination.AssistantOrb -> Destination.AssistantOrb
+    is Destination.Discovery -> Destination.Discovery()
+    is Destination.Pipeline -> Destination.Pipeline()
+    is Destination.Studio -> Destination.Studio()
+    else -> null
+}
+
 @Composable
 private fun AivanceWorkflowNavGraph(
     initialDestination: Destination,
@@ -134,31 +153,32 @@ private fun AivanceWorkflowNavGraph(
     // ── Backstacks ──────────────────────────────────────────────────────────
 
     // One backstack per workspace destination. The four N1 tabs own their own;
-    // the legacy Intelligence/PrepStudio roots alias onto Studio's backstack
-    // so deep links seed the Studio host instead of forking a fifth backstack.
+    // Navigation 3 has no popUpTo/launchSingleTop, so "saving state" is simply
+    // the tab's own retained history: switching tabs swaps stacks instead of
+    // pushing, and a re-seed replaces the previous seed of that tab.
     val backstacks = Destination.rootDestinations.associateWith { root ->
         @Suppress("UNCHECKED_CAST")
         rememberNavBackStack(root) as NavBackStack<Destination>
     }
 
-    // Segment seeded whenever Studio is entered through a legacy entry point
-    // (Intelligence → Resumes, PrepStudio / LearnSkill → Practice).
-    var studioSegmentSeed by remember { mutableStateOf(StudioSegment.RESUMES) }
-    fun seedStudioFor(destination: Destination) {
-        when (destination) {
-            Destination.PrepStudio, is Destination.LearnSkill -> studioSegmentSeed = StudioSegment.PRACTICE
-            Destination.Intelligence -> studioSegmentSeed = StudioSegment.RESUMES
-            else -> Unit
-        }
-    }
+    // The AI orb owns a dedicated backstack so assistant conversations survive
+    // workspace switches without polluting a workspace's history.
+    val orbBackstack = rememberNavBackStack(Destination.AssistantOrb) as NavBackStack<Destination>
 
     val authBackstack = rememberNavBackStack(
         if (initialDestination in Destination.authDestinations) initialDestination else Destination.Splash
     ) as NavBackStack<Destination>
 
-    // The AI orb owns a dedicated backstack so assistant conversations survive
-    // workspace switches without polluting a workspace's history.
-    val orbBackstack = rememberNavBackStack(Destination.Assistant) as NavBackStack<Destination>
+    // Hoisted Studio segment: seeded by the Studio nav argument, then owned by
+    // the user's tab choice. Kept at graph level (saveable) so leaving the
+    // workspace — or a process recreation — does not silently drop it back to
+    // Resumes.
+    var studioSegment by rememberSaveable { mutableStateOf(StudioSegment.RESUMES) }
+
+    // Identity Hub sub-tab, hoisted for the same reason (B5): the hub is a spoke
+    // on a workspace stack, so a local `remember` inside it reset to the
+    // Identity tab after every System-spoke round trip.
+    var identityTab by rememberSaveable { mutableStateOf(0) }
 
     // When a settled gate denies entry while the user is signed in (provider
     // removed/invalidated mid-session, or the persisted contract changed), the
@@ -178,19 +198,22 @@ private fun AivanceWorkflowNavGraph(
 
     var activeWorkspace by remember { mutableStateOf<Destination>(Destination.Dashboard) }
 
+    fun stackFor(workspace: Destination): NavBackStack<Destination> = when (workspace) {
+        Destination.AssistantOrb -> orbBackstack
+        is Destination.Discovery -> backstacks.getValue(Destination.Discovery())
+        is Destination.Pipeline -> backstacks.getValue(Destination.Pipeline())
+        is Destination.Studio -> backstacks.getValue(Destination.Studio())
+        else -> backstacks.getValue(Destination.Dashboard)
+    }
+
     // Workspace backstacks exist only while the provider contract allows product
     // entry. A signed-in user whose configuration became invalid is held on the
     // auth backstack (provider setup) even though `isAuthed` is true.
     val currentBackstack = if (isAuthed && productEntryAllowed) {
-        when {
-            activeWorkspace == Destination.AssistantOrb -> orbBackstack
-            else -> backstacks[Destination.workspaceKey(activeWorkspace)] ?: backstacks[Destination.Dashboard]!!
-        }
+        stackFor(activeWorkspace)
     } else {
         authBackstack
     }
-
-    val currentDestination = currentBackstack.last()
 
     // ── Navigation logic ────────────────────────────────────────────────────
 
@@ -205,74 +228,72 @@ private fun AivanceWorkflowNavGraph(
             destination.isAuthenticatedDestination() && !productEntryAllowed ->
                 authBackstack.add(Destination.ProviderSetup)
 
-            // Tab destinations switch workspaces instead of pushing. Legacy
-            // workspace roots (Intelligence/PrepStudio) activate the Studio
-            // workspace and seed its matching segment.
-            destination in Destination.workspaceDestinations -> {
-                seedStudioFor(destination)
-                activeWorkspace = Destination.workspaceKey(destination)
-            }
-
             destination in Destination.authDestinations ->
                 authBackstack.add(destination)
 
-            // The assistant has a home now — navigate to the orb workspace
-            // instead of pushing a duplicate instance onto a workspace stack.
-            destination == Destination.Assistant || destination == Destination.AssistantOrb ->
-                activeWorkspace = Destination.AssistantOrb
-
             else -> {
-                // Detail destinations belong to the workspace that owns them;
-                // switching happens before the push so back returns to the
-                // origin workspace's prior screen, never a foreign tab.
-                val targetWorkspace = when {
-                    destination is Destination.Ats ||
-                        destination is Destination.ResumeDetail ||
-                        destination is Destination.ResumeEngine ||
-                        destination == Destination.Intelligence ||
-                        destination == Destination.Studio -> Destination.Studio
-
-                    destination is Destination.CoverLetter ||
-                        destination is Destination.DiscoverBySkill ||
-                        destination is Destination.ApplyBrowser ||
-                        destination is Destination.RecruiterDashboard -> Destination.Discovery
-
-                    destination is Destination.LearnSkill ||
-                        destination == Destination.PrepStudio -> Destination.Studio
-
-                    destination is Destination.TrackApplication -> Destination.Pipeline
-
-                    else -> null
-                }
-
-                if (targetWorkspace == Destination.Studio) seedStudioFor(destination)
-
-                if (targetWorkspace != null && activeWorkspace != targetWorkspace) {
-                    activeWorkspace = targetWorkspace
-                }
-
-                val targetBackstack = if (isAuthed) {
-                    backstacks[targetWorkspace ?: activeWorkspace] ?: currentBackstack
+                val owner = workspaceOwnerOf(destination)
+                if (owner != null) {
+                    // Tab switch: the workspace's own saved history is shown as
+                    // it was left. A seeded variant additionally lands as the
+                    // tab's top entry — replacing an earlier seed of the same
+                    // tab (launch-single-top) so repeated hand-offs never grow
+                    // the stack.
+                    activeWorkspace = owner
+                    if (destination is Destination.Studio) studioSegment = destination.segment
+                    if (destination != owner) {
+                        val stack = stackFor(owner)
+                        if (stack.size > 1 && stack.last()::class == destination::class) {
+                            stack.removeAt(stack.lastIndex)
+                        }
+                        stack.add(destination)
+                    }
                 } else {
-                    authBackstack
+                    // Spokes belong to the workspace that owns them; switching
+                    // happens before the push so back returns to the origin
+                    // workspace's prior screen, never a foreign tab.
+                    val targetWorkspace = when (destination) {
+                        is Destination.Ats,
+                        is Destination.ResumeDetail,
+                        is Destination.ResumeEngine -> Destination.Studio()
+
+                        is Destination.CoverLetter,
+                        is Destination.ApplyBrowser,
+                        is Destination.RecruiterDashboard -> Destination.Discovery()
+
+                        else -> null
+                    }
+
+                    if (targetWorkspace != null && activeWorkspace != targetWorkspace) {
+                        activeWorkspace = targetWorkspace
+                    }
+
+                    val targetBackstack = if (isAuthed) {
+                        stackFor(targetWorkspace ?: activeWorkspace)
+                    } else {
+                        authBackstack
+                    }
+                    targetBackstack.add(destination)
                 }
-                targetBackstack.add(destination)
             }
         }
     }
 
+    // Deep links land on the workspace that owns the seeded entry: activate the
+    // tab, publish the seed, and place the seeded entry on its stack so the
+    // destination (not just the tab) is what the user actually sees.
     LaunchedEffect(initialDestination) {
-        when {
-            initialDestination == Destination.AssistantOrb -> activeWorkspace = Destination.AssistantOrb
-            initialDestination in Destination.workspaceDestinations -> {
-                seedStudioFor(initialDestination)
-                activeWorkspace = Destination.workspaceKey(initialDestination)
-            }
+        val owner = workspaceOwnerOf(initialDestination) ?: return@LaunchedEffect
+        activeWorkspace = owner
+        if (initialDestination is Destination.Studio) studioSegment = initialDestination.segment
+        if (initialDestination != owner) {
+            stackFor(owner).add(initialDestination)
         }
     }
 
     // ── System back ─────────────────────────────────────────────────────────
 
+    val currentDestination = currentBackstack.last()
     val isAuthSurface = !isAuthed || currentDestination in Destination.authDestinations
     BackHandler(enabled = currentBackstack.size > 1 || (!isAuthSurface && activeWorkspace != Destination.Dashboard)) {
         if (currentBackstack.size > 1) {
@@ -301,6 +322,9 @@ private fun AivanceWorkflowNavGraph(
                 Destination.rootDestinations.forEach { workspace ->
                     item(
                         selected = activeWorkspace == workspace,
+                        // Tabs swap stacks; they never re-seed. The Studio
+                        // segment is the user's own choice once inside the
+                        // workspace, so a tab tap must not reset it.
                         onClick = { activeWorkspace = workspace },
                         icon = {
                             val selected = activeWorkspace == workspace
@@ -319,10 +343,26 @@ private fun AivanceWorkflowNavGraph(
                 }
             }
         ) {
-            NavHostContent(currentBackstack, onNavigate, authViewModel, studioSegmentSeed)
+            NavHostContent(
+                backStack = currentBackstack,
+                onNavigate = onNavigate,
+                authViewModel = authViewModel,
+                studioSegment = studioSegment,
+                onStudioSegmentChange = { studioSegment = it },
+                identityTab = identityTab,
+                onIdentityTabChange = { identityTab = it }
+            )
         }
     } else {
-        NavHostContent(currentBackstack, onNavigate, authViewModel, studioSegmentSeed)
+        NavHostContent(
+            backStack = currentBackstack,
+            onNavigate = onNavigate,
+            authViewModel = authViewModel,
+            studioSegment = studioSegment,
+            onStudioSegmentChange = { studioSegment = it },
+            identityTab = identityTab,
+            onIdentityTabChange = { identityTab = it }
+        )
     }
 }
 
@@ -331,7 +371,10 @@ private fun NavHostContent(
     backStack: NavBackStack<Destination>,
     onNavigate: (Destination) -> Unit,
     authViewModel: AuthenticationViewModel,
-    studioSegmentSeed: StudioSegment
+    studioSegment: StudioSegment,
+    onStudioSegmentChange: (StudioSegment) -> Unit,
+    identityTab: Int,
+    onIdentityTabChange: (Int) -> Unit
 ) {
     val currentDestination = if (backStack.isNotEmpty()) backStack.last() else return
     AnimatedContent(
@@ -344,9 +387,18 @@ private fun NavHostContent(
         label = "NavTransition"
     ) { destination ->
         Box(Modifier.fillMaxSize()) {
-            ScreenContent(destination, onNavigate, authViewModel, studioSegmentSeed) {
-                if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
-            }
+            ScreenContent(
+                destination = destination,
+                onNavigate = onNavigate,
+                authViewModel = authViewModel,
+                studioSegment = studioSegment,
+                onStudioSegmentChange = onStudioSegmentChange,
+                identityTab = identityTab,
+                onIdentityTabChange = onIdentityTabChange,
+                onBack = {
+                    if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
+                }
+            )
         }
     }
 }
@@ -356,7 +408,10 @@ private fun ScreenContent(
     destination: Destination?,
     onNavigate: (Destination) -> Unit,
     authViewModel: AuthenticationViewModel,
-    studioSegmentSeed: StudioSegment,
+    studioSegment: StudioSegment,
+    onStudioSegmentChange: (StudioSegment) -> Unit,
+    identityTab: Int,
+    onIdentityTabChange: (Int) -> Unit,
     onBack: () -> Unit
 ) {
     val shellState = LocalAppShellState.current
@@ -389,9 +444,9 @@ private fun ScreenContent(
         }
 
         Destination.Welcome -> WelcomeScreen(
+            // Both affordances make the same product promise — sign in. The
+            // provider gate, not this screen, decides what happens next.
             onGetStarted = { onNavigate(Destination.Auth) },
-            // The welcome "skip" makes no product promise — it goes to auth, and
-            // the provider gate decides between the main graph and provider setup.
             onSkip = { onNavigate(Destination.Auth) }
         )
 
@@ -417,26 +472,32 @@ private fun ScreenContent(
 
         Destination.Dashboard -> DashboardScreen(
             viewModel = hiltViewModel(),
-            onNavigateToResume = { onNavigate(Destination.Intelligence) },
-            onNavigateToTracker = { onNavigate(Destination.Pipeline) },
+            onNavigateToResume = { onNavigate(Destination.Studio(segment = StudioSegment.RESUMES)) },
+            onNavigateToTracker = { onNavigate(Destination.Pipeline()) },
             onNavigateToProfile = { onNavigate(Destination.IdentityHub) },
-            onNavigateToInterview = { onNavigate(Destination.PrepStudio) },
+            onNavigateToInterview = { onNavigate(Destination.Studio(segment = StudioSegment.PRACTICE)) },
             onNavigateToAnalytics = { onNavigate(Destination.Analytics) },
-            onNavigateToJobs = { onNavigate(Destination.Discovery) },
-            onNavigateToAssistant = { onNavigate(Destination.Assistant) },
+            onNavigateToJobs = { onNavigate(Destination.Discovery()) },
+            onNavigateToAssistant = { onNavigate(Destination.AssistantOrb) },
             onNavigateToNotifications = { onNavigate(Destination.Notifications) },
             onNavigateToProviderSetup = { onNavigate(Destination.ProviderSetup) },
-            onDiscoverBySkill = { skill -> onNavigate(Destination.DiscoverBySkill(skill)) },
-            onLearnSkill = { skill -> onNavigate(Destination.LearnSkill(skill)) }
+            onDiscoverBySkill = { skill -> onNavigate(Destination.Discovery(query = skill)) },
+            onLearnSkill = { skill ->
+                onNavigate(Destination.Studio(segment = StudioSegment.PRACTICE, learnSkill = skill))
+            }
         )
 
-        Destination.Assistant, Destination.AssistantOrb -> AssistantScreen(
+        // The orb owns its own backstack — a conversation survives workspace
+        // switches, and there is no second assistant surface to reconcile.
+        Destination.AssistantOrb -> AssistantScreen(
             viewModel = hiltViewModel<AssistantViewModel>(),
             onSwitchProvider = { onNavigate(Destination.ProviderSetup) }
         )
 
-        Destination.Studio, Destination.Intelligence -> StudioWorkspaceScreen(
-            initialSegment = studioSegmentSeed,
+        is Destination.Studio -> StudioWorkspaceScreen(
+            segment = studioSegment,
+            onSegmentChange = onStudioSegmentChange,
+            initialLearnSkill = destination.learnSkill,
             onNavigateToEngine = { onNavigate(Destination.ResumeEngine()) },
             onNavigateToAts = { reportId -> onNavigate(Destination.Ats(reportId = reportId)) },
             onBack = onBack
@@ -448,35 +509,28 @@ private fun ScreenContent(
             onBack = onBack
         )
 
-        Destination.Discovery -> JobsScreen(
+        is Destination.Discovery -> JobsScreen(
             viewModel = hiltViewModel(),
+            initialQuery = destination.query,
             onNavigateToDetails = { onNavigate(Destination.JobDetails(it)) },
             onNavigateToSavedJobs = { onNavigate(Destination.SavedJobs) }
         )
 
-        is Destination.DiscoverBySkill -> JobsScreen(
-            viewModel = hiltViewModel(),
-            initialQuery = destination.skill,
-            onNavigateToDetails = { onNavigate(Destination.JobDetails(it)) },
-            onNavigateToSavedJobs = { onNavigate(Destination.SavedJobs) }
-        )
-
-        Destination.Pipeline -> TrackerScreen(
+        is Destination.Pipeline -> TrackerScreen(
             viewModel = hiltViewModel(),
             onBack = onBack,
-            onNavigateToAnalytics = { onNavigate(Destination.Analytics) }
-        )
-
-        is Destination.TrackApplication -> TrackerScreen(
-            viewModel = hiltViewModel(),
+            // The saved-job hand-off folds into the tab: the job id pre-selects
+            // the card on the Pipeline's own stack instead of pushing a second
+            // Tracker screen.
             initialJobId = destination.jobId,
-            onBack = onBack,
             onNavigateToAnalytics = { onNavigate(Destination.Analytics) }
         )
 
         Destination.IdentityHub -> IdentityHubScreen(
             viewModel = hiltViewModel(),
             onBack = onBack,
+            selectedTab = identityTab,
+            onTabChange = onIdentityTabChange,
             onNavigateToAbout = { onNavigate(Destination.About) },
             onNavigateToResources = { onNavigate(Destination.Resources) },
             onNavigateToAppearance = { onNavigate(Destination.Appearance) },
@@ -500,15 +554,8 @@ private fun ScreenContent(
         Destination.Analytics -> AnalyticsScreen(
             viewModel = hiltViewModel<AnalyticsViewModel>(),
             onBack = onBack,
-            onNavigateToIntelligence = { onNavigate(Destination.Intelligence) }
-        )
-
-        Destination.PrepStudio, is Destination.LearnSkill -> StudioWorkspaceScreen(
-            initialSegment = studioSegmentSeed,
-            initialLearnSkill = (destination as? Destination.LearnSkill)?.skill,
-            onNavigateToEngine = { onNavigate(Destination.ResumeEngine()) },
-            onNavigateToAts = { reportId -> onNavigate(Destination.Ats(reportId = reportId)) },
-            onBack = onBack
+            // The old Intelligence spoke is gone; career surfaces live in Studio.
+            onNavigateToIntelligence = { onNavigate(Destination.Studio(segment = StudioSegment.RESUMES)) }
         )
 
         is Destination.Ats -> AtsScreen(
@@ -523,7 +570,7 @@ private fun ScreenContent(
             viewModel = hiltViewModel(),
             onNavigateBack = onBack,
             jobId = destination.jobId,
-            onFindJobs = { onNavigate(Destination.Discovery) }
+            onFindJobs = { onNavigate(Destination.Discovery()) }
         )
 
         Destination.SavedJobs -> SavedJobsScreen(
@@ -533,7 +580,10 @@ private fun ScreenContent(
             onCreateResume = { job ->
                 onNavigate(Destination.ResumeEngine(jobDescription = job.description))
             },
-            onTrackApplication = { job -> onNavigate(Destination.TrackApplication(job.id)) },
+            // TrackApplication is gone: the job id now travels as the Pipeline
+            // tab's nav argument, so the kanban opens on the job without a
+            // duplicate Tracker entry on the stack.
+            onTrackApplication = { job -> onNavigate(Destination.Pipeline(jobId = job.id)) },
             onAssistantForJob = { job ->
                 shellState.setAssistantJobContext(
                     AssistantJobContext(
@@ -554,10 +604,10 @@ private fun ScreenContent(
             onNavigateToApplyBrowser = { onNavigate(Destination.ApplyBrowser(it)) },
             onNavigateToRecruiters = { onNavigate(Destination.RecruiterDashboard(it)) },
             onNavigateToCoverLetter = { jobId -> onNavigate(Destination.CoverLetter(jobId = jobId)) },
-            onNavigateToPipeline = { onNavigate(Destination.Pipeline) },
+            onNavigateToPipeline = { onNavigate(Destination.Pipeline()) },
             onNavigateToAts = { description -> onNavigate(Destination.Ats(jobDescription = description)) },
             onNavigateToCompany = { companyName -> onNavigate(Destination.CompanyDetail(companyName)) },
-            onNavigateToPrepStudio = { onNavigate(Destination.PrepStudio) }
+            onNavigateToPrepStudio = { onNavigate(Destination.Studio(segment = StudioSegment.PRACTICE)) }
         )
 
         is Destination.RecruiterDashboard -> RecruiterDashboardScreen(

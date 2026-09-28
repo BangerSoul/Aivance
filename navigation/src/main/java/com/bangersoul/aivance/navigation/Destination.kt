@@ -20,6 +20,13 @@ import kotlinx.serialization.Serializable
  *  2. Workspaces — the four primary tabs plus the AI orb, one backstack each
  *  3. Spokes — detail screens that live on a workspace backstack
  *  4. System — settings surfaces reachable from the Identity Hub
+ *
+ * Subtraction-first (AUDIT §3.2): the legacy aliases `Intelligence`,
+ * `PrepStudio`, `Assistant`, `TrackApplication`, `DiscoverBySkill` and
+ * `LearnSkill` are gone. Their seeds are carried as nav arguments on the
+ * canonical workspace they used to fork into, so every tab still owns exactly
+ * one backstack *and* the seed survives process death (a `remember` seed does
+ * not).
  */
 @Serializable
 sealed interface Destination : NavKey {
@@ -60,43 +67,51 @@ sealed interface Destination : NavKey {
         override val label = "Dashboard"
     }
 
-    /** Intelligence Hub — manages resumes and ATS analysis. */
+    /**
+     * Job Discovery — universal job search and market intelligence.
+     *
+     * @param query optional search seed. Replaces the deleted `DiscoverBySkill`
+     *  spoke: a skill-gap chip deep-links straight into the Discovery tab.
+     */
     @Serializable
-    data object Intelligence : Destination {
-        override val label = "Intelligence"
-    }
-
-    /** Job Discovery — universal job search and market intelligence. */
-    @Serializable
-    data object Discovery : Destination {
+    data class Discovery(val query: String? = null) : Destination {
         override val label = "Job Discovery"
     }
 
-    /** Application Pipeline — Kanban workflow management. */
+    /**
+     * Application Pipeline — Kanban workflow management.
+     *
+     * @param jobId optional job to pre-select. Replaces the deleted
+     *  `TrackApplication` spoke, which pushed a *second* Tracker screen onto the
+     *  Pipeline stack (a back-stack double entry).
+     */
     @Serializable
-    data object Pipeline : Destination {
+    data class Pipeline(val jobId: String? = null) : Destination {
         override val label = "Pipeline"
-    }
-
-    /** Prep Studio — Mock interviews and practice intelligence. */
-    @Serializable
-    data object PrepStudio : Destination {
-        override val label = "Prep Studio"
     }
 
     /**
      * Studio workspace (N1) — the merged Intelligence + Prep Studio tab with
-     * segmented sub-tabs (Resumes · ATS · Practice). Entering via the legacy
-     * [Intelligence]/[PrepStudio] destinations seeds the initial segment.
+     * segmented sub-tabs (Resumes · Practice).
+     *
+     * @param segment the active sub-tab. Replaces the deleted `Intelligence`
+     *  (RESUMES) and `PrepStudio` (PRACTICE) roots.
+     * @param learnSkill optional skill to pre-seed the Learn surface with.
+     *  Replaces the deleted `LearnSkill` spoke.
      */
     @Serializable
-    data object Studio : Destination {
+    data class Studio(
+        val segment: StudioSegment = StudioSegment.RESUMES,
+        val learnSkill: String? = null
+    ) : Destination {
         override val label = "Studio"
     }
 
     /**
      * AI orb tab (N1) — the Assistant elevated to a permanent nav surface.
-     * Rendered by the nav shell as the aurora orb, never a standard tab item.
+     * Rendered by the nav shell as the aurora orb, never a standard tab item,
+     * and never a root destination: it owns a dedicated backstack so a
+     * conversation survives workspace switches.
      */
     @Serializable
     data object AssistantOrb : Destination {
@@ -104,11 +119,6 @@ sealed interface Destination : NavKey {
     }
 
     // ── Layer 3: Secondary & Detail Screens ──────────────────────────────
-
-    @Serializable
-    data object Assistant : Destination {
-        override val label = "Assistant"
-    }
 
     @Serializable
     data object Analytics : Destination {
@@ -176,26 +186,6 @@ sealed interface Destination : NavKey {
         override val label = "Saved Jobs"
     }
 
-    /** Opens the Pipeline workspace with a job pre-selected (from a saved job). */
-    @Serializable
-    data class TrackApplication(val jobId: String) : Destination {
-        override val label = "Pipeline"
-    }
-
-    /** Opens Job Discovery with the search pre-seeded to a skill (from a dashboard
-     *  skill-gap chip), so the user sees roles demanding the skill they lack. */
-    @Serializable
-    data class DiscoverBySkill(val skill: String) : Destination {
-        override val label = "Job Discovery"
-    }
-
-    /** Opens Prep Studio's Learn tab pre-seeded with a skill (from a dashboard
-     *  skill-gap chip), so the user gets targeted learning recommendations. */
-    @Serializable
-    data class LearnSkill(val skill: String) : Destination {
-        override val label = "Prep Studio"
-    }
-
     // ── Layer 4: System ──────────────────────────────────────────────────
 
     @Serializable
@@ -234,32 +224,21 @@ sealed interface Destination : NavKey {
          * HQ -> Discover -> Pipeline -> Studio, with the AI orb (Assistant)
          * inserted between HQ and the workspaces by the nav shell.
          *
-         * N1 merges Intelligence (resumes/ATS) and Prep Studio (practice) into
-         * the Studio workspace with segmented sub-tabs. The legacy
-         * [Intelligence]/[PrepStudio] destinations remain valid entry points —
-         * they host inside Studio and seed its initial segment.
+         * These are the canonical instances. Every seeded variant
+         * (`Studio(PRACTICE)`, `Discovery(query)`, `Pipeline(jobId)`) resolves
+         * onto the backstack of the tab it belongs to.
          */
         val rootDestinations = listOf(
-            Dashboard, Discovery, Pipeline, Studio
+            Dashboard, Discovery(), Pipeline(), Studio()
         )
 
-        /**
-         * Every destination that owns a workspace backstack — the four N1 tabs
-         * plus the legacy Intel/Prep roots (each maps onto Studio's backstack).
-         */
-        val workspaceDestinations = rootDestinations + listOf(Intelligence, PrepStudio)
-
-        /** Owning workspace for a tab/legacy-root destination (N1 aliasing). */
-        fun workspaceKey(root: Destination): Destination = when (root) {
-            Intelligence, PrepStudio -> Studio
-            else -> root
-        }
+        /** Every destination that owns a workspace backstack — the four N1 tabs. */
+        val workspaceDestinations = rootDestinations
 
         val authenticatedDestinations = setOf(
-            Dashboard, Intelligence, Discovery, Pipeline, PrepStudio,
-            Studio, Assistant, AssistantOrb, Analytics, IdentityHub, About,
-            ProviderManagement, Notifications, PrivacyCenter, Appearance,
-            SavedJobs
+            Dashboard, Discovery(), Pipeline(), Studio(), AssistantOrb, Analytics,
+            IdentityHub, About, ProviderManagement, Notifications, PrivacyCenter,
+            Appearance, Resources, SavedJobs
         )
 
         val authDestinations = setOf(
@@ -270,9 +249,17 @@ sealed interface Destination : NavKey {
 
 /**
  * True when a destination lives inside the authenticated Main graph.
+ *
+ * `Discovery`/`Pipeline`/`Studio` are parameterised, so a *seeded* instance is
+ * not equal to its canonical set member; they are matched by type. `Resources`
+ * is in the set too — without it a deep link could push an authenticated
+ * surface onto the auth backstack before sign-in (AUDIT §3.2 guard gap).
  */
 fun Destination.isAuthenticatedDestination(): Boolean =
     this in Destination.authenticatedDestinations ||
+        this is Destination.Discovery ||
+        this is Destination.Pipeline ||
+        this is Destination.Studio ||
         this is Destination.CompanyDetail ||
         this is Destination.ResumeDetail ||
         this is Destination.JobDetails ||
@@ -280,10 +267,7 @@ fun Destination.isAuthenticatedDestination(): Boolean =
         this is Destination.ApplyBrowser ||
         this is Destination.Ats ||
         this is Destination.CoverLetter ||
-        this is Destination.ResumeEngine ||
-        this is Destination.TrackApplication ||
-        this is Destination.DiscoverBySkill ||
-        this is Destination.LearnSkill
+        this is Destination.ResumeEngine
 
 /**
  * I3 icon intent — paired outlined/filled variants so the nav shell can render
@@ -307,18 +291,15 @@ val Destination.iconIntent: DestinationIconIntent
             outlined = AiNavIcons.DashboardOutlined,
             filled = AiNavIcons.DashboardFilled
         )
-        Destination.Assistant -> DestinationIconIntent(
-            outlined = AiNavIcons.Orb,
-            isAccent = true
-        )
-        Destination.Intelligence,
-        is Destination.ResumeEngine,
-        Destination.Studio -> DestinationIconIntent(
+        is Destination.Studio -> DestinationIconIntent(
             outlined = Icons.Outlined.Description,
             filled = Icons.Filled.Description
         )
-        Destination.Discovery,
-        is Destination.DiscoverBySkill -> DestinationIconIntent(
+        is Destination.ResumeEngine -> DestinationIconIntent(
+            outlined = Icons.Outlined.Description,
+            filled = Icons.Filled.Description
+        )
+        is Destination.Discovery -> DestinationIconIntent(
             outlined = AiNavIcons.DiscoveryOutlined,
             filled = AiNavIcons.DiscoveryFilled
         )
@@ -342,15 +323,9 @@ val Destination.iconIntent: DestinationIconIntent
             outlined = Icons.Rounded.BookmarkBorder,
             filled = Icons.Filled.Bookmark
         )
-        Destination.Pipeline,
-        is Destination.TrackApplication -> DestinationIconIntent(
+        is Destination.Pipeline -> DestinationIconIntent(
             outlined = AiNavIcons.PipelineOutlined,
             filled = AiNavIcons.PipelineFilled
-        )
-        is Destination.LearnSkill,
-        Destination.PrepStudio -> DestinationIconIntent(
-            outlined = Icons.Outlined.School,
-            filled = Icons.Filled.School
         )
         Destination.Appearance -> DestinationIconIntent(
             outlined = Icons.Rounded.Palette,
@@ -397,11 +372,9 @@ val Destination.labelRes: Int
         Destination.Splash -> R.string.dest_splash
         Destination.Welcome -> R.string.dest_welcome
         Destination.Dashboard -> R.string.dest_dashboard
-        Destination.Assistant -> R.string.dest_assistant
-        Destination.Intelligence,
+        is Destination.Studio -> R.string.dest_studio
         is Destination.ResumeEngine -> R.string.dest_intelligence
-        Destination.Studio -> R.string.dest_studio
-        Destination.Discovery, is Destination.DiscoverBySkill -> R.string.dest_discovery
+        is Destination.Discovery -> R.string.dest_discovery
         Destination.IdentityHub -> R.string.dest_profile
         is Destination.Ats -> R.string.dest_ats
         is Destination.CoverLetter -> R.string.dest_cover_letter
@@ -409,8 +382,7 @@ val Destination.labelRes: Int
         is Destination.ApplyBrowser -> R.string.dest_apply
         is Destination.RecruiterDashboard -> R.string.dest_recruiter_discovery
         Destination.SavedJobs -> R.string.dest_saved_jobs
-        Destination.Pipeline, is Destination.TrackApplication -> R.string.dest_pipeline
-        is Destination.LearnSkill, Destination.PrepStudio -> R.string.dest_prep_studio
+        is Destination.Pipeline -> R.string.dest_pipeline
         Destination.Appearance -> R.string.dest_appearance
         Destination.ProviderManagement -> R.string.dest_providers
         Destination.Notifications -> R.string.dest_notifications

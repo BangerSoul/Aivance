@@ -37,10 +37,17 @@ fun IdentityHubScreen(
     onNavigateToAppearance: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToProviderManagement: () -> Unit = {},
-    onSignedOut: () -> Unit = {}
+    onSignedOut: () -> Unit = {},
+    /**
+     * Selected sub-tab, owned by the caller (B5). A local `remember` here was
+     * wiped every time the user left the hub for a System spoke (Appearance,
+     * Privacy, …) and came back — the spoke push/replace re-creates this
+     * composable, so the hub snapped back to the Identity tab.
+     */
+    selectedTab: Int = 0,
+    onTabChange: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Identity", "Preferences", "Providers", "Vault", "System")
 
     LaunchedEffect(Unit) {
@@ -69,7 +76,7 @@ fun IdentityHubScreen(
                 tabs.forEachIndexed { index, label ->
                     Tab(
                         selected = selectedTab == index,
-                        onClick = { selectedTab = index },
+                        onClick = { onTabChange(index) },
                         text = { Text(label, style = MaterialTheme.typography.labelLarge) }
                     )
                 }

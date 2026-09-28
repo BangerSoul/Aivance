@@ -126,6 +126,25 @@ projected score falls back to the current score instead of `—`. When nothing i
 measured the surface shows one honest empty state pointing at scoring, rather
 than the `—` / `0%` placeholders across three tabs.
 
+## G13 — Identity Hub is one profile editor, not two (AUDIT 20)
+```bash
+! grep -q "fun PreferencesTab\|Save Preferences" feature/profile/src/main/java/com/bangersoul/aivance/feature/profile/IdentityHubScreen.kt && echo "one editor: ok"
+grep -q 'val tabs = listOf("Identity", "Providers", "Vault", "System")' feature/profile/src/main/java/com/bangersoul/aivance/feature/profile/IdentityHubScreen.kt && echo "four tabs: ok"
+./gradlew :feature:profile:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: both guards print `ok` — the `PreferencesTab` composable and its second
+`Save Preferences` button are gone, and the hub is four tabs — and BUILD
+SUCCESSFUL. Identity and Preferences were the same `UserProfile`: both wrote
+`draftProfile` through `UpdateDraftProfile` and both committed the whole record
+through `SaveDraftProfile`, so the career preferences (remote/visa, target role,
+skills, salary, industries, with their Add dialogs) are now a section of the
+Identity tab under the same single Edit → Save flow. Read mode renders them
+through the existing `IdentityField` (blank values still read "Not provided"
+rather than a fake `—`), which also stops a preference edit from being stranded
+when the user leaves without pressing the second Save. Tab indices shift
+(Providers 2→1, Vault 3→2, System 4→3), and the `when` falls back to Identity so
+a `selectedTab` saved before the merge cannot land on a blank screen.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

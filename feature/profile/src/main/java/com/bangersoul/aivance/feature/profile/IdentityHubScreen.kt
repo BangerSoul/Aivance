@@ -17,9 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,7 +46,9 @@ fun IdentityHubScreen(
     onTabChange: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val tabs = listOf("Identity", "Preferences", "Providers", "Vault", "System")
+    // Four tabs: Preferences is a section of Identity, not a second profile
+    // editor (AUDIT 20).
+    val tabs = listOf("Identity", "Providers", "Vault", "System")
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -89,17 +89,18 @@ fun IdentityHubScreen(
                     label = "IdentityHubTransition"
                 ) { tab ->
                     when (tab) {
-                        0 -> IdentityTab(viewModel)
-                        1 -> PreferencesTab(viewModel)
-                        2 -> ProvidersTab(viewModel, onManageProviders = onNavigateToProviderManagement)
-                        3 -> DocumentVaultTab(viewModel)
-                        4 -> SystemTab(
+                        1 -> ProvidersTab(viewModel, onManageProviders = onNavigateToProviderManagement)
+                        2 -> DocumentVaultTab(viewModel)
+                        3 -> SystemTab(
                             viewModel,
                             onNavigateToAbout = onNavigateToAbout,
                             onNavigateToResources = onNavigateToResources,
                             onNavigateToAppearance = onNavigateToAppearance,
                             onNavigateToPrivacy = onNavigateToPrivacy
                         )
+                        // Identity is also the fallback: a tab index saved before
+                        // the Preferences merge would otherwise land nowhere.
+                        else -> IdentityTab(viewModel)
                     }
                 }
             }
@@ -107,6 +108,15 @@ fun IdentityHubScreen(
     }
 }
 
+/**
+ * One profile editor (AUDIT 20). "Identity" and "Preferences" were the same
+ * `UserProfile` — both wrote `draftProfile` through `UpdateDraftProfile`, and
+ * both committed the whole record through `SaveDraftProfile`, so the hub asked
+ * for one profile twice and offered two Save buttons. The career preferences are
+ * now a section of Identity under the same single Edit → Save flow, which also
+ * means a preference change is no longer stranded when the user leaves without
+ * pressing the second Save.
+ */
 @Composable
 private fun IdentityTab(viewModel: IdentityHubViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -115,228 +125,190 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
 
     if (profile == null) return
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        item {
-            IdentityHeader(profile)
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SectionHeader(title = "Personal Information")
-                TextButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.ToggleEdit) }) {
-                    Text(if (isEditing) "Cancel" else "Edit")
-                }
-            }
-
-            if (isEditing) {
-                OutlinedTextField(
-                    value = profile.fullName,
-                    onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(fullName = it))) },
-                    label = { Text("Full Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = profile.phone,
-                    onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(phone = it))) },
-                    label = { Text("Phone") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                IdentityField(label = "Full Name", value = profile.fullName)
-                IdentityField(label = "Email", value = profile.email, isReadOnly = true)
-                IdentityField(label = "Phone", value = profile.phone)
-            }
-        }
-
-        item {
-            SectionHeader(title = "Professional Experience")
-            if (isEditing) {
-                OutlinedTextField(
-                    value = profile.currentRole,
-                    onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(currentRole = it))) },
-                    label = { Text("Current Role") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = profile.company,
-                    onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(company = it))) },
-                    label = { Text("Company") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                IdentityField(label = "Current Role", value = profile.currentRole)
-                IdentityField(label = "Company", value = profile.company)
-                IdentityField(label = "Experience", value = "${profile.experienceYears} years")
-            }
-        }
-
-        if (isEditing) {
-            item {
-                AivancePrimaryButton(
-                    text = if (uiState.isSaving) "Saving..." else "Save Changes",
-                    onClick = { viewModel.onEvent(IdentityHubUiEvent.SaveDraftProfile) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isSaving
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun IdentityHeader(profile: UserProfile) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = AivanceTheme.colors.accent.copy(alpha = 0.1f),
-            modifier = Modifier.size(80.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = profile.fullName.take(1).uppercase(),
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = AivanceTheme.colors.accent,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        Column {
-            Text(profile.fullName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(profile.targetRole, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun IdentityField(label: String, value: String, isReadOnly: Boolean = false) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-        Text(
-            text = value.ifBlank { "Not provided" },
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (value.isBlank()) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
-        )
-        if (!isReadOnly) {
-            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-        }
-    }
-}
-
-@Composable
-private fun PreferencesTab(viewModel: IdentityHubViewModel) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val profile = uiState.draftProfile ?: return
-
     var showAddSkillDialog by remember { mutableStateOf(false) }
     var showAddIndustryDialog by remember { mutableStateOf(false) }
     var newSkill by remember { mutableStateOf("") }
     var newIndustry by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Text("Career Preferences", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("These settings influence your recommendations.", style = MaterialTheme.typography.bodySmall)
-        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            item {
+                IdentityHeader(profile)
+            }
 
-        item {
-            AivanceWorkspaceCard {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PreferenceToggle(
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SectionHeader(title = "Personal Information")
+                    TextButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.ToggleEdit) }) {
+                        Text(if (isEditing) "Cancel" else "Edit")
+                    }
+                }
+
+                if (isEditing) {
+                    OutlinedTextField(
+                        value = profile.fullName,
+                        onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(fullName = it))) },
+                        label = { Text("Full Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = profile.phone,
+                        onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(phone = it))) },
+                        label = { Text("Phone") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    IdentityField(label = "Full Name", value = profile.fullName)
+                    IdentityField(label = "Email", value = profile.email, isReadOnly = true)
+                    IdentityField(label = "Phone", value = profile.phone)
+                }
+            }
+
+            item {
+                SectionHeader(title = "Professional Experience")
+                if (isEditing) {
+                    OutlinedTextField(
+                        value = profile.currentRole,
+                        onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(currentRole = it))) },
+                        label = { Text("Current Role") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = profile.company,
+                        onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(company = it))) },
+                        label = { Text("Company") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    IdentityField(label = "Current Role", value = profile.currentRole)
+                    IdentityField(label = "Company", value = profile.company)
+                    IdentityField(label = "Experience", value = "${profile.experienceYears} years")
+                }
+            }
+
+            item {
+                SectionHeader(title = "Career Preferences")
+                Text("These settings influence your recommendations.", style = MaterialTheme.typography.bodySmall)
+
+                if (isEditing) {
+                    Spacer(Modifier.height(8.dp))
+                    AivanceWorkspaceCard {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PreferenceToggle(
+                                label = "Remote Work",
+                                checked = profile.workPreference == "REMOTE",
+                                onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(workPreference = if (it) "REMOTE" else "ONSITE"))) }
+                            )
+                            PreferenceToggle(
+                                label = "Visa Sponsorship Required",
+                                checked = profile.visaRequired,
+                                onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(visaRequired = it))) }
+                            )
+                        }
+                    }
+                } else {
+                    IdentityField(
                         label = "Remote Work",
-                        checked = profile.workPreference == "REMOTE",
-                        onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(workPreference = if (it) "REMOTE" else "ONSITE"))) }
+                        value = if (profile.workPreference == "REMOTE") "Yes" else "No"
                     )
-                    PreferenceToggle(
-                        label = "Visa Sponsorship Required",
-                        checked = profile.visaRequired,
-                        onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(visaRequired = it))) }
+                    IdentityField(
+                        label = "Visa Sponsorship",
+                        value = if (profile.visaRequired) "Required" else "Not required"
+                    )
+                }
+            }
+
+            item {
+                SectionHeader(title = "Target Career Goal")
+                if (isEditing) {
+                    OutlinedTextField(
+                        value = profile.targetRole,
+                        onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(targetRole = it))) },
+                        label = { Text("Target Role") },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("e.g. Principal Software Engineer") }
+                    )
+                } else {
+                    IdentityField(label = "Target Role", value = profile.targetRole)
+                }
+            }
+
+            item {
+                SectionHeader(title = "Skills of Interest")
+                if (isEditing) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        profile.skills.forEach { skill ->
+                            InputChip(
+                                selected = false,
+                                onClick = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(skills = profile.skills.filterNot { it == skill }))) },
+                                label = { Text(skill) },
+                                trailingIcon = { Icon(Icons.Rounded.Close, null, Modifier.size(16.dp)) }
+                            )
+                        }
+                        SuggestionChip(onClick = { showAddSkillDialog = true }, label = { Text("+ Add Skill") })
+                    }
+                } else {
+                    IdentityField(label = "Skills", value = profile.skills.joinToString(", "))
+                }
+            }
+
+            item {
+                SectionHeader(title = "Salary Expectation")
+                if (isEditing) {
+                    OutlinedTextField(
+                        value = profile.salaryExpectation,
+                        onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(salaryExpectation = it))) },
+                        label = { Text("Annual Salary") },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("e.g. $150,000") }
+                    )
+                } else {
+                    IdentityField(label = "Annual Salary", value = profile.salaryExpectation)
+                }
+            }
+
+            item {
+                SectionHeader(title = "Preferred Industries")
+                if (isEditing) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        profile.preferredIndustries.forEach { industry ->
+                            SuggestionChip(onClick = {}, label = { Text(industry) })
+                        }
+                        SuggestionChip(onClick = { showAddIndustryDialog = true }, label = { Text("+ Add") })
+                    }
+                } else {
+                    IdentityField(label = "Industries", value = profile.preferredIndustries.joinToString(", "))
+                }
+            }
+
+            if (isEditing) {
+                item {
+                    AivancePrimaryButton(
+                        text = if (uiState.isSaving) "Saving..." else "Save Changes",
+                        onClick = { viewModel.onEvent(IdentityHubUiEvent.SaveDraftProfile) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isSaving
                     )
                 }
             }
         }
-
-        item {
-            SectionHeader(title = "Target Career Goal")
-            OutlinedTextField(
-                value = profile.targetRole,
-                onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(targetRole = it))) },
-                label = { Text("Target Role") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. Principal Software Engineer") }
-            )
-        }
-
-        item {
-            SectionHeader(title = "Skills of Interest")
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                profile.skills.forEach { skill ->
-                    InputChip(
-                        selected = false,
-                        onClick = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(skills = profile.skills.filterNot { it == skill }))) },
-                        label = { Text(skill) },
-                        trailingIcon = { Icon(Icons.Rounded.Close, null, Modifier.size(16.dp)) }
-                    )
-                }
-                SuggestionChip(onClick = { showAddSkillDialog = true }, label = { Text("+ Add Skill") })
-            }
-        }
-
-        item {
-            SectionHeader(title = "Salary Expectation")
-            OutlinedTextField(
-                value = profile.salaryExpectation,
-                onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(salaryExpectation = it))) },
-                label = { Text("Annual Salary") },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. $150,000") }
-            )
-        }
-
-        item {
-            SectionHeader(title = "Preferred Industries")
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                profile.preferredIndustries.forEach { industry ->
-                    SuggestionChip(onClick = {}, label = { Text(industry) })
-                }
-                SuggestionChip(onClick = { showAddIndustryDialog = true }, label = { Text("+ Add") })
-            }
-        }
-
-        item {
-            AivancePrimaryButton(
-                text = if (uiState.isSaving) "Saving..." else "Save Preferences",
-                onClick = { viewModel.onEvent(IdentityHubUiEvent.SaveDraftProfile) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isSaving
-            )
-        }
-    }
 
         // Add Skill / Add Industry dialogs — wires the previously dead chips.
         if (showAddSkillDialog) {
@@ -409,6 +381,49 @@ private fun PreferencesTab(viewModel: IdentityHubViewModel) {
                     TextButton(onClick = { showAddIndustryDialog = false }) { Text("Cancel") }
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun IdentityHeader(profile: UserProfile) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = AivanceTheme.colors.accent.copy(alpha = 0.1f),
+            modifier = Modifier.size(80.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = profile.fullName.take(1).uppercase(),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = AivanceTheme.colors.accent,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Column {
+            Text(profile.fullName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(profile.targetRole, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun IdentityField(label: String, value: String, isReadOnly: Boolean = false) {
+    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        Text(
+            text = value.ifBlank { "Not provided" },
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (value.isBlank()) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+        )
+        if (!isReadOnly) {
+            HorizontalDivider(modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }

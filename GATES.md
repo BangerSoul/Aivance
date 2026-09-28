@@ -165,6 +165,24 @@ destination itself (single entry), so `BackHandler(enabled = size > 1)` leaves
 system back alone and it exits the app, instead of popping to Splash and
 re-running the splash forever.
 
+## G15 — One Providers surface, two groups, no duplicate route (AUDIT 22)
+```bash
+! grep -rqE --include=*.kt --exclude-dir=build "ProviderManagementScreen|Destination\.ProviderManagement" feature navigation && echo "single provider surface: ok"
+./gradlew :navigation:testDebugUnitTest :feature:profile:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: the guard prints `ok` — `ProvidersTab`/`ProviderManagementScreen` and the
+`Destination.ProviderManagement` arm are all gone, and every provider list in the
+hub ships the same metadata-driven list (AI providers, then Job providers) from a
+single `ProviderInfo` source. The second surface — the Identity Hub ▸ Providers
+tab with its own badges plus the separate Provider Management screen — collapsed
+into one "Providers" surface: AI first, then Job boards (the enrichment group
+stays out of the default list, since enrichment is a step in the onboarding
+gate, not a user-facing surface). The hub now owns provider management end to
+end: card, enable/disable switch, health chip, model picker, credentials card,
+download/delete for on-device models, Test connection, and Save. The config is
+still the single source of truth (`ProviderRepository.getProviderConfigs()`),
+so no provider list can drift from what is persisted.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

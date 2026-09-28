@@ -538,7 +538,6 @@ private fun ScreenContent(
             onNavigateToResources = { onNavigate(Destination.Resources) },
             onNavigateToAppearance = { onNavigate(Destination.Appearance) },
             onNavigateToPrivacy = { onNavigate(Destination.PrivacyCenter) },
-            onNavigateToProviderManagement = { onNavigate(Destination.ProviderManagement) },
             // Route through the auth ViewModel's full logout: it clears the
             // session, API key AND the onboarding-completed gate (otherwise the
             // next cold start would silently log the user back in), signs out of
@@ -639,7 +638,6 @@ private fun ScreenContent(
         )
 
         Destination.Appearance -> AppearanceScreen(viewModel = hiltViewModel(), onBack = onBack)
-        Destination.ProviderManagement -> ProviderManagementScreen(viewModel = hiltViewModel(), onBack = onBack)
         Destination.Notifications -> NotificationsScreen(viewModel = hiltViewModel(), onBack = onBack)
         Destination.PrivacyCenter -> PrivacyCenterScreen(
             viewModel = hiltViewModel<PrivacyViewModel>(),

@@ -189,11 +189,6 @@ sealed interface Destination : NavKey {
     }
 
     @Serializable
-    data object ProviderManagement : Destination {
-        override val label = "Providers"
-    }
-
-    @Serializable
     data object Notifications : Destination {
         override val label = "Notifications"
     }
@@ -232,7 +227,7 @@ sealed interface Destination : NavKey {
 
         val authenticatedDestinations = setOf(
             Dashboard, Discovery(), Pipeline(), Studio(), AssistantOrb, Analytics,
-            IdentityHub, About, ProviderManagement, Notifications, PrivacyCenter,
+            IdentityHub, About, Notifications, PrivacyCenter,
             Appearance, Resources, SavedJobs
         )
 
@@ -325,10 +320,6 @@ val Destination.iconIntent: DestinationIconIntent
             outlined = Icons.Rounded.Palette,
             filled = Icons.Filled.Palette
         )
-        Destination.ProviderManagement -> DestinationIconIntent(
-            outlined = Icons.Rounded.Tune,
-            filled = Icons.Filled.Tune
-        )
         Destination.Notifications -> DestinationIconIntent(
             outlined = Icons.Rounded.Notifications,
             filled = Icons.Filled.Notifications
@@ -377,7 +368,6 @@ val Destination.labelRes: Int
         Destination.SavedJobs -> R.string.dest_saved_jobs
         is Destination.Pipeline -> R.string.dest_pipeline
         Destination.Appearance -> R.string.dest_appearance
-        Destination.ProviderManagement -> R.string.dest_providers
         Destination.Notifications -> R.string.dest_notifications
         Destination.PrivacyCenter -> R.string.dest_privacy
         Destination.Auth -> R.string.dest_sign_in

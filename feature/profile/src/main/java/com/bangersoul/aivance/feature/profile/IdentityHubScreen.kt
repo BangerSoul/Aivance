@@ -19,11 +19,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.widget.Toast
+import java.util.Locale
 import com.bangersoul.aivance.core.common.model.*
 import com.bangersoul.aivance.core.designsystem.components.*
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
+import com.bangersoul.aivance.sdk.core.ConfigField
+import com.bangersoul.aivance.sdk.core.FieldType
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -34,20 +44,21 @@ fun IdentityHubScreen(
     onNavigateToResources: () -> Unit = {},
     onNavigateToAppearance: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {},
-    onNavigateToProviderManagement: () -> Unit = {},
-    onSignedOut: () -> Unit = {},
     /**
      * Selected sub-tab, owned by the caller (B5). A local `remember` here was
      * wiped every time the user left the hub for a System spoke (Appearance,
      * Privacy, …) and came back — the spoke push/replace re-creates this
-     * composable, so the hub snapped back to the Identity tab.
+     * composable, so the hub snaps back to the Identity tab.
      */
     selectedTab: Int = 0,
+    onSignedOut: () -> Unit = {},
     onTabChange: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    // Four tabs: Preferences is a section of Identity, not a second profile
-    // editor (AUDIT 20).
+    // Four tabs: Preferences is a section of Identity (AUDIT 20), and the
+    // provider surface is now a single hub (AUDIT 22) — the tab is the only
+    // place providers appear, with AI first then Job boards, no duplicate
+    // Provider Management route.
     val tabs = listOf("Identity", "Providers", "Vault", "System")
 
     LaunchedEffect(Unit) {
@@ -87,9 +98,8 @@ fun IdentityHubScreen(
                     targetState = selectedTab,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
                     label = "IdentityHubTransition"
-                ) { tab ->
-                    when (tab) {
-                        1 -> ProvidersTab(viewModel, onManageProviders = onNavigateToProviderManagement)
+                ) { tab ->                    when (tab) {
+                        1 -> ProvidersTab()
                         2 -> DocumentVaultTab(viewModel)
                         3 -> SystemTab(
                             viewModel,
@@ -452,12 +462,84 @@ private fun AivanceWorkspaceCard(content: @Composable () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProvidersTab(
-    viewModel: IdentityHubViewModel,
-    onManageProviders: () -> Unit = {}
+    viewModel: ProviderManagementViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is ProviderManagementUiEffect.ShowSnackbar ->
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                is ProviderManagementUiEffect.ConnectionTestResult ->
+                    Toast.makeText(context, effect.message, Toast.LENGTH_LONG).show()
+                else -> {}
+            }
+        }
+    }
+
+    when (val state = uiState) {
+        is ProviderManagementUiState.Loading -> {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(Modifier.height(12.dp))
+                Text("Loading providers…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        is ProviderManagementUiState.Error -> {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(state.message, color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(16.dp))
+                AivancePrimaryButton(
+                    text = "Retry",
+                    onClick = { viewModel.onEvent(ProviderManagementUiEvent.Refresh) }
+                )
+            }
+        }
+        is ProviderManagementUiState.Success -> {
+            ProvidersList(state = state, onEvent = viewModel::onEvent)
+            state.modelDownloadDialog?.let { dialog ->
+                ModelDownloadConfirmationDialog(
+                    dialog = dialog,
+                    onConfirm = { useCompact ->
+                        viewModel.onEvent(
+                            ProviderManagementUiEvent.ConfirmModelDownload(dialog.providerId, useCompact)
+                        )
+                    },
+                    onDismiss = { viewModel.onEvent(ProviderManagementUiEvent.DismissModelDownloadDialog) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The single Providers surface (AUDIT 22): one metadata-driven list grouped
+ * into "AI" then "Job Boards". Enrichment providers are intentionally excluded
+ * from the default hub list. Each card carries the full config UI — credential
+ * form, on-device model download/delete, model picker, Test and Save — so the
+ * hub tab is the only provider surface and the standalone Provider Management
+ * route is gone.
+ */
+@Composable
+private fun ProvidersList(
+    state: ProviderManagementUiState.Success,
+    onEvent: (ProviderManagementUiEvent) -> Unit
+) {
+    val aiProviders = state.providers.filter { it.category == ProviderCategory.AI }
+    val jobProviders = state.providers.filter { it.category == ProviderCategory.JOB }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -465,61 +547,388 @@ private fun ProvidersTab(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Provider Center", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Manage your AI and Data connectivity.", style = MaterialTheme.typography.bodySmall)
+            Text("Providers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Manage your AI and Job connectivity.", style = MaterialTheme.typography.bodySmall)
         }
 
-        items(uiState.providers) { provider ->
-            AivanceWorkspaceCard {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, AivanceTheme.shapes.small),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = when(provider.category) {
-                                ProviderCategory.AI -> Icons.Rounded.AutoAwesome
-                                ProviderCategory.JOB -> Icons.Rounded.WorkOutline
-                                ProviderCategory.ENRICHMENT -> Icons.Rounded.Public
-                            },
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(provider.name, fontWeight = FontWeight.Bold)
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Box(Modifier.size(8.dp).background(if (provider.healthStatus == ProviderHealthStatus.HEALTHY) AivanceTheme.colors.success else MaterialTheme.colorScheme.error, CircleShape))
-                            Text(provider.healthStatus.name, style = MaterialTheme.typography.labelSmall)
-                        }
-                        if (provider.isConnected) {
-                            Text(provider.maskedApiKey, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                        }
-                    }
-                    IconButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.TestProvider(provider.id)) }) {
-                        Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(20.dp))
-                    }
-                    Switch(checked = provider.isEnabled, onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.ToggleProvider(provider.id, it)) })
-                }
+        if (aiProviders.isNotEmpty()) {
+            item { ProviderSectionLabel("AI") }
+            items(aiProviders, key = { it.id }) { provider ->
+                ProviderCard(provider, state, onEvent)
             }
         }
 
-        item {
-            AivanceSecondaryButton(
-                text = "Manage Providers — API Keys & Models",
-                onClick = onManageProviders,
-                modifier = Modifier.fillMaxWidth(),
-                icon = Icons.Rounded.Tune
-            )
+        if (jobProviders.isNotEmpty()) {
+            item { ProviderSectionLabel("Job Boards") }
+            items(jobProviders, key = { it.id }) { provider ->
+                ProviderCard(provider, state, onEvent)
+            }
         }
     }
 }
+
+@Composable
+private fun ProviderSectionLabel(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@Composable
+private fun ProviderCard(
+    provider: ProviderInfo,
+    state: ProviderManagementUiState.Success,
+    onEvent: (ProviderManagementUiEvent) -> Unit
+) {
+    val credentialDrafts = state.credentialDrafts[provider.id].orEmpty()
+    var modelMenuOpen by remember { mutableStateOf(false) }
+
+    AivanceWorkspaceCard {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, AivanceTheme.shapes.small),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (provider.category) {
+                            ProviderCategory.AI -> Icons.Rounded.AutoAwesome
+                            ProviderCategory.JOB -> Icons.Rounded.WorkOutline
+                            else -> Icons.Rounded.Public
+                        },
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(provider.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (provider.description.isNotBlank()) {
+                        Text(
+                            provider.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2
+                        )
+                    }
+                    if (provider.apiKeyConfigured && provider.maskedApiKey.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Rounded.Key,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = provider.maskedApiKey,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                ProviderHealthChip(provider.healthStatus)
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (provider.isEnabled) "Enabled" else "Disabled",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (provider.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Switch(
+                    checked = provider.isEnabled,
+                    onCheckedChange = { onEvent(ProviderManagementUiEvent.ToggleProvider(provider.id, it)) }
+                )
+            }
+
+            if (provider.isOnDevice) {
+                val isDownloading = state.downloadingProviderId == provider.id
+                if (provider.modelDownloaded) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = AivanceTheme.shapes.small,
+                            color = AivanceTheme.colors.successContainer
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = AivanceTheme.colors.onSuccessContainer
+                                )
+                                Text(
+                                    "Downloaded",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = AivanceTheme.colors.onSuccessContainer
+                                )
+                            }
+                        }
+                        Spacer(Modifier.weight(1f))
+                        AivanceSecondaryButton(
+                            text = "Delete model",
+                            onClick = { onEvent(ProviderManagementUiEvent.DeleteModel(provider.id)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                } else if (isDownloading) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            "Downloading model… ${((state.modelDownloadProgress ?: 0f) * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LinearProgressIndicator(
+                            progress = { state.modelDownloadProgress ?: 0f },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            "Model not downloaded — download once to use this provider fully offline.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        AivancePrimaryButton(
+                            text = "Download model",
+                            onClick = { onEvent(ProviderManagementUiEvent.DownloadModel(provider.id)) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            } else if (provider.configFields.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    provider.configFields.forEach { field ->
+                        ProviderCredentialField(
+                            field = field,
+                            value = credentialDrafts[field.key].orEmpty(),
+                            onValueChange = { onEvent(ProviderManagementUiEvent.SetCredential(provider.id, field.key, it)) }
+                        )
+                    }
+                }
+            }
+
+            if (provider.availableModels.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Model", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.3f))
+                    OutlinedButton(
+                        onClick = { modelMenuOpen = true },
+                        modifier = Modifier.weight(0.7f)
+                    ) {
+                        Text(
+                            provider.selectedModel.ifBlank { "Select…" },
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = modelMenuOpen,
+                        onDismissRequest = { modelMenuOpen = false }
+                    ) {
+                        provider.availableModels.forEach { model ->
+                            DropdownMenuItem(
+                                text = { Text(model) },
+                                onClick = {
+                                    modelMenuOpen = false
+                                    onEvent(ProviderManagementUiEvent.SelectModel(provider.id, model))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Keyless on-device providers need no credentials: Save/Test are
+            // meaningless, so download/delete above are their only actions.
+            if (!provider.isOnDevice) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    AivanceSecondaryButton(
+                        text = "Save",
+                        onClick = { onEvent(ProviderManagementUiEvent.SaveProvider(provider.id)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    AivancePrimaryButton(
+                        text = if (state.testingProviderId == provider.id) "Testing…" else "Test",
+                        onClick = { onEvent(ProviderManagementUiEvent.TestConnection(provider.id)) },
+                        modifier = Modifier.weight(1f),
+                        enabled = state.testingProviderId != provider.id
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProviderCredentialField(
+    field: ConfigField,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    val isPassword = field.fieldType == FieldType.PASSWORD
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(field.label) },
+        placeholder = { field.hint?.let { Text(it) } },
+        modifier = Modifier.fillMaxWidth(),
+        visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = if (isPassword) KeyboardType.Password else KeyboardType.Text,
+            autoCorrectEnabled = false,
+            capitalization = KeyboardCapitalization.None
+        ),
+        singleLine = true
+    )
+}
+
+@Composable
+private fun ProviderHealthChip(status: ProviderHealthStatus) {
+    val (tone, label) = when (status) {
+        ProviderHealthStatus.HEALTHY -> BannerTone.SUCCESS to "Healthy"
+        ProviderHealthStatus.DEGRADED -> BannerTone.WARNING to "Degraded"
+        ProviderHealthStatus.UNHEALTHY -> BannerTone.ERROR to "Unhealthy"
+        ProviderHealthStatus.UNKNOWN -> BannerTone.INFO to "Unknown"
+    }
+    StatusChip(text = label, tone = tone)
+}
+
+/** Formats a byte count for display, e.g. `3.0 GB` or `271 MB`. */
+private fun formatBytes(bytes: Long): String {
+    val gib = bytes / (1024.0 * 1024.0 * 1024.0)
+    val mib = bytes / (1024.0 * 1024.0)
+    return if (gib >= 1.0) {
+        String.format(Locale.US, "%.1f GB", gib)
+    } else {
+        String.format(Locale.US, "%.0f MB", mib)
+    }
+}
+
+@Composable
+private fun ModelDownloadConfirmationDialog(
+    dialog: ModelDownloadDialog,
+    onConfirm: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Download on-device model", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Model size: ${formatBytes(dialog.modelSizeBytes)} (${dialog.modelSizeBytes} bytes)",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "Free storage: ${formatBytes(dialog.freeStorageBytes)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (dialog.ramWarning) {
+                    Text(
+                        "This device has less than 4 GB of RAM. The full model may run slowly.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+                if (dialog.storageBlocked) {
+                    Text(
+                        "Not enough free storage for the full model. The smaller model fits — use it instead.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                if (dialog.offersCompact && dialog.compactName != null) {
+                    Surface(
+                        shape = AivanceTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Download smaller model (${formatBytes(dialog.compactSizeBytes)})",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = "Uses far less storage and RAM.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!dialog.storageBlocked) {
+                    TextButton(onClick = { onConfirm(false) }) {
+                        Text("Download")
+                    }
+                }
+                if (dialog.offersCompact) {
+                    TextButton(onClick = { onConfirm(true) }) {
+                        Text("Download smaller model (${formatBytes(dialog.compactSizeBytes)})")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 
 @Composable
 private fun DocumentVaultTab(viewModel: IdentityHubViewModel) {

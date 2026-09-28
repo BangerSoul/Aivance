@@ -41,6 +41,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    // Providers surface obtains its ProviderManagementViewModel via hiltViewModel()
+    // now that it lives inside the Identity Hub tab (AUDIT 22).
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)

@@ -8,6 +8,8 @@ import com.bangersoul.aivance.core.common.result.DomainError
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
+import com.bangersoul.aivance.core.domain.usecase.provider.AiProviderAvailability
+import com.bangersoul.aivance.core.domain.usecase.provider.GetAiProviderAvailabilityUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.CalculateATSScoreUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ExportResumeUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ImportResumeUseCase
@@ -44,6 +46,7 @@ class ResumeEngineViewModelTest {
     private val mockImprove: ImproveResumeUseCase = mockk()
     private val mockStreamImprove: StreamImproveSectionUseCase = mockk()
     private val mockExport: ExportResumeUseCase = mockk()
+    private val mockAiAvailability: GetAiProviderAvailabilityUseCase = mockk()
     private val mockTrackEvent: TrackEventUseCase = mockk()
     private val mockPdfExporter: PdfExporter = mockk()
     private val mockDocxExporter: com.bangersoul.aivance.core.util.DocxExporter = mockk()
@@ -63,13 +66,18 @@ class ResumeEngineViewModelTest {
 
     private fun createViewModel() = ResumeEngineViewModel(
         mockRepository, mockImport, mockParse, mockCalculateAts,
-        mockImprove, mockStreamImprove, mockExport, mockTrackEvent, mockPdfExporter, mockDocxExporter
+        mockImprove, mockStreamImprove, mockExport, mockAiAvailability, mockTrackEvent, mockPdfExporter,
+        mockDocxExporter
     )
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         coEvery { mockTrackEvent(any()) } returns Result.Success(Unit)
+        // Default to a configured provider so the AI pre-flight (B2) never
+        // short-circuits the ATS/optimization paths under test.
+        coEvery { mockAiAvailability(Unit) } returns
+            Result.Success(AiProviderAvailability(isConfigured = true, providerName = "gemini"))
     }
 
     @After
@@ -100,6 +108,10 @@ class ResumeEngineViewModelTest {
 
     @Test
     fun `importOcrText enters Preview with the scanned text section`() = runTest {
+        // B1: an import stores a draft (parent resume + first version) before
+        // Preview, so the ATS step and Save have real rows to reference.
+        coEvery { mockRepository.saveResume(any()) } returns Result.Success(7L)
+        coEvery { mockRepository.saveVersion(any()) } returns Result.Success(9L)
         val viewModel = createViewModel()
         viewModel.onEvent(ResumeEngineEvent.ImportOcrText("Jane Doe\nSenior Android Engineer"))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -110,6 +122,8 @@ class ResumeEngineViewModelTest {
         assertEquals("Raw Text", preview.version.sections.first().title)
         assertEquals("Jane Doe\nSenior Android Engineer", preview.version.sections.first().content)
         assertEquals("Camera Scan Resume", preview.resume.name)
+        assertEquals("the preview carries the persisted resume id", 7L, preview.resume.id)
+        assertEquals("the preview carries the persisted version id", 9L, preview.version.id)
     }
 
     @Test
@@ -125,6 +139,8 @@ class ResumeEngineViewModelTest {
 
     @Test
     fun `importJsonText enters Preview from a JSON Resume document`() = runTest {
+        coEvery { mockRepository.saveResume(any()) } returns Result.Success(7L)
+        coEvery { mockRepository.saveVersion(any()) } returns Result.Success(9L)
         val json = """{"basics":{"name":"Jane Doe","summary":"Senior Android engineer"}}"""
         val viewModel = createViewModel()
         viewModel.onEvent(ResumeEngineEvent.ImportJsonText(json))
@@ -132,7 +148,12 @@ class ResumeEngineViewModelTest {
 
         val state = viewModel.state.value
         assertTrue(state is ResumeEngineState.Preview)
-        assertEquals("Senior Android engineer", (state as ResumeEngineState.Preview).version.sections.first().content)
+        val preview = state as ResumeEngineState.Preview
+        assertEquals("Senior Android engineer", preview.version.sections.first().content)
+        // The version is stored against the real parent row — the fabricated
+        // clock id is what produced the FK failure at Save (B1).
+        assertEquals(7L, preview.version.resumeId)
+        assertEquals(9L, preview.version.id)
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.bangersoul.aivance.core.util.PdfExporter
 import com.bangersoul.aivance.core.domain.usecase.resume.jsonresume.JsonResumeConverter
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
+import com.bangersoul.aivance.core.domain.usecase.provider.GetAiProviderAvailabilityUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.AtsScoreRequest
 import com.bangersoul.aivance.core.domain.usecase.resume.CalculateATSScoreUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ExportFormat
@@ -118,6 +119,7 @@ class ResumeEngineViewModel @Inject constructor(
     private val improveResumeUseCase: ImproveResumeUseCase,
     private val streamImproveSectionUseCase: StreamImproveSectionUseCase,
     private val exportResumeUseCase: ExportResumeUseCase,
+    private val getAiProviderAvailabilityUseCase: GetAiProviderAvailabilityUseCase,
     private val trackEventUseCase: TrackEventUseCase,
     private val pdfExporter: PdfExporter,
     private val docxExporter: DocxExporter
@@ -185,16 +187,27 @@ class ResumeEngineViewModel @Inject constructor(
             _state.value = ResumeEngineState.Parsing(0.5f)
             trackEventUseCase(TrackEventRequest("resume_engine_json_import"))
             try {
-                val resumeId = System.currentTimeMillis()
-                val version = JsonResumeConverter.importFromJsonResume(rawText, resumeId)
-                if (version.sections.isEmpty()) {
+                // B1: the parsed version is stored as a draft before Preview.
+                // The previous path fabricated the resume id from the clock and
+                // never persisted anything, so the ATS step could not find the
+                // version and Save violated the resume_versions → resumes
+                // foreign key.
+                val parsed = JsonResumeConverter.importFromJsonResume(rawText, resumeId = 0L)
+                if (parsed.sections.isEmpty()) {
                     enterError("Import", "No resume sections were found in the JSON file.")
                     return@launch
                 }
-                workingVersion = version
-                val resume = Resume(id = resumeId, name = version.versionName)
+                val draft = persistImportedDraft(
+                    resumeName = parsed.versionName,
+                    rawText = rawText,
+                    draft = parsed
+                ) ?: run {
+                    enterError("Import", "The imported resume could not be stored.")
+                    return@launch
+                }
+                workingVersion = draft.version
                 _state.value = ResumeEngineState.Parsing(1f)
-                _state.value = ResumeEngineState.Preview(resume, version)
+                _state.value = ResumeEngineState.Preview(draft.resume, draft.version)
                 trackEventUseCase(TrackEventRequest("resume_engine_json_parsed"))
             } catch (e: Exception) {
                 enterError("Import", "Invalid JSON Resume: ${e.message ?: "unable to parse file"}")
@@ -210,17 +223,16 @@ class ResumeEngineViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = ResumeEngineState.Parsing(0.4f)
             trackEventUseCase(TrackEventRequest("resume_engine_ocr_import"))
-            val resumeId = System.currentTimeMillis()
             val dateFormat = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault())
             val dateStr = dateFormat.format(java.util.Date())
-            val version = ResumeVersion(
-                id = 1L,
-                resumeId = resumeId,
+            val parsed = ResumeVersion(
+                id = 0L,
+                resumeId = 0L,
                 versionName = "Camera Scan — $dateStr",
                 sections = listOf(
                     ResumeSection(
-                        id = 1L,
-                        versionId = 1L,
+                        id = 0L,
+                        versionId = 0L,
                         sectionType = "general",
                         title = "Raw Text",
                         content = rawText,
@@ -228,10 +240,19 @@ class ResumeEngineViewModel @Inject constructor(
                     )
                 )
             )
-            workingVersion = version
-            val resume = Resume(id = resumeId, name = "Camera Scan Resume", rawText = rawText)
+            // B1: OCR captures persist as a draft too — an unsaved parent row
+            // broke both the ATS step and Save.
+            val draft = persistImportedDraft(
+                resumeName = "Camera Scan Resume",
+                rawText = rawText,
+                draft = parsed
+            ) ?: run {
+                enterError("Import", "The scanned resume could not be stored.")
+                return@launch
+            }
+            workingVersion = draft.version
             _state.value = ResumeEngineState.Parsing(1f)
-            _state.value = ResumeEngineState.Preview(resume, version)
+            _state.value = ResumeEngineState.Preview(draft.resume, draft.version)
             trackEventUseCase(TrackEventRequest("resume_engine_ocr_parsed"))
         }
     }
@@ -299,6 +320,43 @@ class ResumeEngineViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Persists an in-memory import (JSON Resume document or OCR capture) as a
+     * draft: a parent `resumes` row plus its first `resume_versions` row
+     * (sections included), mirroring the PDF/DOCX path which stores through
+     * `ResumeRepositoryImpl.importResume` before parsing.
+     *
+     * B1: without the parent row the whole resume path dead-ends — the ATS scan
+     * reports "Resume not found" and Save raises
+     * `FOREIGN KEY constraint failed` on `resume_versions.resumeId`.
+     */
+    private suspend fun persistImportedDraft(
+        resumeName: String,
+        rawText: String?,
+        draft: ResumeVersion
+    ): PersistedDraft? {
+        val parentId = (resumeRepository.saveResume(Resume(name = resumeName, rawText = rawText)) as? Result.Success)
+            ?.data ?: return null
+
+        val version = draft.copy(
+            id = 0L,
+            resumeId = parentId,
+            lastModified = System.currentTimeMillis(),
+            sections = draft.sections.map { it.copy(id = 0L, versionId = 0L) }
+        )
+        val versionId = (resumeRepository.saveVersion(version) as? Result.Success)?.data ?: return null
+
+        // Mark the draft as the resume's primary version (upsert, like
+        // ResumeRepositoryImpl.parseResume does).
+        val resume = Resume(id = parentId, name = resumeName, rawText = rawText, primaryVersionId = versionId)
+        resumeRepository.saveResume(resume)
+
+        return PersistedDraft(resume = resume, version = version.copy(id = versionId))
+    }
+
+    /** A stored draft import: the parent resume row and its first version. */
+    private data class PersistedDraft(val resume: Resume, val version: ResumeVersion)
+
     /** Inline section editing during the Preview step — persists into the working copy. */
     private fun updateSectionContent(sectionTitle: String, content: String) {
         val current = _state.value as? ResumeEngineState.Preview ?: return
@@ -338,6 +396,12 @@ class ResumeEngineViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
+            // B2: provider-optional users used to reach this point and get a raw
+            // provider error. Explain the requirement before the call instead.
+            aiRequirementMessage("Resume scoring against a job description")?.let { message ->
+                enterError("ATS Scan", message)
+                return@launch
+            }
             trackEventUseCase(TrackEventRequest("resume_engine_ats"))
             val result = calculateATSScoreUseCase(
                 AtsScoreRequest(
@@ -383,6 +447,13 @@ class ResumeEngineViewModel @Inject constructor(
         if (current.sectionInProgress != null) return
         _state.value = current.copy(sectionInProgress = sectionTitle, streamingContent = "")
         viewModelScope.launch {
+            // B2: fail fast and legibly when the user opted into
+            // "continue without AI providers" instead of streaming a transport
+            // error (and leaving the in-progress marker set).
+            aiRequirementMessage("AI optimization")?.let { message ->
+                enterError("Optimization", message)
+                return@launch
+            }
             trackEventUseCase(TrackEventRequest("resume_engine_improve"))
             var full = ""
             try {
@@ -540,6 +611,17 @@ class ResumeEngineViewModel @Inject constructor(
         } else {
             back()
         }
+    }
+
+    /**
+     * Returns an actionable message when no AI provider can serve a request, or
+     * `null` when one is ready (B2). The app deliberately supports running
+     * without AI providers, so the requirement is stated rather than thrown.
+     */
+    private suspend fun aiRequirementMessage(action: String): String? {
+        val availability = (getAiProviderAvailabilityUseCase(Unit) as? Result.Success)?.data
+        if (availability?.isConfigured == true) return null
+        return "$action needs an AI provider. Add one under Identity Hub ▸ Providers, then retry."
     }
 
     private fun enterError(step: String, message: String) {

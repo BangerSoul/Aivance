@@ -3,13 +3,8 @@
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
-    <string name="save">Save</string>
     <string name="edit">Edit</string>
-    <string name="ok">OK</string>
     <string name="done">Done</string>
-    <string name="delete">Delete</string>
-    <string name="email">Email</string>
-    <string name="settings">Settings</string>
     <string name="notifications">Notifications</string>
 
     <!-- Splash -->
@@ -34,8 +29,6 @@
 
     <!-- About -->
     <string name="about_title">About AiVance</string>
-    <string name="about_resources_title">Remote Work Resources</string>
-    <string name="about_resources_subtitle">Curated job boards, interview-prep guides and remote-first companies</string>
     <string name="resources_title">Remote Work Resources</string>
     <string name="resources_hub_title">Remote Work &amp; Career Hub</string>
     <string name="resources_hub_subtitle">Curated reference platforms and interview prep guides</string>
@@ -137,77 +130,9 @@
     <string name="go_to_dashboard">Go to Dashboard</string>
 
     <!-- Profile -->
-    <string name="profile_title">Profile</string>
-    <string name="profile_photo_desc">Profile photo</string>
-    <string name="change_photo">Change photo</string>
-    <string name="your_name_placeholder">Your Name</string>
-    <string name="add_current_role">Add your current role</string>
-    <string name="designation_at"> at </string>
-    <string name="tap_camera_hint">Tap the camera to change your photo</string>
-    <string name="personal_section">Personal</string>
-    <string name="full_name">Full Name</string>
-    <string name="email_locked">Email is linked to your account and cannot be changed.</string>
-    <string name="phone_optional">Phone (optional)</string>
-    <string name="date_of_birth">Date of Birth</string>
-    <string name="linkedin_optional">LinkedIn URL (optional)</string>
-    <string name="github_optional">GitHub URL (optional)</string>
-    <string name="career_section">Career</string>
-    <string name="current_role">Current Role</string>
     <string name="company">Company</string>
     <string name="target_role">Target Role</string>
-    <string name="years_experience">Years of Experience</string>
-    <string name="years_short">%1$d yrs</string>
-    <string name="skills">Skills</string>
-    <string name="no_skills">No skills added yet.</string>
-    <string name="remove_skill_desc">Remove %1$s</string>
-    <string name="settings_sub">Notifications, privacy, providers &amp; more</string>
-    <string name="quick_access">Quick Access</string>
     <string name="saved_jobs">Saved Jobs</string>
-    <string name="interview">Interview</string>
-    <string name="career_analytics">Career Analytics</string>
-    <string name="career_analytics_sub">KPIs, trends, and insights</string>
-    <string name="learning_hub">Learning Hub</string>
-    <string name="learning_hub_sub">Skills and resources</string>
-    <string name="notifications_sub">Alerts and reminders</string>
-    <string name="provider_management">Provider Management</string>
-    <string name="provider_management_sub">AI, job, and enrichment providers</string>
-    <string name="pick">Pick</string>
-    <string name="add_skill">+ Add</string>
-    <string name="skill_placeholder">Skill</string>
-    <string name="add_skill_desc">Add skill</string>
-
-    <!-- Settings -->
-    <string name="settings_title">Settings</string>
-    <string name="section_general">General</string>
-    <string name="appearance_item">Appearance</string>
-    <string name="appearance_item_sub">Theme, accent, and dynamic color</string>
-    <string name="section_notifications">Notifications</string>
-    <string name="job_alerts">Job alerts</string>
-    <string name="job_alerts_sub">New matching jobs</string>
-    <string name="interview_reminders">Interview reminders</string>
-    <string name="interview_reminders_sub">Upcoming sessions</string>
-    <string name="follow_up_reminders">Follow-up reminders</string>
-    <string name="follow_up_reminders_sub">Application follow-ups</string>
-    <string name="section_providers">Providers</string>
-    <string name="provider_management_item">Provider Management</string>
-    <string name="provider_management_item_sub">AI, Job, and Enrichment providers</string>
-    <string name="section_privacy">Privacy &amp; Security</string>
-    <string name="privacy_center_item">Privacy Center</string>
-    <string name="privacy_center_item_sub">Encryption, export, and delete</string>
-    <string name="analytics_insights">Analytics Insights</string>
-    <string name="analytics_insights_sub">Detailed career KPIs</string>
-    <string name="export_my_data">Export my data</string>
-    <string name="export_my_data_sub">Download your data as JSON</string>
-    <string name="delete_account">Delete account</string>
-    <string name="delete_account_sub">Permanently remove your data</string>
-    <string name="section_about">About</string>
-    <string name="about_item">About Aivance</string>
-    <string name="sign_out">Sign Out</string>
-    <string name="delete_account_confirm">Delete account?</string>
-    <string name="delete_account_confirm_body">This permanently removes your profile and career data. This action cannot be undone.</string>
-    <string name="language">Language</string>
-    <string name="selected">Selected</string>
-    <string name="language_english">English</string>
 
     <!-- On-device model download (WorkManager worker) -->
     <string name="model_download_channel_name">On-device model downloads</string>

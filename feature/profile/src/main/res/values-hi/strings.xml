@@ -3,13 +3,8 @@
     <!-- Common -->
     <string name="back">वापस</string>
     <string name="cancel">रद्द करें</string>
-    <string name="save">सहेजें</string>
     <string name="edit">संपादित करें</string>
-    <string name="ok">ठीक है</string>
     <string name="done">पूर्ण</string>
-    <string name="delete">हटाएं</string>
-    <string name="email">ईमेल</string>
-    <string name="settings">सेटिंग्स</string>
     <string name="notifications">सूचनाएं</string>
 
     <!-- Splash -->
@@ -126,77 +121,9 @@
     <string name="go_to_dashboard">डैशबोर्ड पर जाएं</string>
 
     <!-- Profile -->
-    <string name="profile_title">प्रोफ़ाइल</string>
-    <string name="profile_photo_desc">प्रोफ़ाइल फोटो</string>
-    <string name="change_photo">फोटो बदलें</string>
-    <string name="your_name_placeholder">आपका नाम</string>
-    <string name="add_current_role">अपनी वर्तमान भूमिका जोड़ें</string>
-    <string name="designation_at"> पर </string>
-    <string name="tap_camera_hint">फोटो बदलने के लिए कैमरा टैप करें</string>
-    <string name="personal_section">व्यक्तिगत</string>
-    <string name="full_name">पूरा नाम</string>
-    <string name="email_locked">ईमेल आपके खाते से जुड़ा है और इसे बदला नहीं जा सकता।</string>
-    <string name="phone_optional">फ़ोन (वैकल्पिक)</string>
-    <string name="date_of_birth">जन्म तिथि</string>
-    <string name="linkedin_optional">LinkedIn URL (वैकल्पिक)</string>
-    <string name="github_optional">GitHub URL (वैकल्पिक)</string>
-    <string name="career_section">करियर</string>
-    <string name="current_role">वर्तमान भूमिका</string>
     <string name="company">कंपनी</string>
     <string name="target_role">लक्ष्य भूमिका</string>
-    <string name="years_experience">अनुभव के वर्ष</string>
-    <string name="years_short">%1$d वर्ष</string>
-    <string name="skills">कौशल</string>
-    <string name="no_skills">अभी तक कोई कौशल नहीं जोड़ा गया।</string>
-    <string name="remove_skill_desc">%1$s हटाएं</string>
-    <string name="settings_sub">सूचनाएं, गोपनीयता, प्रदाता और अधिक</string>
-    <string name="quick_access">त्वरित पहुंच</string>
     <string name="saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="interview">इंटरव्यू</string>
-    <string name="career_analytics">करियर एनालिटिक्स</string>
-    <string name="career_analytics_sub">KPIs, रुझान और अंतर्दृष्टि</string>
-    <string name="learning_hub">लर्निंग हब</string>
-    <string name="learning_hub_sub">कौशल और संसाधन</string>
-    <string name="notifications_sub">अलर्ट और अनुस्मारक</string>
-    <string name="provider_management">प्रदाता प्रबंधन</string>
-    <string name="provider_management_sub">AI, नौकरी और एनरिचमेंट प्रदाता</string>
-    <string name="pick">चुनें</string>
-    <string name="add_skill">+ जोड़ें</string>
-    <string name="skill_placeholder">कौशल</string>
-    <string name="add_skill_desc">कौशल जोड़ें</string>
-
-    <!-- Settings -->
-    <string name="settings_title">सेटिंग्स</string>
-    <string name="section_general">सामान्य</string>
-    <string name="appearance_item">दिखावट</string>
-    <string name="appearance_item_sub">थीम, एक्सेंट और डायनामिक रंग</string>
-    <string name="section_notifications">सूचनाएं</string>
-    <string name="job_alerts">नौकरी अलर्ट</string>
-    <string name="job_alerts_sub">नई मिलती-जुलती नौकरियां</string>
-    <string name="interview_reminders">इंटरव्यू अनुस्मारक</string>
-    <string name="interview_reminders_sub">आगामी सत्र</string>
-    <string name="follow_up_reminders">फॉलो-अप अनुस्मारक</string>
-    <string name="follow_up_reminders_sub">आवेदन फॉलो-अप</string>
-    <string name="section_providers">प्रदाता</string>
-    <string name="provider_management_item">प्रदाता प्रबंधन</string>
-    <string name="provider_management_item_sub">AI, नौकरी और एनरिचमेंट प्रदाता</string>
-    <string name="section_privacy">गोपनीयता और सुरक्षा</string>
-    <string name="privacy_center_item">गोपनीयता केंद्र</string>
-    <string name="privacy_center_item_sub">एन्क्रिप्शन, निर्यात और हटाना</string>
-    <string name="analytics_insights">एनालिटिक्स अंतर्दृष्टि</string>
-    <string name="analytics_insights_sub">विस्तृत करियर KPIs</string>
-    <string name="export_my_data">मेरा डेटा निर्यात करें</string>
-    <string name="export_my_data_sub">अपना डेटा JSON के रूप में डाउनलोड करें</string>
-    <string name="delete_account">खाता हटाएं</string>
-    <string name="delete_account_sub">अपना डेटा स्थायी रूप से हटाएं</string>
-    <string name="section_about">हमारे बारे में</string>
-    <string name="about_item">Aivance के बारे में</string>
-    <string name="sign_out">साइन आउट</string>
-    <string name="delete_account_confirm">खाता हटाएं?</string>
-    <string name="delete_account_confirm_body">यह आपकी प्रोफ़ाइल और करियर डेटा को स्थायी रूप से हटा देगा। यह क्रिया पूर्ववत नहीं की जा सकती।</string>
-    <string name="language">भाषा</string>
-    <string name="selected">चयनित</string>
-    <string name="language_english">English</string>
 
     <!-- On-device model download (WorkManager worker) -->
     <string name="model_download_channel_name">ऑन-डिवाइस मॉडल डाउनलोड</string>

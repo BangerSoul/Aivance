@@ -233,22 +233,26 @@ does not own. About keeps its brand header, contact rows, "How AiVance is
 made", and licenses; the single Resources entry stays the System-tab link, and
 the `Destination.Resources` route is untouched.
 
-## G19 — No orphaned string resources in the navigation module (AUDIT §3.2 follow-up)
+## G19 — No orphaned string resources in navigation, feature/interview, feature/profile (AUDIT §3.2 follow-up)
 ```bash
-grep -q "class StringResourceReferenceTest" navigation/src/test/java/com/bangersoul/aivance/navigation/StringResourceReferenceTest.kt && echo "guard present: ok"
+grep -q '"feature/profile"' navigation/src/test/java/com/bangersoul/aivance/navigation/StringResourceReferenceTest.kt && echo "guard covers the feature modules: ok"
 ./gradlew :navigation:testDebugUnitTest --console=plain
 ```
 EXPECT: the guard prints `ok` and BUILD SUCCESSFUL, with
-`StringResourceReferenceTest` green. The test fails if any string declared in
-`navigation/src/main/res/values/strings.xml` has no `R.string.<name>` or
-`@string/<name>` reference anywhere in the repository, or if a
-`navigation/.../res/values-*/` overlay translates a name that no default locale
-declares. An unreferenced `<string>` is invisible to both the compiler and the
-runtime, so orphans accumulate silently: the workspace prune (§3.2) and the
-providers merge each deleted destinations but left their labels behind, and the
-screen strings this module used to own stayed on as duplicates after Prep Studio
-and the provider manager moved into their feature modules. The gate is a floor —
-delete a dead resource, never add it to an allowlist.
+`StringResourceReferenceTest` green for all three modules. Per guarded module the
+test fails when a string declared in its `src/main/res/values/strings.xml` has no
+`R.string.<name>` or `@string/<name>` reference anywhere in the repository, or
+when one of its `res/values-*/` overlays translates a name no default locale
+declares. Each module also carries a canary, so a scan that loses sight of a
+module's own `R.string` references fails loudly instead of reporting every
+resource as orphaned.
+An unreferenced `<string>` is invisible to both the compiler and the runtime, so
+orphans accumulate silently. The subtractions themselves caused most of the rot —
+the workspace prune (§3.2), the providers merge (row 22), the Export row (row 24)
+and the About Resources card (row 25) each deleted UI without deleting the strings
+that labelled it — and Prep Studio left its whole session vocabulary behind in
+`feature/interview` when those screens moved out of `navigation`. The gate is a
+floor: delete a dead resource, never add it to an allowlist.
 
 ## G6 — Whole-graph verification (all touched modules)
 ```bash

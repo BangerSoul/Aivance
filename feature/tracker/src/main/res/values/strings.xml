@@ -18,4 +18,24 @@
     <string name="unknown_company">Unknown Company</string>
     <string name="ats_optimized">ATS Optimized</string>
     <string name="open_tasks">%1$d open task%2$s</string>
+    <string name="tracker_subtitle">Manage your execution pipeline</string>
+    <string name="tracker_daily_quota">Daily Application Quota</string>
+    <string name="tracker_edit_cap">Edit cap</string>
+    <string name="tracker_quota_progress">%1$d of %2$d applied today</string>
+    <string name="tracker_daily_cap">Daily Application Cap</string>
+    <string name="tracker_daily_cap_detail">How many applications do you want to aim for per day?</string>
+    <string name="tracker_preset_per_day">%1$d per day</string>
+    <string name="tracker_preset_per_day_selected">%1$d per day ✓</string>
+    <string name="tracker_overview">Overview</string>
+    <string name="tracker_tasks">Tasks</string>
+    <string name="tracker_timeline">Timeline</string>
+    <string name="tracker_notes">Notes</string>
+    <string name="tracker_notes_placeholder">Add private notes about this application...</string>
+    <string name="tracker_open_listing">Open Job Listing</string>
+    <string name="delete">Delete</string>
+    <string name="tracker_delete_application">Delete Application</string>
+    <string name="tracker_delete_detail">Are you sure you want to remove %1$s at %2$s from your pipeline?</string>
+    <string name="tracker_no_tasks">No tasks yet</string>
+    <string name="tracker_no_tasks_detail">Tasks will be automatically generated as you progress through the pipeline.</string>
+    <string name="tracker_no_activity">No activity recorded yet.</string>
 </resources>

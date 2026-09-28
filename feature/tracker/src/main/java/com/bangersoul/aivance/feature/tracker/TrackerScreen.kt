@@ -80,7 +80,7 @@ fun TrackerScreen(
 
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.career_pipeline_title),
-        subtitle = "Manage your execution pipeline",
+        subtitle = stringResource(R.string.tracker_subtitle),
         backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         isLoading = uiState is TrackerUiState.Loading,
@@ -244,15 +244,15 @@ private fun DailyQuotaCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Daily Application Quota", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.tracker_daily_quota), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        "$todayAppliedCount of $dailyCap applied today",
+                        stringResource(R.string.tracker_quota_progress, todayAppliedCount, dailyCap),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 TextButton(onClick = onEditCap) {
-                    Text("Edit cap")
+                    Text(stringResource(R.string.tracker_edit_cap))
                 }
             }
             LinearProgressIndicator(
@@ -274,11 +274,11 @@ private fun DailyCapDialog(
     val presets = listOf(3, 5, 10, 15, 20)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Daily Application Cap") },
+        title = { Text(stringResource(R.string.tracker_daily_cap)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "How many applications do you want to aim for per day?",
+                    stringResource(R.string.tracker_daily_cap_detail),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 presets.forEach { preset ->
@@ -286,13 +286,13 @@ private fun DailyCapDialog(
                     FilterChip(
                         selected = selected,
                         onClick = { onSelect(preset) },
-                        label = { Text(if (selected) "$preset per day ✓" else "$preset per day") }
+                        label = { Text(if (selected) stringResource(R.string.tracker_preset_per_day_selected, preset) else stringResource(R.string.tracker_preset_per_day, preset)) }
                     )
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -641,13 +641,13 @@ private fun ApplicationDetailSheet(
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
             ) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                    Text("Overview", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_overview), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
                 }
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                    Text("Tasks", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_tasks), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
                 }
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                    Text("Timeline", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_timeline), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
                 }
             }
 
@@ -725,13 +725,13 @@ private fun ApplicationOverviewTab(
         }
 
         item {
-            Text("Notes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tracker_notes), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = notesText,
                 onValueChange = { notesText = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add private notes about this application...") },
+                placeholder = { Text(stringResource(R.string.tracker_notes_placeholder)) },
                 minLines = 4,
                 shape = AivanceTheme.shapes.medium
             )
@@ -741,7 +741,7 @@ private fun ApplicationOverviewTab(
             val jobUrl = application.job?.url
             if (!jobUrl.isNullOrBlank()) {
                 AivanceSecondaryButton(
-                    text = "Open Job Listing",
+                    text = stringResource(R.string.tracker_open_listing),
                     onClick = { uriHandler.openUri(jobUrl) },
                     modifier = Modifier.fillMaxWidth(),
                     icon = Icons.Rounded.OpenInNew
@@ -757,7 +757,7 @@ private fun ApplicationOverviewTab(
             ) {
                 Icon(Icons.Rounded.DeleteOutline, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Delete Application")
+                Text(stringResource(R.string.tracker_delete_application))
             }
         }
     }
@@ -767,8 +767,8 @@ private fun ApplicationOverviewTab(
 private fun ApplicationTasksTab(application: Application) {
     if (application.tasks.isEmpty()) {
         AivanceEmptyState(
-            title = "No tasks yet",
-            description = "Tasks will be automatically generated as you progress through the pipeline.",
+            title = stringResource(R.string.tracker_no_tasks),
+            description = stringResource(R.string.tracker_no_tasks_detail),
             icon = Icons.Rounded.AssignmentTurnedIn
         )
     } else {
@@ -813,7 +813,7 @@ private fun ApplicationTimelineTab(application: Application) {
     ) {
         if (application.timeline.isEmpty()) {
             item {
-                Text("No activity recorded yet.", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.tracker_no_activity), style = MaterialTheme.typography.bodySmall)
             }
         } else {
             items(application.timeline) { event ->
@@ -827,15 +827,15 @@ private fun ApplicationTimelineTab(application: Application) {
 private fun DeleteConfirmDialog(application: Application, onDelete: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Application") },
-        text = { Text("Are you sure you want to remove ${application.job?.title} at ${application.job?.company} from your pipeline?") },
+        title = { Text(stringResource(R.string.tracker_delete_application)) },
+        text = { Text(stringResource(R.string.tracker_delete_detail, application.job?.title ?: "", application.job?.company ?: "")) },
         confirmButton = {
             TextButton(onClick = onDelete, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                Text("Delete")
+                Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

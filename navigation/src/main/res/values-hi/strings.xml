@@ -171,12 +171,10 @@
     <string name="dest_cover_letter">कवर लेटर</string>
     <string name="dest_job_details">नौकरी विवरण</string>
     <string name="dest_recruiter_discovery">भर्तीकर्ता खोज</string>
-    <string name="dest_prep_studio">प्रेप स्टूडियो</string>
     <string name="dest_saved_jobs">सहेजी गई नौकरियां</string>
     <string name="dest_settings">सेटिंग्स</string>
     <string name="dest_appearance">दिखावट</string>
     <string name="dest_ai_settings">AI सेटिंग्स</string>
-    <string name="dest_providers">प्रदाता</string>
     <string name="dest_notifications">सूचनाएं</string>
     <string name="dest_analytics">एनालिटिक्स</string>
     <string name="dest_privacy">गोपनीयता और सुरक्षा</string>

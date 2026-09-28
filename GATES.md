@@ -45,9 +45,11 @@ is authenticated, and no auth/authenticated overlap.
 ## G5b — Subtraction-first nav prune (AUDIT §3.2)
 ```bash
 grep -rn --include=*.kt --exclude-dir=build -E "Destination\.(Assistant|Intelligence|PrepStudio|LearnSkill|DiscoverBySkill|TrackApplication)\b" app feature core navigation
+grep -rn --include=*.xml --exclude-dir=build -E 'name="dest_(prep_studio|providers)"' navigation
 ./gradlew :navigation:testDebugUnitTest :navigation:compileDebugAndroidTestKotlin --console=plain
 ```
-EXPECT: the grep prints **no matches** (the six legacy destinations are gone);
+EXPECT: both greps print **no matches** (the six legacy destinations are gone, and the
+label resources orphaned by the prune — `dest_prep_studio`, `dest_providers` — are deleted);
 BUILD SUCCESSFUL; seeded variants (`Studio(PRACTICE)`, `Discovery(query)`,
 `Pipeline(jobId)`) still resolve as authenticated, `Resources` is in
 `authenticatedDestinations`, and DeepLinkHandler maps chat → AssistantOrb,

@@ -233,6 +233,23 @@ does not own. About keeps its brand header, contact rows, "How AiVance is
 made", and licenses; the single Resources entry stays the System-tab link, and
 the `Destination.Resources` route is untouched.
 
+## G19 — No orphaned string resources in the navigation module (AUDIT §3.2 follow-up)
+```bash
+grep -q "class StringResourceReferenceTest" navigation/src/test/java/com/bangersoul/aivance/navigation/StringResourceReferenceTest.kt && echo "guard present: ok"
+./gradlew :navigation:testDebugUnitTest --console=plain
+```
+EXPECT: the guard prints `ok` and BUILD SUCCESSFUL, with
+`StringResourceReferenceTest` green. The test fails if any string declared in
+`navigation/src/main/res/values/strings.xml` has no `R.string.<name>` or
+`@string/<name>` reference anywhere in the repository, or if a
+`navigation/.../res/values-*/` overlay translates a name that no default locale
+declares. An unreferenced `<string>` is invisible to both the compiler and the
+runtime, so orphans accumulate silently: the workspace prune (§3.2) and the
+providers merge each deleted destinations but left their labels behind, and the
+screen strings this module used to own stayed on as duplicates after Prep Studio
+and the provider manager moved into their feature modules. The gate is a floor —
+delete a dead resource, never add it to an allowlist.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

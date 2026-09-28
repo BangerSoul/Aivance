@@ -3,10 +3,7 @@
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
-    <string name="save">Save</string>
     <string name="retry">Retry</string>
-    <string name="enabled">Enabled</string>
-    <string name="disabled">Disabled</string>
 
     <!-- Auth -->
     <string name="auth_create_account_title">Create your account</string>
@@ -26,36 +23,8 @@
     <string name="auth_google">Continue with Google</string>
 
     <!-- Provider Management -->
-    <string name="providers">Providers</string>
-    <string name="refresh_providers">Refresh providers</string>
-    <string name="loading_providers">Loading providers…</string>
-    <string name="section_ai_providers">AI Providers</string>
-    <string name="section_job_providers">Job Providers</string>
-    <string name="section_enrichment_providers">Enrichment Providers</string>
-    <string name="api_key_configured">API Key (configured)</string>
     <string name="api_key">API Key</string>
-    <string name="model">Model</string>
-    <string name="select">Select…</string>
-    <string name="testing">Testing…</string>
-    <string name="test">Test</string>
-    <string name="healthy">Healthy</string>
-    <string name="degraded">Degraded</string>
-    <string name="unhealthy">Unhealthy</string>
-    <string name="unknown">Unknown</string>
     <string name="download_model">Download model</string>
-    <string name="delete_model">Delete model</string>
-    <string name="model_ready">Model ready</string>
-    <string name="model_downloaded">Downloaded</string>
-    <string name="model_not_downloaded">Model not downloaded — download once to use this provider fully offline.</string>
-    <string name="downloading_model">Downloading model… %1$d%%</string>
-    <string name="download_model_title">Download on-device model</string>
-    <string name="download_model_size">Model size: %1$s (%2$d bytes)</string>
-    <string name="download_model_free_storage">Free storage: %1$s</string>
-    <string name="download_model_ram_warning">This device has less than 4 GB of RAM. The full model may run slowly.</string>
-    <string name="download_model_storage_blocked">Not enough free storage for the full model. The smaller model fits — use it instead.</string>
-    <string name="download_model_compact_label">Download smaller model (%1$s)</string>
-    <string name="download_model_compact_hint">Uses far less storage and RAM.</string>
-    <string name="download_model_confirm">Download</string>
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
@@ -90,23 +59,13 @@
     <string name="go_to_dashboard">Go to Dashboard</string>
 
     <!-- Prep Studio -->
-    <string name="prep_studio">Prep Studio</string>
     <string name="practice">Practice</string>
     <string name="history">History</string>
     <string name="question_bank">Question Bank</string>
-    <string name="learn">Learn</string>
-    <string name="starting_session">Starting your session…</string>
-    <string name="session_failed">Session failed</string>
-    <string name="new_practice_session">New Practice Session</string>
-    <string name="practice_subtitle">AI-driven simulations tailored to your target role.</string>
-    <string name="session_type">Session type</string>
     <string name="technical">Technical</string>
     <string name="behavioral">Behavioral</string>
-    <string name="hr_culture">HR &amp; Culture</string>
     <string name="target_role">Target role</string>
     <string name="target_role_hint">e.g. Senior Android Engineer</string>
-    <string name="company_optional">Company (optional)</string>
-    <string name="start_mock_interview">Start Mock Interview</string>
     <string name="question_progress">Q%1$d/%2$d</string>
     <string name="preparing">Preparing</string>
     <string name="question">Question</string>
@@ -116,13 +75,6 @@
     <string name="submit_answer">Submit Answer</string>
     <string name="next_question">Next Question</string>
     <string name="end_session">End Session</string>
-    <string name="session_review">Session Review</string>
-    <string name="overall_performance">Overall Performance</string>
-    <string name="ai_evaluation">AI evaluation of your answers</string>
-    <string name="key_strengths">Key Strengths</string>
-    <string name="analysis_in_progress">Analysis in progress</string>
-    <string name="analysis_pending">Detailed AI feedback will appear once evaluation completes.</string>
-    <string name="start_new_session">Start a New Session</string>
     <string name="no_sessions">No sessions yet</string>
     <string name="no_sessions_desc">Complete a practice session and your progress will appear here.</string>
     <string name="all">All</string>
@@ -145,7 +97,6 @@
     <string name="load_resources_failed">Couldn\'t load resources</string>
     <string name="no_resources">No resources yet</string>
     <string name="no_resources_desc">Complete more of your profile to unlock personalized learning paths.</string>
-    <string name="loading_ellipsis">Loading…</string>
 
     <!-- Destinations (bottom-nav & screen titles) -->
     <string name="dest_splash">Splash</string>

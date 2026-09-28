@@ -200,6 +200,23 @@ rather than duplicating the list. Tab indices shift again (Providers stays 1,
 System 3→2), and the `when` still falls back to Identity so a `selectedTab`
 saved before the merge cannot land on a blank screen.
 
+## G17 — One backup surface: Privacy Center owns export/restore (AUDIT 24)
+```bash
+! grep -rqE --include=*.kt --exclude-dir=build "Export Career Data|CloudDownload" feature/profile && echo "duplicate export gone: ok"
+grep -q "backupExporter.exportBackup" feature/profile/src/main/java/com/bangersoul/aivance/feature/profile/PrivacyViewModel.kt && echo "privacy owns backup: ok"
+./gradlew :feature:profile:testDebugUnitTest :app:compileDebugKotlin --console=plain
+```
+EXPECT: both guards print `ok` — the Identity Hub ▸ System "Export Career
+Data" row and its `CloudDownload` icon are deleted — and BUILD SUCCESSFUL. The
+row shared a plaintext profile dump through an ACTION_SEND chooser, a second
+backup affordance that duplicated Privacy Center's Export/Restore. Privacy
+Center stays the single backup surface: it exports the whole account as an
+encrypted, passphrase-protected backup through `BackupExporter.exportBackup()`
+and restores it through `BackupImporter.importBackup()`, so there is one
+authoritative, secure path for the user's data instead of two with different
+formats and security properties. The System tab keeps Reset All Settings and
+Sign Out under Data Management.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

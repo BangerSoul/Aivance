@@ -937,9 +937,6 @@ private fun SystemTab(
     onNavigateToAppearance: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -997,37 +994,10 @@ private fun SystemTab(
             SectionHeader(title = "Data Management")
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(
-                        onClick = {
-                            // Wires the previously dead Export button: shares the
-                            // profile as portable text so the user keeps their data.
-                            val profile = uiState.profile ?: return@TextButton
-                            val payload = buildString {
-                                appendLine("AiVance Career Data Export")
-                                appendLine("Name: ").append(profile.fullName)
-                                appendLine("Target Role: ").append(profile.targetRole)
-                                appendLine("Skills: ").append(profile.skills.joinToString(", "))
-                                appendLine("Preferred Industries: ").append(profile.preferredIndustries.joinToString(", "))
-                                appendLine("Salary Expectation: ").append(profile.salaryExpectation)
-                                appendLine("Work Preference: ").append(profile.workPreference)
-                            }
-                            val sendIntent = android.content.Intent(
-                                android.content.Intent.ACTION_SEND
-                            ).apply {
-                                type = "text/plain"
-                                putExtra(android.content.Intent.EXTRA_TEXT, payload)
-                                putExtra(android.content.Intent.EXTRA_SUBJECT, "AiVance Career Data")
-                            }
-                            context.startActivity(
-                                android.content.Intent.createChooser(sendIntent, "Export Career Data")
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Rounded.CloudDownload, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Export Career Data")
-                    }
+                    // Encrypted backup/restore lives in Privacy Center (AUDIT 24) —
+                    // the single, passphrase-protected backup surface. The old
+                    // plaintext career-data export chooser duplicated it with a
+                    // weaker format, so it is gone.
                     TextButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.ResetAll) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                         Icon(Icons.Rounded.DeleteForever, null)
                         Spacer(Modifier.width(8.dp))

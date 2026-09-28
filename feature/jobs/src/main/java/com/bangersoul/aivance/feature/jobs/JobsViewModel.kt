@@ -9,6 +9,7 @@ import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
+import com.bangersoul.aivance.core.domain.usecase.job.GetCachedJobsUseCase
 import com.bangersoul.aivance.core.domain.usecase.job.ScoreJobFitRequest
 import com.bangersoul.aivance.core.domain.usecase.job.ScoreJobFitUseCase
 import com.bangersoul.aivance.core.domain.usecase.job.SearchJobsRequest
@@ -61,6 +62,7 @@ sealed interface JobsUiEffect {
 @HiltViewModel
 class JobsViewModel @Inject constructor(
     private val searchJobsUseCase: SearchJobsUseCase,
+    private val getCachedJobsUseCase: GetCachedJobsUseCase,
     private val toggleJobBookmarkUseCase: ToggleJobBookmarkUseCase,
     private val careerStateEngine: CareerStateEngine,
     private val scoreJobFitUseCase: ScoreJobFitUseCase,
@@ -78,6 +80,30 @@ class JobsViewModel @Inject constructor(
     private val _manualSearchState = MutableStateFlow<SearchState>(
         SearchState(filter = JobSearchFilter(query = restoredQuery))
     )
+
+    init {
+        hydrateFromCache()
+    }
+
+    /**
+     * Opens Discovery on the locally cached corpus instead of an empty canvas
+     * (B3/B4). `JobAlertWorker` keeps the `jobs` table populated in the
+     * background, so a cold start with no query must show those listings —
+     * otherwise the screen reports "Found 0 active opportunities" while the
+     * inbox advertises new matches read from that very table.
+     *
+     * A search in flight, or results already on screen, always win.
+     */
+    private fun hydrateFromCache() {
+        viewModelScope.launch {
+            val cached = (getCachedJobsUseCase(Unit) as? Result.Success)?.data ?: return@launch
+            if (cached.isEmpty()) return@launch
+            val current = _manualSearchState.value
+            if (current.isSearching || current.jobs.isNotEmpty()) return@launch
+            _manualSearchState.value = current.copy(jobs = cached)
+            scoreFit(cached)
+        }
+    }
 
     val uiState: StateFlow<JobsUiState> = combine(
         careerStateEngine.state,

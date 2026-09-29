@@ -80,4 +80,15 @@
     <string name="job_no_recruiters">कोई रिक्रूटर नहीं मिला</string>
     <string name="job_no_recruiters_detail">हम इस भूमिका के लिए हायरिंग मैनेजर और संपर्क खोजने की कोशिश कर सकते हैं।</string>
     <string name="job_search_recruiters">रिक्रूटर खोजें</string>
+
+    <string name="job_tab_overview">अवलोकन</string>
+    <string name="job_tab_readiness">तैयारी</string>
+    <string name="job_tab_intelligence">इंटेलिजेंस</string>
+    <string name="job_recruiter_fallback_title">रिक्रूटर</string>
+    <string name="job_verified_contact_cd">सत्यापित संपर्क</string>
+    <string name="job_match_high">उच्च मैच</string>
+    <string name="job_match_good">अच्छा मैच</string>
+    <string name="job_match_potential">संभावित मैच</string>
+    <string name="job_experience_level_match">आपके %1$s अनुभव से मेल खाता है।</string>
+
 </resources>

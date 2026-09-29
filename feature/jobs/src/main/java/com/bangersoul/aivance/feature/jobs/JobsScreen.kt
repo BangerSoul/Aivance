@@ -781,14 +781,14 @@ private fun JobDiscoveryCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (fitScore > 80) "High Match" else if (fitScore > 50) "Good Match" else "Potential Match",
+                        text = if (fitScore > 80) stringResource(R.string.job_match_high) else if (fitScore > 50) stringResource(R.string.job_match_good) else stringResource(R.string.job_match_potential),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = if (fitScore > 80) AivanceTheme.colors.success else AivanceTheme.colors.accent
                     )
                     if (job.experienceLevel != ExperienceLevel.NOT_SPECIFIED) {
                         Text(
-                            text = "Matches your ${job.experienceLevel.name.lowercase()} experience.",
+                            text = stringResource(R.string.job_experience_level_match, job.experienceLevel.name.lowercase()),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

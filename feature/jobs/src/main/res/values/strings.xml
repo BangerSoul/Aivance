@@ -136,4 +136,15 @@
     <string name="job_no_recruiters">No recruiters found</string>
     <string name="job_no_recruiters_detail">We can try to find hiring managers and contacts for this role.</string>
     <string name="job_search_recruiters">Search Recruiters</string>
+
+    <string name="job_tab_overview">Overview</string>
+    <string name="job_tab_readiness">Readiness</string>
+    <string name="job_tab_intelligence">Intelligence</string>
+    <string name="job_recruiter_fallback_title">Recruiter</string>
+    <string name="job_verified_contact_cd">Verified contact</string>
+    <string name="job_match_high">High Match</string>
+    <string name="job_match_good">Good Match</string>
+    <string name="job_match_potential">Potential Match</string>
+    <string name="job_experience_level_match">Matches your %1$s experience.</string>
+
 </resources>

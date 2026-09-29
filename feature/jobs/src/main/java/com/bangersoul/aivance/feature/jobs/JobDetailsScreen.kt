@@ -114,21 +114,21 @@ fun JobDetailsScreen(
                 ) {
                     Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
                         Text(
-                            "Overview",
+                            stringResource(R.string.job_tab_overview),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
                         Text(
-                            "Readiness",
+                            stringResource(R.string.job_tab_readiness),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
                         Text(
-                            "Intelligence",
+                            stringResource(R.string.job_tab_intelligence),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -374,10 +374,10 @@ private fun RecruiterCard(recruiter: Recruiter) {
             }
             Column(Modifier.weight(1f)) {
                 Text(recruiter.name, fontWeight = FontWeight.Bold)
-                Text(recruiter.title ?: "Recruiter", style = MaterialTheme.typography.bodySmall)
+                Text(recruiter.title ?: stringResource(R.string.job_recruiter_fallback_title), style = MaterialTheme.typography.bodySmall)
             }
             if (recruiter.contacts.any { it.isVerified }) {
-                Icon(Icons.Rounded.Verified, "Verified Contact", tint = AivanceTheme.colors.info, modifier = Modifier.size(16.dp))
+                Icon(Icons.Rounded.Verified, stringResource(R.string.job_verified_contact_cd), tint = AivanceTheme.colors.info, modifier = Modifier.size(16.dp))
             }
         }
     }

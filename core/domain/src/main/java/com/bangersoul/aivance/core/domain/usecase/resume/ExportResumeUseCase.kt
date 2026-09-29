@@ -7,6 +7,7 @@ import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.ValidationError
 import com.bangersoul.aivance.core.common.result.runCatchingCore
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
+import com.bangersoul.aivance.core.domain.usecase.resume.jsonresume.JsonResumeConverter
 import com.bangersoul.aivance.core.domain.usecase.UseCase
 import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
@@ -75,20 +76,9 @@ class ExportResumeUseCase @Inject constructor(
     }
 
     private fun exportAsJson(version: ResumeVersion): String {
-        // Simple manual JSON for now
-        return buildString {
-            appendLine("{")
-            appendLine("  \"versionName\": \"${version.versionName}\",")
-            appendLine("  \"sections\": [")
-            version.sections.forEachIndexed { index, section ->
-                appendLine("    {")
-                appendLine("      \"title\": \"${section.title}\",")
-                appendLine("      \"content\": \"${section.content.take(100)}...\"")
-                append("    }")
-                if (index < version.sections.size - 1) appendLine(",") else appendLine()
-            }
-            appendLine("  ]")
-            append("}")
-        }
+        // Standard JSON Resume schema — the same format the Resume Engine
+        // imports, so an exported file round-trips back into the app. Escaping
+        // and pretty-printing are handled by the serializer.
+        return JsonResumeConverter.exportToJsonResume(version = version)
     }
 }

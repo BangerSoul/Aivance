@@ -38,7 +38,11 @@ data class CareerGoal(
 
 @Serializable
 data class CareerIntelligence(
-    val careerScore: Int,
+    /**
+     * Mean of the evidence-backed score dimensions, or `null` when nothing has been measured.
+     * Never a fabricated default (R3-1).
+     */
+    val careerScore: Int?,
     val dimensionScores: Map<String, Int>,
     val predictions: PredictiveMetrics,
     val health: List<HealthDimension>,

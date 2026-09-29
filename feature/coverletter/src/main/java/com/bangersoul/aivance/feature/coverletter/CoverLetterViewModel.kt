@@ -50,9 +50,16 @@ sealed interface CoverLetterUiEvent {
     data class Generate(
         val resumeId: Long,
         val versionId: Long,
-        val jobId: Long,
+        /** Null when generating a generic letter from the primary resume only. */
+        val jobId: Long?,
         val recruiterId: String?
     ) : CoverLetterUiEvent
+
+    /**
+     * Generates a letter from the primary resume without a job listing — the
+     * "Generate Cover Letter" action on the empty state. Never dead-ends.
+     */
+    data object GenerateFromPrimary : CoverLetterUiEvent
 
     data class RegenerateSection(val versionId: Long, val sectionType: String) : CoverLetterUiEvent
 
@@ -97,6 +104,7 @@ class CoverLetterViewModel @Inject constructor(
     fun onEvent(event: CoverLetterUiEvent) {
         when (event) {
             is CoverLetterUiEvent.Generate -> generate(event)
+            is CoverLetterUiEvent.GenerateFromPrimary -> generateFromPrimary()
             is CoverLetterUiEvent.GenerateForJob -> generateForJob(event.jobId)
             is CoverLetterUiEvent.RegenerateSection -> regenerateSection(event)
             CoverLetterUiEvent.Load -> load()
@@ -117,30 +125,42 @@ class CoverLetterViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = CoverLetterUiState.Loading
             trackEventUseCase(TrackEventRequest("cover_letter_generate_for_job"))
-
-            val resumesResult = resumeRepository.getResumes().first()
-            val resume = (resumesResult as? Result.Success)?.data?.firstOrNull()
-            val version = resume?.versions
-                ?.firstOrNull { it.id == resume.primaryVersionId }
-                ?: resume?.versions?.firstOrNull()
-
-            if (resume == null || version == null) {
-                _uiState.value = CoverLetterUiState.Idle
-                _effects.send(
-                    CoverLetterUiEffect.ShowSnackbar("Import a resume first to generate a cover letter")
-                )
-                return@launch
-            }
-
-            generate(
-                CoverLetterUiEvent.Generate(
-                    resumeId = resume.id,
-                    versionId = version.id,
-                    jobId = jobId,
-                    recruiterId = null
-                )
-            )
+            generateFromPrimaryInternal(jobId = jobId)
         }
+    }
+
+    /** Generates a generic letter (no job attached) from the primary resume. */
+    private fun generateFromPrimary() {
+        viewModelScope.launch {
+            _uiState.value = CoverLetterUiState.Loading
+            trackEventUseCase(TrackEventRequest("cover_letter_generate_primary"))
+            generateFromPrimaryInternal(jobId = null)
+        }
+    }
+
+    private suspend fun generateFromPrimaryInternal(jobId: Long?) {
+        val resumesResult = resumeRepository.getResumes().first()
+        val resume = (resumesResult as? Result.Success)?.data?.firstOrNull()
+        val version = resume?.versions
+            ?.firstOrNull { it.id == resume.primaryVersionId }
+            ?: resume?.versions?.firstOrNull()
+
+        if (resume == null || version == null) {
+            _uiState.value = CoverLetterUiState.Idle
+            _effects.send(
+                CoverLetterUiEffect.ShowSnackbar("Import a resume first to generate a cover letter")
+            )
+            return
+        }
+
+        generate(
+            CoverLetterUiEvent.Generate(
+                resumeId = resume.id,
+                versionId = version.id,
+                jobId = jobId,
+                recruiterId = null
+            )
+        )
     }
 
     private fun load() {

@@ -29,7 +29,7 @@ class ProviderRefreshWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     companion object {
-        val knownProviders = listOf("gemini", "openai", "groq", "openrouter", "ollama")
+        val knownProviders = listOf("gemini", "openai", "groq", "openrouter", "ollama", "anthropic", "gemma")
     }
 
     override suspend fun doWork(): ListenableWorker.Result {

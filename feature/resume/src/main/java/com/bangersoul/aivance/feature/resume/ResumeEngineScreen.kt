@@ -63,7 +63,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,11 +71,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
+import com.bangersoul.aivance.core.common.model.AtsReport
 import com.bangersoul.aivance.core.common.model.ResumeVersion
 import com.bangersoul.aivance.core.designsystem.components.*
 import kotlinx.coroutines.delay
@@ -95,11 +96,20 @@ private val ENGINE_STEPS = listOf(
 @Composable
 fun ResumeEngineScreen(
     viewModel: ResumeEngineViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    initialJobDescription: String? = null
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Preload a job description (e.g. from a saved job's "Create tailored
+    // resume" action) so the ATS scan step arrives with the JD ready to run.
+    LaunchedEffect(initialJobDescription) {
+        if (!initialJobDescription.isNullOrBlank()) {
+            viewModel.onEvent(ResumeEngineEvent.SetInitialJobDescription(initialJobDescription))
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -121,6 +131,7 @@ fun ResumeEngineScreen(
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.resume_engine_title),
         subtitle = stringResource(R.string.resume_engine_subtitle),
+        backContentDescription = stringResource(R.string.back),
         onBack = {
             if (state is ResumeEngineState.Import) onBack()
             else viewModel.onEvent(ResumeEngineEvent.Back)
@@ -130,11 +141,15 @@ fun ResumeEngineScreen(
             EngineStepper(currentStep = state.stepIndex())
 
             AnimatedContent(
-                targetState = state.stepIndex(),
+                targetState = state,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
+                // The step is the animation key, not the state: Optimizing is a
+                // data class whose streamingContent changes on every token, so
+                // targeting the state itself would restart the fade mid-stream.
+                contentKey = { it.stepIndex() },
                 label = "ResumeEngineTransition"
-            ) { _ ->
-                when (val current = state) {
+            ) { target ->
+                when (val current = target) {
                     is ResumeEngineState.Import -> ImportStep(
                         onFileImported = { viewModel.onEvent(ResumeEngineEvent.ImportFile(it)) },
                         onOcrTextExtracted = { viewModel.onEvent(ResumeEngineEvent.ImportOcrText(it)) },
@@ -275,6 +290,16 @@ private fun ImportStep(
     onExit: () -> Unit
 ) {
     val context = LocalContext.current
+    // Resolved via stringResource rather than context.getString so locale changes
+    // invalidate these; they are hoisted because the launchers below capture them
+    // in non-composable callbacks, where stringResource cannot be called.
+    val fileTooLarge = stringResource(R.string.file_too_large)
+    val jsonImportEmpty = stringResource(R.string.json_import_empty)
+    val noTextFound = stringResource(R.string.no_text_found)
+    val unknownError = stringResource(R.string.unknown_error)
+    val ocrFailedTemplate = stringResource(R.string.ocr_failed)
+    val ocrLoadFailedTemplate = stringResource(R.string.ocr_load_failed)
+
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var selectedName by remember { mutableStateOf<String?>(null) }
     var selectedSize by remember { mutableStateOf<Long?>(null) }
@@ -288,7 +313,7 @@ private fun ImportStep(
             if (uri != null) {
                 val (name, size) = resolveFileMeta(context, uri)
                 if (size != null && size > MAX_FILE_SIZE_BYTES) {
-                    sizeError = context.getString(R.string.file_too_large)
+                    sizeError = fileTooLarge
                 } else {
                     sizeError = null
                     cameraNote = null
@@ -305,7 +330,7 @@ private fun ImportStep(
             if (uri != null) {
                 val (name, size) = resolveFileMeta(context, uri)
                 if (size != null && size > MAX_FILE_SIZE_BYTES) {
-                    sizeError = context.getString(R.string.file_too_large)
+                    sizeError = fileTooLarge
                 } else {
                     sizeError = null
                     cameraNote = null
@@ -324,7 +349,7 @@ private fun ImportStep(
                     ?.bufferedReader()
                     ?.use { it.readText() }
                 if (text.isNullOrBlank()) {
-                    cameraNote = context.getString(R.string.json_import_empty)
+                    cameraNote = jsonImportEmpty
                 } else {
                     onJsonImported(text)
                 }
@@ -345,14 +370,14 @@ private fun ImportStep(
                             if (extracted.isNotBlank()) {
                                 onOcrTextExtracted(extracted)
                             } else {
-                                cameraNote = context.getString(R.string.no_text_found)
+                                cameraNote = noTextFound
                             }
                         }
                         .addOnFailureListener {
-                            cameraNote = context.getString(R.string.ocr_failed, it.message ?: context.getString(R.string.unknown_error))
+                            cameraNote = ocrFailedTemplate.format(it.message ?: unknownError)
                         }
                 } catch (e: Exception) {
-                    cameraNote = context.getString(R.string.ocr_load_failed, e.message ?: context.getString(R.string.unknown_error))
+                    cameraNote = ocrLoadFailedTemplate.format(e.message ?: unknownError)
                 }
             }
         }
@@ -612,7 +637,7 @@ private fun PreviewStep(
             Spacer(Modifier.height(8.dp))
         }
 
-        items(version.sections) { section ->
+        itemsIndexed(version.sections, key = { index, section -> "${section.sectionType}_${section.sectionOrder}_$index" }) { _, section ->
             val isExpanded = section.title in expanded
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -715,7 +740,7 @@ private fun AtsScanStep(
 @Composable
 private fun AtsResultStep(
     score: Int,
-    analysis: ResumeAnalysis,
+    analysis: AtsReport,
     onContinue: () -> Unit
 ) {
     LazyColumn(
@@ -757,7 +782,7 @@ private fun AtsResultStep(
         item {
             Text(stringResource(R.string.keywords), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            if (analysis.matchingKeywords.isEmpty() && analysis.missingKeywords.isEmpty()) {
+            if (analysis.matchedKeywords.isEmpty() && analysis.missingKeywords.isEmpty()) {
                 Text(
                     stringResource(R.string.no_keyword_analysis),
                     style = MaterialTheme.typography.bodySmall,
@@ -768,24 +793,24 @@ private fun AtsResultStep(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    analysis.matchingKeywords.forEach { KeywordChip(text = it, isMatched = true) }
+                    analysis.matchedKeywords.forEach { KeywordChip(text = it, isMatched = true) }
                     analysis.missingKeywords.forEach { KeywordChip(text = it, isMatched = false) }
                 }
             }
         }
 
-        if (analysis.suggestions.isNotEmpty()) {
+        if (analysis.optimizationTips.isNotEmpty()) {
             item {
                 Text(stringResource(R.string.improvement_suggestions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
             }
-            items(analysis.suggestions) { suggestion ->
+            itemsIndexed(analysis.optimizationTips, key = { index, _ -> index }) { _, tip ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
                     Text(
-                        suggestion,
+                        tip.description,
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -819,10 +844,14 @@ private fun OptimizingStep(
     onDiscard: (String) -> Unit,
     onSave: (String) -> Unit
 ) {
+    // Read the locale from composition state so a locale change re-formats the
+    // placeholder date instead of leaving it stale.
+    val locale = LocalConfiguration.current.locales[0]
+
     // Pre-fill with a date-stamped version name per spec: "v{n} — {date}".
     // v1 is the original import, so the first optimized save is v2.
     var versionName by remember {
-        mutableStateOf("v2 — ${SimpleDateFormat("MMM d", Locale.getDefault()).format(Date())}")
+        mutableStateOf("v2 — ${SimpleDateFormat("MMM d", locale).format(Date())}")
     }
 
     LazyColumn(
@@ -839,7 +868,7 @@ private fun OptimizingStep(
             Spacer(Modifier.height(8.dp))
         }
 
-        itemsIndexed(version.sections) { _, section ->
+        itemsIndexed(version.sections, key = { index, section -> "${section.sectionType}_${section.sectionOrder}_$index" }) { _, section ->
             val suggestion = suggestions[section.title]
             val isImproving = sectionInProgress == section.title
 
@@ -931,7 +960,7 @@ private fun OptimizingStep(
                 onValueChange = { versionName = it },
                 label = { Text(stringResource(R.string.version_name_optional)) },
                 placeholder = {
-                    Text(stringResource(R.string.version_name_placeholder, SimpleDateFormat("MMM d", Locale.getDefault()).format(Date())))
+                    Text(stringResource(R.string.version_name_placeholder, SimpleDateFormat("MMM d", locale).format(Date())))
                 },
                 modifier = Modifier.fillMaxWidth()
             )

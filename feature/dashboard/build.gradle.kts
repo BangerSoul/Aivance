@@ -33,6 +33,10 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
+    // The zero-data metric guard drives the real CareerStateEngine, whose provider-status
+    // input is typed by the SDK. core:domain depends on core:sdk as `implementation`, so it
+    // must be declared here to be visible to this module's unit tests.
+    testImplementation(project(":core:sdk"))
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.truth)
     testImplementation(libs.turbine)

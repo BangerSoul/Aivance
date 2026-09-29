@@ -13,6 +13,8 @@ import com.bangersoul.aivance.sdk.core.ProviderMetadata
 import com.bangersoul.aivance.sdk.core.ProviderType
 import com.bangersoul.aivance.sdk.infrastructure.ProviderManager
 import com.bangersoul.aivance.sdk.infrastructure.ProviderRegistry
+import com.bangersoul.aivance.feature.profile.worker.ModelDownloadScheduler
+import com.bangersoul.aivance.feature.profile.worker.ModelDownloadStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,8 +24,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface OnboardingUiState {
-    // v2: Welcome is its own destination (WelcomeScreen); the provider flow
-    // starts directly at AI provider selection.
+    // The provider flow starts directly at AI provider selection; there is no
+    // separate Welcome step any more (AUDIT 6 — the brand lives on Auth).
 
     data class ChooseAiProvider(
         val providers: List<ProviderMetadata>
@@ -33,7 +35,17 @@ sealed interface OnboardingUiState {
         val provider: ProviderMetadata,
         val config: Map<String, String> = emptyMap(),
         val isValidating: Boolean = false,
-        val error: String? = null
+        val error: String? = null,
+        /** True when the selected provider runs on-device (e.g. Gemma) and needs a model download instead of an API key. */
+        val isOnDevice: Boolean = false,
+        /** For on-device providers: whether the model file is downloaded and usable. */
+        val modelReady: Boolean = false,
+        /** For on-device providers: a download is in flight (WorkManager-backed). */
+        val isDownloading: Boolean = false,
+        /** Live download progress 0f..1f while [isDownloading]. */
+        val downloadProgress: Float? = null,
+        /** Non-blocking notice, e.g. "not enough free storage" — never a fatal error. */
+        val downloadMessage: String? = null
     ) : OnboardingUiState
 
     data class ChooseJobProvider(
@@ -70,11 +82,21 @@ sealed interface OnboardingUiState {
 sealed interface OnboardingUiEvent {
     data object Start : OnboardingUiEvent
 
-    /** Skip provider configuration entirely — providers can be set up later in Settings. */
-    data object SkipAll : OnboardingUiEvent
+    /**
+     * Explicit provider-optional choice (R2.2): job discovery keeps working
+     * through the free keyless providers and the assistant uses its local
+     * Copilot fallback; AI-dependent features surface their "needs a provider"
+     * states. Persisted and honoured by the central provider gate.
+     */
+    data object ContinueWithoutProviders : OnboardingUiEvent
     data class SelectAiProvider(val providerId: String) : OnboardingUiEvent
     data class UpdateAiConfig(val key: String, val value: String) : OnboardingUiEvent
     data object ValidateAiProvider : OnboardingUiEvent
+
+    /** Starts the on-device model download (keyless providers only). */
+    data object DownloadModel : OnboardingUiEvent
+    /** Dismisses the non-blocking download notice (e.g. storage warning). */
+    data object DismissDownloadMessage : OnboardingUiEvent
 
     data class SelectJobProvider(val providerId: String) : OnboardingUiEvent
     data class UpdateJobConfig(val key: String, val value: String) : OnboardingUiEvent
@@ -86,6 +108,7 @@ sealed interface OnboardingUiEvent {
     data object SkipEnrichment : OnboardingUiEvent
 
     data object Finish : OnboardingUiEvent
+
     data object Back : OnboardingUiEvent
 }
 
@@ -96,7 +119,9 @@ class OnboardingViewModel @Inject constructor(
     private val providerManager: ProviderManager,
     private val providerRepository: ProviderRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val trackEventUseCase: TrackEventUseCase
+    private val trackEventUseCase: TrackEventUseCase,
+    private val modelDownloadScheduler: ModelDownloadScheduler,
+    private val deviceCapabilityProvider: DeviceCapabilityProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<OnboardingUiState>(
@@ -109,13 +134,54 @@ class OnboardingViewModel @Inject constructor(
     private var selectedEnrichmentProviderId: String? = null
 
     init {
-        // v2: begin directly at AI provider selection — the Welcome step now
-        // lives in the standalone WelcomeScreen destination.
+        // v2: begin directly at AI provider selection.
         _uiState.value = OnboardingUiState.ChooseAiProvider(
             providers = providerRegistry.getAllProviders()
                 .filter { it.metadata.type == ProviderType.AI }
                 .map { it.metadata }
         )
+        observeModelDownload()
+    }
+
+    /**
+     * Reflects the background model-download worker in the on-device config
+     * step: live progress while running, and the green "Downloaded" state once
+     * the file lands (which is what unlocks Validate &amp; Continue).
+     */
+    private fun observeModelDownload() {
+        viewModelScope.launch {
+            modelDownloadScheduler.observe().collect { status ->
+                val current = _uiState.value as? OnboardingUiState.ConfigureAiProvider
+                val isGemma = current?.isOnDevice == true &&
+                    selectedAiProviderId == current.provider.id
+                if (!isGemma) return@collect
+                when (status) {
+                    is ModelDownloadStatus.Idle -> {}
+                    is ModelDownloadStatus.Running -> {
+                        _uiState.value = current.copy(
+                            isDownloading = true,
+                            downloadProgress = status.progress,
+                            downloadMessage = null
+                        )
+                    }
+                    is ModelDownloadStatus.Succeeded -> {
+                        _uiState.value = current.copy(
+                            isDownloading = false,
+                            downloadProgress = 1f,
+                            modelReady = true,
+                            downloadMessage = null
+                        )
+                    }
+                    is ModelDownloadStatus.Failed -> {
+                        _uiState.value = current.copy(
+                            isDownloading = false,
+                            downloadProgress = null,
+                            downloadMessage = "Download failed. Check your connection and retry."
+                        )
+                    }
+                }
+            }
+        }
     }
 
     // Per-step draft configs retained across Back navigation so a typed (or
@@ -135,16 +201,23 @@ class OnboardingViewModel @Inject constructor(
                         .map { it.metadata }
                 )
             }
-            OnboardingUiEvent.SkipAll -> skipAll()
+            OnboardingUiEvent.ContinueWithoutProviders -> acknowledgeProviderOptional()
             is OnboardingUiEvent.SelectAiProvider -> {
                 // Drafts are per-step, not per-provider: never leak the previous
                 // provider's key into a newly selected one's config screen.
                 if (selectedAiProviderId != event.providerId) aiConfigDraft.clear()
                 selectedAiProviderId = event.providerId
-                providerRegistry.getProvider(event.providerId)?.let {
+                providerRegistry.getProvider(event.providerId)?.let { registryProvider ->
+                    // On-device providers (e.g. Gemma) skip the credential form
+                    // entirely: the model download is the configuration. Surface
+                    // the live readiness so the step can offer Download / show
+                    // the green Downloaded status straight away.
+                    val downloadable = registryProvider as? com.bangersoul.aivance.sdk.api.ModelDownloadable
                     _uiState.value = OnboardingUiState.ConfigureAiProvider(
-                        provider = it.metadata,
-                        config = aiConfigDraft.toMap()
+                        provider = registryProvider.metadata,
+                        config = aiConfigDraft.toMap(),
+                        isOnDevice = downloadable != null,
+                        modelReady = downloadable?.isModelReady == true
                     )
                 }
             }
@@ -154,6 +227,8 @@ class OnboardingViewModel @Inject constructor(
                 _uiState.value = current.copy(config = current.config + (event.key to event.value))
             }
             OnboardingUiEvent.ValidateAiProvider -> validateAiProvider()
+            OnboardingUiEvent.DownloadModel -> startModelDownload()
+            OnboardingUiEvent.DismissDownloadMessage -> dismissDownloadMessage()
 
             is OnboardingUiEvent.SelectJobProvider -> {
                 if (selectedJobProviderId != event.providerId) jobConfigDraft.clear()
@@ -204,6 +279,11 @@ class OnboardingViewModel @Inject constructor(
                         // Persist completion so a restart doesn't re-show onboarding, and the
                         // auth guard treats the user as onboarded.
                         userPreferencesRepository.updateOnboardingCompleted(true)
+                        // R2.2: exit the provider-optional mode the user may have
+                        // chosen earlier — reaching Finish means a provider was
+                        // actually configured and validated, which is a stronger
+                        // contract than the deliberate opt-out.
+                        userPreferencesRepository.updateProviderOptional(false)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -221,16 +301,23 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    private fun skipAll() {
+    /**
+     * R2.2: persisting the explicit provider-optional choice is what makes
+     * provider-free product entry legal under the central gate
+     * (AuthenticationViewModel.evaluateProviderGate). Completing the onboarding
+     * steps alone never does.
+     */
+    private fun acknowledgeProviderOptional() {
         viewModelScope.launch {
             try {
-                trackEventUseCase(TrackEventRequest(eventName = "onboarding_skip_all"))
+                trackEventUseCase(TrackEventRequest(eventName = "onboarding_provider_optional"))
+                userPreferencesRepository.updateProviderOptional(true)
                 userPreferencesRepository.updateOnboardingCompleted(true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                // Non-blocking: skipping must complete even if tracking hiccups.
-                android.util.Log.w("Onboarding", "Skip-all tracking failed", e)
+                // Non-blocking: the choice must complete even if tracking hiccups.
+                android.util.Log.w("Onboarding", "Provider-optional persistence failed", e)
             } finally {
                 _uiState.value = OnboardingUiState.Complete
             }
@@ -240,6 +327,36 @@ class OnboardingViewModel @Inject constructor(
     private fun validateAiProvider() {
         val current = _uiState.value as? OnboardingUiState.ConfigureAiProvider ?: return
         val providerId = selectedAiProviderId ?: return
+
+        // On-device providers (e.g. Gemma) have no credentials to validate — the
+        // model file IS the configuration. Block Continue until it's downloaded
+        // so the user can never sail past an unusable provider.
+        if (current.isOnDevice) {
+            if (!current.modelReady) {
+                _uiState.value = current.copy(
+                    isValidating = false,
+                    error = "Download the on-device model first — Continue unlocks once the download finishes."
+                )
+                return
+            }
+            viewModelScope.launch {
+                trackEventUseCase(TrackEventRequest(eventName = "onboarding_gemma_ready"))
+                providerRepository.saveProviderConfig(
+                    buildProviderConfig(
+                        providerId = providerId,
+                        type = "AI",
+                        config = current.config,
+                        metadata = current.provider
+                    )
+                )
+                _uiState.value = OnboardingUiState.ChooseJobProvider(
+                    providers = providerRegistry.getAllProviders()
+                        .filter { it.metadata.type == ProviderType.JOB }
+                        .map { it.metadata }
+                )
+            }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.value = current.copy(isValidating = true, error = null)
@@ -261,6 +378,58 @@ class OnboardingViewModel @Inject constructor(
                 _uiState.value = current.copy(isValidating = false, error = (result as? Result.Failure)?.error?.message ?: "Validation failed")
             }
         }
+    }
+
+    /**
+     * Starts the on-device model download after a storage sanity check. The
+     * heavy lifting runs in the WorkManager [com.bangersoul.aivance.feature.profile.worker.GemmaModelDownloadWorker]
+     * so it survives app backgrounding; [observeModelDownload] drives the UI.
+     *
+     * Onboarding keeps this simple: one button, primary model. Constrained
+     * devices (or anyone wanting the ~271 MB compact variant) are pointed to
+     * Provider Management, which offers the full storage/compact dialog.
+     */
+    private fun startModelDownload() {
+        viewModelScope.launch {
+            val current = _uiState.value as? OnboardingUiState.ConfigureAiProvider ?: return@launch
+            val providerId = selectedAiProviderId ?: return@launch
+            val downloadable = providerRegistry.getProvider(providerId)
+                as? com.bangersoul.aivance.sdk.api.ModelDownloadable ?: return@launch
+            if (downloadable.isModelReady) return@launch
+
+            val capability = deviceCapabilityProvider.currentCapability()
+            val required = maxOf(
+                com.bangersoul.aivance.feature.profile.DeviceCapability.MIN_REQUIRED_FREE_STORAGE_BYTES,
+                withStorageHeadroom(downloadable.modelSizeBytes)
+            )
+            if (capability.freeStorageBytes < required) {
+                _uiState.value = current.copy(
+                    downloadMessage = "Not enough free storage for the model — free up space, or use Provider Management to pick the smaller compact model."
+                )
+                return@launch
+            }
+
+            trackEventUseCase(TrackEventRequest(eventName = "onboarding_gemma_download_start"))
+            _uiState.value = current.copy(
+                isDownloading = true,
+                downloadProgress = 0f,
+                downloadMessage = null,
+                error = null
+            )
+            modelDownloadScheduler.enqueue(providerId)
+        }
+    }
+
+    private fun dismissDownloadMessage() {
+        val current = _uiState.value as? OnboardingUiState.ConfigureAiProvider ?: return
+        _uiState.value = current.copy(downloadMessage = null)
+    }
+
+    private companion object {
+        /** Headroom above the file size used to decide whether a model fits. */
+        const val STORAGE_HEADROOM_PERCENT = 15L
+
+        fun withStorageHeadroom(bytes: Long): Long = bytes + (bytes * STORAGE_HEADROOM_PERCENT / 100L)
     }
 
     private fun validateJobProvider() {

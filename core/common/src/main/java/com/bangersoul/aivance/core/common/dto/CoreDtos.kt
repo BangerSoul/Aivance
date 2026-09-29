@@ -4,26 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ResumeAnalysisDto(
-    @SerialName("overall_score") val overallScore: Int,
-    @SerialName("matching_keywords") val matchingKeywords: List<String> = emptyList(),
-    @SerialName("missing_keywords") val missingKeywords: List<String> = emptyList(),
-    @SerialName("suggestions") val suggestions: List<String> = emptyList(),
-    @SerialName("match_summary") val matchSummary: String = ""
-)
-
-@Serializable
-data class AtsResultDto(
-    @SerialName("score") val score: Int,
-    @SerialName("resume_name") val resumeName: String,
-    @SerialName("missing_keywords") val missingKeywords: List<String> = emptyList(),
-    @SerialName("feedback") val feedback: String = "",
-    @SerialName("matching_keywords") val matchingKeywords: List<String> = emptyList(),
-    @SerialName("formatting_score") val formattingScore: Int = 100,
-    @SerialName("date_epoch") val dateEpoch: Long = System.currentTimeMillis()
-)
-
-@Serializable
 data class CoverLetterDto(
     @SerialName("company") val company: String,
     @SerialName("role") val role: String,
@@ -129,13 +109,8 @@ data class SettingsDto(
     @SerialName("is_enabled") val isEnabled: Boolean = true
 )
 
-// Request Models
-@Serializable
-data class ResumeAnalysisRequest(
-    @SerialName("resume_text") val resumeText: String,
-    @SerialName("job_description") val jobDescription: String
-)
 
+// Request Models
 @Serializable
 data class CoverLetterRequest(
     @SerialName("resume_text") val resumeText: String,

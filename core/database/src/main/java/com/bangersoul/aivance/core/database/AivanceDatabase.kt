@@ -14,11 +14,9 @@ import com.bangersoul.aivance.core.database.model.*
         AivanceEntity::class,
         CompanyEntity::class,
         JobEntity::class,
-        JobApplicationEntity::class,
         ResumeEntity::class,
         ResumeVersionEntity::class,
         ResumeSectionEntity::class,
-        ResumeAnalysisEntity::class,
         CoverLetterEntity::class,
         CoverLetterVersionEntity::class,
         CoverLetterSectionEntity::class,
@@ -55,15 +53,19 @@ import com.bangersoul.aivance.core.database.model.*
         AssistantMessageEntity::class,
         WorkflowExecutionEntity::class,
         AuditLogEntity::class,
-        UserEntity::class
+        UserEntity::class,
+        GraphNodeEntity::class,
+        GraphEdgeEntity::class,
+        CareerEventLogEntity::class,
+        CareerMemoryEntity::class,
+        NotificationEntity::class
     ],
-    version = 24,
+    version = 29,
     exportSchema = true
 )
 @TypeConverters(AivanceConverters::class)
 abstract class AivanceDatabase : RoomDatabase() {
     abstract fun aivanceDao(): AivanceDao
-    abstract fun trackerDao(): TrackerDao
     abstract fun jobDao(): JobDao
     abstract fun companyDao(): CompanyDao
     abstract fun atsDao(): AtsDao
@@ -80,6 +82,10 @@ abstract class AivanceDatabase : RoomDatabase() {
     abstract fun assistantDao(): AssistantDao
     abstract fun auditDao(): AuditDao
     abstract fun userDao(): UserDao
+    abstract fun graphDao(): GraphDao
+    abstract fun careerEventLogDao(): CareerEventLogDao
+    abstract fun careerMemoryDao(): CareerMemoryDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -351,6 +357,122 @@ abstract class AivanceDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Version 23 and 24 share an identical schema (verified against exported schemas),
                 // so this is an explicit no-op that only advances the version.
+            }
+        }
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // The legacy `resume_analyses` table has been superseded by `ats_reports`
+                // (introduced in MIGRATION_11_12). Dropping it completes the AtsReport
+                // migration (T-04) and removes the ResumeAnalysisEntity from production.
+                db.execSQL("DROP TABLE IF EXISTS `resume_analyses`")
+            }
+        }
+        /**
+         * v25 -> v26: Career Knowledge OS foundation.
+         *
+         * STRICTLY ADDITIVE / NON-DESTRUCTIVE. Only `CREATE TABLE IF NOT EXISTS` and
+         * `CREATE INDEX IF NOT EXISTS` — no ALTER, no column removal, no data rewrite,
+         * no row modification, no destructive fallback. Every pre-existing v25 table and
+         * all user data are left completely intact.
+         *
+         * Adds the four canonical foundation tables:
+         *  - `graph_nodes` / `graph_edges`  : persisted Career Knowledge Graph projection.
+         *  - `career_event_log`             : durable append-only event log (logging only; no replay yet).
+         *  - `career_memory_entries`        : longitudinal, auditable career memory.
+         *
+         * Rollback: MIGRATION_26_25 would simply DROP these four tables, leaving core tables intact.
+         */
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `graph_nodes` (`id` TEXT NOT NULL, `type` TEXT NOT NULL, `label` TEXT NOT NULL, `propertiesJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_graph_nodes_type` ON `graph_nodes` (`type`)")
+
+                db.execSQL("CREATE TABLE IF NOT EXISTS `graph_edges` (`id` TEXT NOT NULL, `sourceId` TEXT NOT NULL, `targetId` TEXT NOT NULL, `relationType` TEXT NOT NULL, `weight` REAL NOT NULL, `propertiesJson` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_graph_edges_source` ON `graph_edges` (`sourceId`, `relationType`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_graph_edges_target` ON `graph_edges` (`targetId`, `relationType`)")
+
+                db.execSQL("CREATE TABLE IF NOT EXISTS `career_event_log` (`eventId` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `correlationId` TEXT, `causationId` TEXT, `sourceModule` TEXT NOT NULL, `eventType` TEXT NOT NULL, `payloadJson` TEXT NOT NULL, PRIMARY KEY(`eventId`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_career_event_log_type_time` ON `career_event_log` (`eventType`, `timestamp`)")
+
+                db.execSQL("CREATE TABLE IF NOT EXISTS `career_memory_entries` (`memoryId` TEXT NOT NULL, `type` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `confidence` REAL NOT NULL, `sourceEventIdsJson` TEXT NOT NULL, `evidenceRefsJson` TEXT NOT NULL, `isUserConfirmed` INTEGER NOT NULL, `expirationTimestamp` INTEGER, PRIMARY KEY(`memoryId`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_career_memory_type` ON `career_memory_entries` (`type`, `isUserConfirmed`)")
+            }
+        }
+
+        /**
+         * v26 -> v27: Event-contract hardening (M04-A).
+         *
+         * STRICTLY ADDITIVE / NON-DESTRUCTIVE. Adds a single `schemaVersion` column to
+         * `career_event_log`, carrying the explicit payload/schema version of each persisted
+         * event. Existing rows (all written under contract v1) default to 1 via the column
+         * DEFAULT, so the audit trail is preserved intact and no data is rewritten.
+         *
+         * This column is the M04-A prerequisite for a future replay engine: it lets a consumer
+         * decode a persisted event against its known contract version rather than inferring the
+         * version from payload shape. Replay itself is NOT implemented here.
+         *
+         * Rollback: MIGRATION_27_26 would rebuild `career_event_log` without `schemaVersion`.
+         */
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `career_event_log` ADD COLUMN `schemaVersion` INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        /**
+         * R1 - Application Ownership Consolidation.
+         *
+         * Declares `applications` (WorkflowDao) the single source of truth for job applications
+         * and retires the parallel `job_applications` table (TrackerDao), which had drifted from
+         * it since MIGRATION_16_17 introduced the pipeline model.
+         *
+         * Steps:
+         *  1. Add the one column `applications` lacked - `salaryRange`. Nullable, so the ALTER is
+         *     strictly additive and existing rows are untouched.
+         *  2. Import legacy rows that have no canonical counterpart yet, deduped on `jobId`.
+         *     The legacy `status` column used an application-status vocabulary (APPLIED,
+         *     INTERVIEWING, ...), so it becomes `currentStageId`; the canonical `status` axis
+         *     (ACTIVE/COMPLETED/ARCHIVED) is backfilled ACTIVE. This mirrors MIGRATION_16_17's
+         *     mapping, so rows already imported there are not double-counted.
+         *  3. Drop `job_applications`. The statement above is the only remaining read of the
+         *     legacy table; every writer/reader is repointed to `applications` in the same change.
+         *
+         * IRREVERSIBLE: there is deliberately no down-migration.
+         *
+         * Rollback: none. Restore from a backup taken before v28, or re-seed.
+         */
+        /**
+         * v28 -> v29: Persisted notifications inbox.
+         *
+         * STRICTLY ADDITIVE / NON-DESTRUCTIVE. Creates the single `notifications`
+         * table and its timestamp index with `CREATE ... IF NOT EXISTS` — no ALTER,
+         * no data rewrite, no destructive fallback. Every pre-existing v28 table and
+         * all user data are left completely intact; the inbox simply starts empty on
+         * upgrade and fills as workers and pipeline events record entries.
+         */
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `notifications` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `message` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isRead` INTEGER NOT NULL, `type` TEXT NOT NULL, PRIMARY KEY(`id`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `idx_notifications_timestamp` ON `notifications` (`timestamp`)")
+            }
+        }
+
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Additive column so no legacy payload is lost on import.
+                db.execSQL("ALTER TABLE `applications` ADD COLUMN `salaryRange` TEXT")
+
+                // 2. Import legacy rows that have no canonical application for the same job.
+                db.execSQL(
+                    "INSERT INTO `applications` " +
+                        "(`jobId`, `currentStageId`, `status`, `dateApplied`, `salaryRange`, `notes`, `lastModified`) " +
+                        "SELECT `jobId`, `status`, 'ACTIVE', `dateApplied`, `salaryRange`, `notes`, `lastModified` " +
+                        "FROM `job_applications` " +
+                        "WHERE `jobId` NOT IN (SELECT `jobId` FROM `applications`)"
+                )
+
+                // 3. Retire the duplicate source of truth.
+                db.execSQL("DROP TABLE `job_applications`")
             }
         }
     }

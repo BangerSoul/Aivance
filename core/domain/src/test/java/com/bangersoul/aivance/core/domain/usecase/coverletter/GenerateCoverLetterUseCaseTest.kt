@@ -56,4 +56,25 @@ class GenerateCoverLetterUseCaseTest {
         )
         assertTrue(result.isFailure)
     }
+
+    @Test
+    fun `null job id generates a generic letter without validation failure`() = runTest {
+        coEvery {
+            coverLetterRepository.generateCoverLetter(
+                resumeId = 1L,
+                resumeVersionId = 1L,
+                jobId = null,
+                recruiterId = null,
+                writingStyle = "PROFESSIONAL"
+            )
+        } returns Result.Success(43L)
+
+        // jobId omitted → null → the use case must forward it (not reject).
+        val result = useCase(
+            GenerateCoverLetterRequest(resumeId = 1L, resumeVersionId = 1L)
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(43L, (result as Result.Success).data)
+    }
 }

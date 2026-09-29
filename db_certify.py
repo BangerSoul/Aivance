@@ -1,10 +1,10 @@
 """DB certification validator — independent re-implementation (Phase 5/7/8/9).
 
 Replays migrations against real SQLite with PRAGMA foreign_keys=ON and:
-  * Upgrade matrix: every path v -> 24 (v = 5..23)
+  * Upgrade matrix: every path v -> 25 (v = 5..24)
   * Stress: 1000 jobs / 100 companies / 500 recruiters / 100 resume versions /
     100 cover letters / 500 applications / 100 interview sessions /
-    1000 timeline events, upgraded 17 -> 24
+    1000 timeline events, upgraded 17 -> 25
   * Integrity: PRAGMA integrity_check, foreign_key_check, WAL journal mode,
     transaction rollback
   * Performance: per-step migration timing + EXPLAIN QUERY PLAN (index usage)
@@ -218,14 +218,15 @@ def run_chain(from_v, to_v, con, seed_v=None, counts_=None):
     return step_times, errors, cur
 
 # per-version table sets, once
-SCHEMA_TABLES = {v: {e['tableName'] for e in load_json(v)['entities']} for v in range(5, 25)}
+SCHEMA_TABLES = {v: {e['tableName'] for e in load_json(v)['entities']} for v in range(5, 26)}
 
 def expected_survivors(base_v):
-    """Tables seeded at base_v that exist in EVERY schema version base_v..24.
-    Tables with a presence gap (legacy drop + later re-add, e.g. `applications`)
-    are intentionally replaced and excluded from preservation assertions."""
+    """Tables seeded at base_v that exist in EVERY schema version base_v..25.
+    Tables with a presence gap (legacy drop + later re-add, e.g. `applications`,
+    or dropped for good like `resume_analyses` at 24->25) are intentionally
+    removed and excluded from preservation assertions."""
     tables = SCHEMA_TABLES[base_v]
-    return {t for t in tables if all(t in SCHEMA_TABLES[v] for v in range(base_v, 25))}
+    return {t for t in tables if all(t in SCHEMA_TABLES[v] for v in range(base_v, 26))}
 
 def check_foreign_keys(con):
     rows = con.execute('PRAGMA foreign_key_check').fetchall()
@@ -238,21 +239,21 @@ def check_integrity(con):
 failures = 0
 
 print('=' * 70)
-print('PHASE 5 — UPGRADE MATRIX (every path v -> 24, FK ON, schema-eq + data preserved)')
+print('PHASE 5 — UPGRADE MATRIX (every path v -> 25, FK ON, schema-eq + data preserved)')
 print('=' * 70)
-for v in range(5, 24):
+for v in range(5, 25):
     con = sqlite3.connect(':memory:')
     con.execute('PRAGMA foreign_keys=ON')
     con.execute('PRAGMA defer_foreign_keys=ON')  # allow non-SET-NULL-safe ordering inside txn
     build_base(v, con)
     seed_stress(con, v, {})
     before = counts(con)
-    step_times, errors, cur = run_chain(v, 24, con)
+    step_times, errors, cur = run_chain(v, 25, con)
     if errors:
-        print(f'  {v}->24: FAIL {errors[:5]}')
+        print(f'  {v}->25: FAIL {errors[:5]}')
         failures += 1
         con.close(); continue
-    eq = schema_eq(24, con)
+    eq = schema_eq(25, con)
     fk = check_foreign_keys(con)
     integ = check_integrity(con)
     after = counts(con)
@@ -260,7 +261,7 @@ for v in range(5, 24):
     lost = [t for t in surv if after.get(t, 0) < before[t]]
     ok = not eq and not fk and integ == ['ok'] and not lost
     total_ms = sum(x[2] for x in step_times)
-    print(f'  {v}->24: {"OK" if ok else "FAIL"}  ({len(before)} tables seeded, '
+    print(f'  {v}->25: {"OK" if ok else "FAIL"}  ({len(before)} tables seeded, '
           f'{sum(before.values())} rows) schema_eq={len(eq)} fk_violations={len(fk)} '
           f'integrity={integ} lost={lost} time={total_ms:.1f}ms')
     if not ok:
@@ -273,7 +274,7 @@ for v in range(5, 24):
 
 print()
 print('=' * 70)
-print('PHASE 7 — STRESS TEST (17 -> 24)')
+print('PHASE 7 — STRESS TEST (17 -> 25)')
 print('=' * 70)
 stress_counts = {
     'companies': 100,
@@ -321,19 +322,22 @@ build_base(17, con)
 seed_stress(con, 17, stress_counts)
 before = counts(con)
 print(f'  seeded at v17: {sum(before.values())} rows across {len(before)} tables')
-step_times, errors, cur = run_chain(17, 24, con)
+step_times, errors, cur = run_chain(17, 25, con)
 if errors:
     print(f'  FAIL: {errors[:5]}')
     failures += 1
     stress_con = None
 else:
-    eq = schema_eq(24, con)
+    eq = schema_eq(25, con)
     fk = check_foreign_keys(con)
     integ = check_integrity(con)
     after = counts(con)
-    lost = {t: (before[t], after.get(t, -1)) for t in before if after.get(t, 0) < before[t]}
+    surv = expected_survivors(17)
+    # resume_analyses is intentionally dropped at 24->25 — only tables that
+    # survive the whole chain are held to the no-data-loss assertion.
+    lost = {t: (before[t], after.get(t, -1)) for t in surv if after.get(t, 0) < before[t]}
     ok = not eq and not fk and integ == ['ok'] and not lost
-    print(f'  stress 17->24: {"OK" if ok else "FAIL"}  schema_eq={len(eq)} fk_violations={len(fk)} integrity={integ}')
+    print(f'  stress 17->25: {"OK" if ok else "FAIL"}  schema_eq={len(eq)} fk_violations={len(fk)} integrity={integ}')
     if lost:
         print(f'  DATA LOSS: {lost}')
     if not ok:
@@ -343,13 +347,13 @@ else:
     for f, t, ms in step_times:
         print(f'    {f}->{t}: {ms:8.2f} ms')
     total = sum(x[2] for x in step_times)
-    print(f'    TOTAL 17->24: {total:.1f} ms')
+    print(f'    TOTAL 17->25: {total:.1f} ms')
     # keep this DB for query plans
     stress_con = con
 
 print()
 print('=' * 70)
-print('PHASE 9 — INDEX USAGE (EXPLAIN QUERY PLAN @ v24, stress DB)')
+print('PHASE 9 — INDEX USAGE (EXPLAIN QUERY PLAN @ v25, stress DB)')
 print('=' * 70)
 if stress_con is not None:
     queries = {
@@ -381,8 +385,10 @@ print('=' * 70)
 con = sqlite3.connect(':memory:')
 con.execute('PRAGMA foreign_keys=ON')
 con.execute('PRAGMA defer_foreign_keys=ON')
-build_base(24, con)
-seed_stress(con, 24, {'companies': 3, 'jobs': 6, 'job_applications': 0, 'applications': 6, 'application_timeline': 6})
+build_base(25, con)
+# Single company so every seeded job references it (deterministic cascade proof —
+# the FK parent ids are chosen via random.choice, which is stream-position dependent).
+seed_stress(con, 25, {'companies': 1, 'jobs': 6, 'job_applications': 0, 'applications': 6, 'application_timeline': 6})
 n_jobs_before = counts(con)['jobs']
 con.execute('DELETE FROM companies WHERE id = 1')
 n_jobs_after = counts(con)['jobs']
@@ -428,7 +434,7 @@ finally:
 # 4. FK enforcement proof: insert orphan child -> must fail with FK ON
 con = sqlite3.connect(':memory:')
 con.execute('PRAGMA foreign_keys=ON')
-build_base(24, con)
+build_base(25, con)
 try:
     con.execute('INSERT INTO jobs (companyId, title, postedDate, url, sourceProviderId) VALUES (9999, \'x\', 1, \'\', \'x\')')
     print('  FK enforcement: orphan job INSERT SUCCEEDED (UNEXPECTED)')

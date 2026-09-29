@@ -1,6 +1,7 @@
 package com.bangersoul.aivance.core.domain.usecase.resume
 
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
+import com.bangersoul.aivance.core.common.model.AtsReport
+import com.bangersoul.aivance.core.common.model.OptimizationTip
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import io.mockk.coEvery
@@ -24,12 +25,14 @@ class AnalyseResumeUseCaseTest {
 
     @Test
     fun `should analyse resume successfully`() = runTest {
-        val analysis = ResumeAnalysis(
+        val analysis = AtsReport(
+            resumeVersionId = 2L,
+            jobDescriptionId = 1L,
             overallScore = 85,
-            matchingKeywords = listOf("Kotlin", "Android"),
+            matchPercentage = 85,
+            matchedKeywords = listOf("Kotlin", "Android"),
             missingKeywords = listOf("Compose"),
-            suggestions = listOf("Add Compose experience"),
-            matchSummary = "Great match"
+            optimizationTips = listOf(OptimizationTip("AI", "Add Compose experience", "MEDIUM"))
         )
         coEvery { resumeRepository.analyzeResume(1L, 2L, any()) } returns Result.Success(analysis)
 
@@ -44,7 +47,8 @@ class AnalyseResumeUseCaseTest {
         assertTrue(result.isSuccess)
         val data = (result as Result.Success).data
         assertEquals(85, data.overallScore)
-        assertTrue(data.matchingKeywords.contains("Kotlin"))
+        assertTrue(data.matchedKeywords.contains("Kotlin"))
+        assertEquals("Add Compose experience", data.optimizationTips.single().description)
     }
 
     @Test

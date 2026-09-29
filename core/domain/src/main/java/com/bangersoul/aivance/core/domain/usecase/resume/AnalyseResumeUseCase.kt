@@ -1,6 +1,6 @@
 package com.bangersoul.aivance.core.domain.usecase.resume
 
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
+import com.bangersoul.aivance.core.common.model.AtsReport
 import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.ValidationError
@@ -17,12 +17,13 @@ data class AnalyseResumeRequest(
 
 /**
  * Analyses a resume version against a job description using AI.
+ * Returns a persisted [AtsReport] written to `ats_reports` via [ResumeRepository.analyzeResume].
  */
 class AnalyseResumeUseCase @Inject constructor(
     private val resumeRepository: ResumeRepository
-) : UseCase<AnalyseResumeRequest, CoreResult<ResumeAnalysis>>() {
+) : UseCase<AnalyseResumeRequest, CoreResult<AtsReport>>() {
 
-    override suspend operator fun invoke(input: AnalyseResumeRequest): CoreResult<ResumeAnalysis> {
+    override suspend operator fun invoke(input: AnalyseResumeRequest): CoreResult<AtsReport> {
         if (input.resumeId <= 0) {
             return Result.Failure(ValidationError("resumeId", "Invalid resume ID."))
         }

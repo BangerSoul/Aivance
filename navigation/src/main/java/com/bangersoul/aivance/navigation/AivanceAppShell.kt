@@ -32,23 +32,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bangersoul.aivance.core.common.model.AssistantJobContext
+import com.bangersoul.aivance.core.designsystem.shell.AppShellState
+import com.bangersoul.aivance.core.designsystem.shell.LocalAppShellState
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 import com.bangersoul.aivance.feature.assistant.AssistantScreen
 import com.bangersoul.aivance.feature.assistant.AssistantViewModel
 import kotlinx.coroutines.launch
-
-/**
- * Values that the shell provides to its content — used to show
- * global snackbars, dialogs, or loading overlays.
- */
-data class AppShellState(
-    val showSnackbar: (String) -> Unit = {},
-    val showDialog: (String, String, String) -> Unit = { _, _, _ -> },
-    val dismissDialog: () -> Unit = {},
-    val toggleAssistant: (Boolean) -> Unit = {}
-)
-
-val LocalAppShellState = compositionLocalOf { AppShellState() }
 
 /**
  * Global application shell wrapping the navigation graph.
@@ -57,7 +47,7 @@ val LocalAppShellState = compositionLocalOf { AppShellState() }
  * - Theme application (AivanceTheme)
  * - Global snackbar host
  * - Global dialog host
- * - Global AI Assistant Overlay
+ * - Global AI Assistant Overlay (with optional job context)
  * - Scaffold edge-to-edge management
  */
 @Composable
@@ -70,12 +60,14 @@ fun AivanceAppShell(
     AivanceTheme(
         themeMode = themeState.themeMode,
         accentSeed = themeState.accentSeed,
-        dynamicColor = themeState.dynamicColor
+        dynamicColor = themeState.dynamicColor,
+        designKit = themeState.designKit
     ) {
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         var dialogState by remember { mutableStateOf<DialogState?>(null) }
         var isAssistantVisible by remember { mutableStateOf(false) }
+        var assistantJobContext by remember { mutableStateOf<AssistantJobContext?>(null) }
 
         val shellState = remember {
             AppShellState(
@@ -96,7 +88,8 @@ fun AivanceAppShell(
                     )
                 },
                 dismissDialog = { dialogState = null },
-                toggleAssistant = { visible -> isAssistantVisible = visible }
+                toggleAssistant = { visible -> isAssistantVisible = visible },
+                setAssistantJobContext = { context -> assistantJobContext = context }
             )
         }
 
@@ -125,10 +118,16 @@ fun AivanceAppShell(
                     ) {
                         content()
 
-                        // Global AI Assistant Overlay
+                        // Global AI Assistant Overlay. Job context is scoped to a
+                        // single open: it's cleared on dismiss so a stale job never
+                        // leaks into prompts opened later from other screens.
                         if (isAssistantVisible) {
                             AssistantOverlay(
-                                onDismiss = { isAssistantVisible = false }
+                                jobContext = assistantJobContext,
+                                onDismiss = {
+                                    isAssistantVisible = false
+                                    assistantJobContext = null
+                                }
                             )
                         }
 
@@ -159,7 +158,10 @@ fun AivanceAppShell(
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun AssistantOverlay(onDismiss: () -> Unit) {
+private fun AssistantOverlay(
+    jobContext: AssistantJobContext?,
+    onDismiss: () -> Unit
+) {
     val sheetState = androidx.compose.material3.rememberModalBottomSheetState(
         skipPartiallyExpanded = false
     )
@@ -174,6 +176,7 @@ private fun AssistantOverlay(onDismiss: () -> Unit) {
         Box(modifier = Modifier.fillMaxHeight(0.9f)) {
             AssistantScreen(
                 viewModel = hiltViewModel<AssistantViewModel>(),
+                initialJobContext = jobContext,
                 onSwitchProvider = { /* Handled in screen */ }
             )
         }

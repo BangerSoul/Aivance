@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.bangersoul.aivance.core.common.model.OutreachDraft
 import com.bangersoul.aivance.core.common.model.Recruiter
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.common.result.getOrNull
+import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
 import com.bangersoul.aivance.core.domain.usecase.crm.FindRecruitersUseCase
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,7 +31,8 @@ sealed interface RecruiterUiState {
         val recruiters: List<Recruiter> = emptyList(),
         val selectedRecruiter: Recruiter? = null,
         val draft: OutreachDraft? = null,
-        val isGenerating: Boolean = false
+        val isGenerating: Boolean = false,
+        val outreachError: String? = null
     ) : RecruiterUiState
     data class Error(val message: String) : RecruiterUiState
 }
@@ -45,6 +49,7 @@ class RecruiterViewModel @Inject constructor(
     private val findRecruitersUseCase: FindRecruitersUseCase,
     private val getJobDetailsUseCase: GetJobDetailsUseCase,
     private val generateOutreachDraftUseCase: GenerateOutreachDraftUseCase,
+    private val resumeRepository: ResumeRepository,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -107,18 +112,37 @@ class RecruiterViewModel @Inject constructor(
         val recruiter = current.selectedRecruiter ?: return
 
         viewModelScope.launch {
-            _uiState.value = current.copy(isGenerating = true)
+            _uiState.value = current.copy(isGenerating = true, outreachError = null)
             trackEventUseCase(TrackEventRequest("crm_generate_outreach"))
 
-            // Mocking resumeId/versionId for now
+            // Resolve the user's real primary resume + version instead of the
+            // previously hardcoded (1L, 1L). Without a resume the outreach draft
+            // has no candidate context, so surface a clear, actionable error
+            // rather than silently generating against a non-existent resume.
+            val resume = resumeRepository.getResumes().firstOrNull()?.getOrNull()?.firstOrNull()
+            val versionId = resume?.primaryVersionId
+                ?: resume?.let { resumeRepository.getVersions(it.id).firstOrNull()?.getOrNull()?.firstOrNull()?.id }
+
+            if (resume == null || versionId == null) {
+                _uiState.value = current.copy(
+                    isGenerating = false,
+                    outreachError = "Add a resume in Resume Intelligence first — outreach drafts are tailored from your resume."
+                )
+                return@launch
+            }
+
             val result = generateOutreachDraftUseCase(
-                OutreachRequest(1L, 1L, recruiter.id, jobId, type)
+                OutreachRequest(resume.id, versionId, recruiter.id, jobId, type)
             )
 
-            if (result is Result.Success) {
-                _uiState.value = current.copy(isGenerating = false, draft = result.data)
-            } else {
-                _uiState.value = current.copy(isGenerating = false)
+            when (result) {
+                is Result.Success ->
+                    _uiState.value = current.copy(isGenerating = false, draft = result.data, outreachError = null)
+                is Result.Failure ->
+                    _uiState.value = current.copy(
+                        isGenerating = false,
+                        outreachError = result.error.message ?: "Failed to generate outreach draft."
+                    )
             }
         }
     }

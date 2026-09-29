@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,14 +40,18 @@ import com.bangersoul.aivance.feature.profile.AuthViewModel
  * Routing contract (consumed by [AivanceNavGraph]):
  *  - [AuthUiState.NewUser]      → ProviderSetup (first launch)
  *  - [AuthUiState.ReturningUser] → Dashboard
+ *
+ * This is the single pre-auth surface (AUDIT 6): the standalone Welcome screen
+ * was deleted and its brand mark folded in here, so the product introduces
+ * itself on the same screen that signs the user in — instead of a marketing
+ * page whose "Get Started" and "Skip for now" both led to exactly this screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     viewModel: AuthViewModel,
     onNewUser: () -> Unit = {},
-    onReturningUser: () -> Unit = {},
-    onBackToWelcome: () -> Unit = {}
+    onReturningUser: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var isCreateMode by remember { mutableStateOf(false) }
@@ -74,7 +79,12 @@ fun AuthScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
+            .padding(horizontal = 24.dp, vertical = 32.dp)
+            // Lift the scroll viewport above the keyboard so the Continue
+            // button stays reachable while typing the email (edge-to-edge +
+            // adjustResize delivers IME insets; without imePadding the last
+            // form controls hide behind the keyboard).
+            .imePadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Brand mark
@@ -95,7 +105,19 @@ fun AuthScreen(
                 )
             }
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.welcome_brand),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.welcome_tagline),
+            style = MaterialTheme.typography.bodyMedium,
+            color = DarkAccent
+        )
+        Spacer(Modifier.height(24.dp))
         Text(
             if (isCreateMode) {
                 stringResource(R.string.auth_create_account_title)
@@ -272,9 +294,5 @@ fun AuthScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        TextButton(onClick = onBackToWelcome) {
-            Text(stringResource(R.string.back), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }

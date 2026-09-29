@@ -1,8 +1,10 @@
 package com.bangersoul.aivance.core.data.di
 
+import android.content.Context
 import com.bangersoul.aivance.core.common.model.AiProviderConfig
 import com.bangersoul.aivance.core.common.model.UserProfile
 import com.bangersoul.aivance.core.data.cache.CacheManager
+import com.bangersoul.aivance.core.data.company.CompanyCatalog
 import com.bangersoul.aivance.core.data.cache.MemoryCache
 import com.bangersoul.aivance.core.data.config.PlayIntegrityManagerImpl
 import com.bangersoul.aivance.core.data.config.PrivacyManagerImpl
@@ -16,6 +18,7 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -38,6 +41,11 @@ abstract class DataModule {
     ): TextGenerationService
 
     companion object {
+        @Provides
+        @Singleton
+        fun provideCompanyCatalog(@ApplicationContext context: Context): CompanyCatalog =
+            CompanyCatalog.fromAsset(context)
+
         @Provides
         @Singleton
         fun provideClock(): Clock = DefaultClock()

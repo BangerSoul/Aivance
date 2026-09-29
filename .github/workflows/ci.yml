@@ -62,7 +62,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
 
@@ -75,7 +75,10 @@ jobs:
 
   # ── Category 3: Categorized Unit Test Suite ──────────────
   unit-tests:
-    name: 🧪 3. Unit Tests (${{ matrix.category }}: ${{ matrix.module }})
+    # Quoted: an unquoted scalar containing ": " is parsed as a nested mapping,
+    # which made this workflow file invalid YAML and stopped the entire
+    # workflow from scheduling a single job.
+    name: "🧪 3. Unit Tests (${{ matrix.category }}: ${{ matrix.module }})"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -151,7 +154,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
 
@@ -192,7 +195,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Create local.properties
         run: |
@@ -216,7 +219,7 @@ jobs:
     name: 📦 5. Categorized APK & Bundle Build
     needs: [security-scan, compilation, unit-tests, code-quality]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -228,13 +231,13 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Create local.properties
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
-      - name: Build Debug APK
+      - name: Build Debug APKs (per-ABI splits)
         run: ./gradlew :app:assembleDebug --no-daemon
 
       - name: Check Keystore Configuration
@@ -247,38 +250,51 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build Release APK & Bundle
-        run: |
-          if [ "${{ steps.check-keystore.outputs.exists }}" == "true" ]; then
-            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon
-          else
-            echo "Keystore secret not present — compiling debug binaries"
-            ./gradlew :app:assembleDebug --no-daemon
-          fi
+      # Splits and a bundle cannot coexist in one build (AGP issue 402800800),
+      # so the signed per-ABI APKs and the Play AAB are built separately.
+      - name: Build Signed Release APKs (per-ABI splits)
+        if: steps.check-keystore.outputs.exists == 'true'
+        run: ./gradlew :app:assembleRelease --no-daemon
         env:
           AIVANCE_STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
           AIVANCE_KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
           AIVANCE_KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
 
-      - name: Upload Debug APK Artifact
+      - name: Build Signed Release AAB
+        if: steps.check-keystore.outputs.exists == 'true'
+        run: ./gradlew :app:bundleRelease -Paivance.disableAbiSplits=true --no-daemon
+        env:
+          AIVANCE_STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
+          AIVANCE_KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
+          AIVANCE_KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
+
+      - name: Upload Debug APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aivance-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: aivance-debug-apks
+          path: app/build/outputs/apk/debug/*-debug.apk
           retention-days: 30
 
-      - name: Upload Release APK Artifact
+      - name: Upload Release APK Artifacts
         uses: actions/upload-artifact@v4
         if: steps.check-keystore.outputs.exists == 'true'
         with:
-          name: aivance-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: aivance-release-apks
+          path: app/build/outputs/apk/release/*-release.apk
           retention-days: 90
 
-      - name: Upload Release AAB Bundle Artifact
+      - name: Upload Release AAB Bundle
         uses: actions/upload-artifact@v4
         if: steps.check-keystore.outputs.exists == 'true'
         with:
           name: aivance-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload Release R8 Mapping File
+        uses: actions/upload-artifact@v4
+        if: steps.check-keystore.outputs.exists == 'true'
+        with:
+          name: aivance-release-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
           retention-days: 90

@@ -10,10 +10,6 @@
     <string name="search_placeholder">भूमिकाएं, कौशल या कंपनियां खोजें</string>
     <string name="clear_search">खोज साफ़ करें</string>
     <string name="search">खोजें</string>
-    <string name="jobs_unavailable">नौकरियां अनुपलब्ध</string>
-    <string name="country">देश</string>
-    <string name="state">राज्य</string>
-    <string name="city">शहर</string>
     <string name="type">प्रकार</string>
     <string name="workplace">कार्यस्थल</string>
     <string name="experience">अनुभव</string>
@@ -36,24 +32,15 @@
     <string name="employment_other">अन्य</string>
     <string name="remote_on_site">ऑन-साइट</string>
     <string name="remote_hybrid">हाइब्रिड</string>
-    <string name="no_matches_found">कोई मिलान नहीं मिला</string>
     <string name="no_jobs_yet">अभी कोई नौकरी नहीं</string>
-    <string name="no_matches_desc">कोई अलग कीवर्ड या फ़िल्टर आज़माएं — या नवीनतम भूमिकाएं प्राप्त करने के लिए रीफ़्रेश करें।</string>
     <string name="no_jobs_desc">अपनी प्रोफ़ाइल से मेल खाती भूमिकाएं खोजने के लिए नौकरी प्रदाता कॉन्फ़िगर करें।</string>
     <string name="saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="ats_match">ATS मिलान %1$d%%</string>
     <string name="save_job">नौकरी सहेजें</string>
 
     <!-- Job details -->
     <string name="job_details_title">नौकरी विवरण</string>
     <string name="bookmark">बुकमार्क</string>
-    <string name="apply_on_provider_site">प्रदाता साइट पर आवेदन करें</string>
-    <string name="apply_and_track">आवेदन करें और पाइपलाइन में ट्रैक करें</string>
     <string name="find_recruiters">भर्तीकर्ता खोजें</string>
-    <string name="cover_letter">कवर लेटर</string>
-    <string name="ai_compatibility_check">AI संगतता जांच</string>
-    <string name="ai_compatibility_sub">जांचें कि आपका रिज़्यूमे इस नौकरी से कितना मेल खाता है।</string>
-    <string name="check">जांचें</string>
     <string name="job_description">नौकरी विवरण</string>
 
     <!-- Company detail -->
@@ -68,4 +55,100 @@
     <string name="no_saved_jobs">कोई सहेजी गई नौकरी नहीं</string>
     <string name="no_saved_jobs_desc">आपके द्वारा सहेजी गई नौकरियां त्वरित पहुंच के लिए यहां दिखाई देंगी।</string>
     <string name="remove">हटाएं</string>
+    <string name="create_tailored_resume">अनुकूलित रिज़्यूमे बनाएं</string>
+    <string name="track_application">आवेदन ट्रैक करें</string>
+    <string name="ask_ai">AI से पूछें</string>
+    <string name="ai_assistant">एआई सहायक</string>
+    <string name="job_apply_now">अभी आवेदन करें</string>
+    <string name="job_track">ट्रैक करें</string>
+    <string name="job_match_readiness">मैच तैयारी</string>
+    <string name="job_match_readiness_detail">आप इस विशेष भूमिका के लिए कितने तैयार हैं।</string>
+    <string name="job_match_readiness_setup">यह देखने के लिए कि आप इस भूमिका से कितनी अच्छी तरह मेल खाते हैं, अपनी प्रोफ़ाइल में लक्ष्य भूमिका और कौशल जोड़ें।</string>
+    <string name="job_required_steps">आवश्यक चरण</string>
+    <string name="job_readiness_ats">ATS अनुकूलन</string>
+    <string name="job_readiness_ats_scored">आपका वर्तमान रिज़्यूमे मैच %1$d%% है। फ़िल्टर पास करने के लिए गुम कीवर्ड ठीक करें।</string>
+    <string name="job_readiness_ats_unscored">देखने के लिए एक ATS स्कैन चलाएँ कि आपका रिज़्यूमे इस भूमिका से कितना मेल खाता है।</string>
+    <string name="job_readiness_ats_action">ATS स्कैन चलाएँ</string>
+    <string name="job_readiness_cover">कवर लेटर</string>
+    <string name="job_readiness_cover_detail">एक अनुरूप कवर लेटर आपकी इंटरव्यू की संभावना 40%% बढ़ाता है।</string>
+    <string name="job_readiness_cover_action">AI से बनाएँ</string>
+    <string name="job_readiness_interview">इंटरव्यू तैयारी</string>
+    <string name="job_readiness_interview_detail">हमें इस भूमिका के लिए 12 विशिष्ट इंटरव्यू प्रश्न मिले।</string>
+    <string name="job_readiness_interview_action">तैयारी शुरू करें</string>
+    <string name="job_company_insights">कंपनी इनसाइट्स</string>
+    <string name="job_hiring_team">हायरिंग टीम</string>
+    <string name="job_no_recruiters">कोई रिक्रूटर नहीं मिला</string>
+    <string name="job_no_recruiters_detail">हम इस भूमिका के लिए हायरिंग मैनेजर और संपर्क खोजने की कोशिश कर सकते हैं।</string>
+    <string name="job_search_recruiters">रिक्रूटर खोजें</string>
+
+    <string name="job_tab_overview">अवलोकन</string>
+    <string name="job_tab_readiness">तैयारी</string>
+    <string name="job_tab_intelligence">इंटेलिजेंस</string>
+    <string name="job_recruiter_fallback_title">रिक्रूटर</string>
+    <string name="job_verified_contact_cd">सत्यापित संपर्क</string>
+    <string name="job_match_high">उच्च मैच</string>
+    <string name="job_match_good">अच्छा मैच</string>
+    <string name="job_match_potential">संभावित मैच</string>
+    <string name="job_experience_level_match">आपके %1$s अनुभव से मेल खाता है।</string>
+
+    <!-- Job search filters -->
+    <string name="filters">फ़िल्टर</string>
+    <string name="filters_active_count">फ़िल्टर (%1$d)</string>
+    <string name="filters_active_hint">फ़िल्टर आपके परिणामों को सीमित कर रहे हैं।</string>
+    <string name="location">स्थान</string>
+    <string name="location_placeholder">शहर, क्षेत्र, या रिमोट</string>
+    <string name="remote_only">केवल रिमोट</string>
+    <string name="quick_match">त्वरित मैच</string>
+    <string name="set_target_role">लक्ष्य भूमिका तय करें</string>
+    <string name="best_match">सर्वोत्तम मैच</string>
+    <string name="remote_policy">रिमोट नीति</string>
+    <string name="tech_stack">टेक स्टैक</string>
+    <string name="tech_stack_placeholder">जैसे Kotlin, Python</string>
+    <string name="must_include">शामिल होना चाहिए</string>
+    <string name="must_include_placeholder">जैसे Kotlin, रिमोट</string>
+    <string name="exclude">बाहर रखें</string>
+    <string name="exclude_placeholder">जैसे बिना वेतन, सीनियर</string>
+
+    <!-- Apply assistant -->
+    <string name="apply_title">आवेदन करें</string>
+    <string name="apply_no_link">इस नौकरी के लिए कोई आवेदन लिंक उपलब्ध नहीं है</string>
+    <string name="apply_ai_assist">AI आवेदन सहायक</string>
+    <string name="apply_ai_assist_desc">आवेदन भरते समय लाइव सहायता।</string>
+    <string name="apply_open_external">ब्राउज़र में खोलें</string>
+    <string name="apply_reload_page">पेज पुनः लोड करें</string>
+    <string name="apply_section_ats">ATS मेल</string>
+    <string name="apply_section_cover">कवर लेटर</string>
+    <string name="apply_section_recruiters">भर्तीकर्ता ईमेल</string>
+    <string name="apply_ats_run">मेरा रिज़्यूमे स्कोर करें</string>
+    <string name="apply_ats_running">आपका रिज़्यूमे इस भूमिका के विरुद्ध स्कोर किया जा रहा है…</string>
+    <string name="apply_ats_score">मेल %1$d%%</string>
+    <string name="apply_ats_matched">मेल खाते कीवर्ड</string>
+    <string name="apply_ats_missing">गुम कीवर्ड</string>
+    <string name="apply_cover_generate">कवर लेटर बनाएं</string>
+    <string name="apply_cover_generating">आपका कवर लेटर लिखा जा रहा है…</string>
+    <string name="apply_cover_copy">कॉपी करें</string>
+    <string name="apply_recruiters_find">भर्तीकर्ता ईमेल खोजें</string>
+    <string name="apply_recruiters_finding">भर्ती संपर्क खोजे जा रहे हैं…</string>
+    <string name="apply_recruiters_none">इस कंपनी के लिए कोई सत्यापित भर्तीकर्ता ईमेल नहीं मिला।</string>
+    <string name="apply_recruiters_copy_email">ईमेल कॉपी करें</string>
+    <string name="apply_no_resume">AI सहायता का उपयोग करने के लिए पहले रिज़्यूमे आयात करें।</string>
+    <string name="apply_no_company_domain">भर्तीकर्ता खोजने के लिए कोई कंपनी डोमेन उपलब्ध नहीं है।</string>
+    <string name="apply_tracked">पाइपलाइन में ट्रैक किया गया</string>
+    <string name="apply_verified">सत्यापित</string>
+    <string name="apply_confidence">%1$d%% विश्वास</string>
+
+    <!-- Company details -->
+    <string name="company_company_size">कंपनी का आकार</string>
+    <string name="company_region">क्षेत्र</string>
+    <string name="company_technologies">टेक स्टैक</string>
+    <string name="company_careers">करियर पेज देखें</string>
+
+    <!-- Remote policy -->
+    <string name="remote_policy_fully_remote">पूरी तरह रिमोट</string>
+    <string name="remote_policy_remote_first">रिमोट-प्रथम</string>
+    <string name="remote_policy_remote_friendly">रिमोट-अनुकूल</string>
+    <string name="remote_policy_hybrid">हाइब्रिड</string>
+    <string name="remote_policy_unknown">अज्ञात</string>
+    <string name="company_catalog_available">रिमोट-कंपनी कैटलॉग से</string>
+
 </resources>

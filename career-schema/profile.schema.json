@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/profile.schema.json",
+  "title": "AiVanceProfile",
+  "description": "Candidate identity, contact information, target career profile, work preferences, compensation expectations, visa status, and notice period.",
+  "type": "object",
+  "required": [
+    "id",
+    "fullName",
+    "email",
+    "targetRole",
+    "workPreference",
+    "salaryExpectation",
+    "visaStatus",
+    "noticePeriod"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the candidate user (UUID or platform ID)"
+    },
+    "firstName": {
+      "type": "string",
+      "description": "Given / first name of candidate"
+    },
+    "lastName": {
+      "type": "string",
+      "description": "Family / last name of candidate"
+    },
+    "fullName": {
+      "type": "string",
+      "description": "Full display name of the candidate"
+    },
+    "headline": {
+      "type": "string",
+      "description": "Professional headline (e.g., 'Senior Android & AI Systems Engineer')"
+    },
+    "bio": {
+      "type": "string",
+      "description": "Short personal biography or executive summary"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Primary contact email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Primary contact telephone number with country code"
+    },
+    "avatarUrl": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the candidate's profile picture or avatar"
+    },
+    "location": {
+      "type": "object",
+      "description": "Candidate geographic location details",
+      "properties": {
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "postalCode": { "type": "string" },
+        "formattedAddress": { "type": "string" }
+      }
+    },
+    "targetRole": {
+      "type": "string",
+      "description": "Desired next job role or title (e.g. 'Staff Software Engineer')"
+    },
+    "currentRole": {
+      "type": "string",
+      "description": "Current or most recent professional role"
+    },
+    "company": {
+      "type": "string",
+      "description": "Current employer or organization"
+    },
+    "workPreference": {
+      "type": "string",
+      "enum": ["REMOTE", "HYBRID", "ONSITE"],
+      "description": "Preferred work environment mode"
+    },
+    "salaryExpectation": {
+      "type": "object",
+      "description": "Compensation expectations and currency requirements",
+      "required": ["currency"],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum acceptable annual or base salary"
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Target or aspirational salary"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD",
+          "description": "ISO 4217 three-letter currency code (e.g. USD, EUR, GBP)"
+        },
+        "period": {
+          "type": "string",
+          "enum": ["HOURLY", "MONTHLY", "ANNUALLY"],
+          "default": "ANNUALLY"
+        },
+        "formatted": {
+          "type": "string",
+          "description": "Human-readable compensation string (e.g. '$160,000 - $190,000 / year')"
+        }
+      }
+    },
+    "visaStatus": {
+      "type": "object",
+      "description": "Immigration and right-to-work legal status",
+      "required": ["requiresSponsorship", "authorizedWorkCountries"],
+      "properties": {
+        "requiresSponsorship": {
+          "type": "boolean",
+          "description": "True if candidate requires employer visa sponsorship"
+        },
+        "authorizedWorkCountries": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "ISO country codes where candidate holds unrestricted work authorization"
+        },
+        "currentVisaType": {
+          "type": "string",
+          "description": "Active visa classification if applicable (e.g. 'H-1B', 'TN', 'Tier 2')"
+        }
+      }
+    },
+    "noticePeriod": {
+      "type": "object",
+      "description": "Availability timeframe and contractual notice obligations",
+      "required": ["periodType"],
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of days required before start date"
+        },
+        "periodType": {
+          "type": "string",
+          "enum": ["IMMEDIATE", "WEEKS_2", "MONTH_1", "MONTHS_2", "MONTHS_3", "CUSTOM"],
+          "description": "Standardized notice period tier"
+        },
+        "availableStartDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Earliest possible start date (YYYY-MM-DD)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Additional notes regarding transition timeline"
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of core competencies claimed by candidate"
+    },
+    "experienceYears": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Total years of cumulative professional experience"
+    },
+    "preferredIndustries": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Target sectors and industries (e.g., 'Fintech', 'Artificial Intelligence')"
+    },
+    "socialLinks": {
+      "type": "object",
+      "description": "Professional web and social profiles",
+      "properties": {
+        "linkedin": { "type": "string", "format": "uri" },
+        "github": { "type": "string", "format": "uri" },
+        "portfolio": { "type": "string", "format": "uri" },
+        "twitter": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": { "type": "string" }
+    },
+    "createdAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when profile was created"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds of last profile modification"
+    }
+  },
+  "additionalProperties": false
+}

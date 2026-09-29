@@ -1,0 +1,52 @@
+{
+  "name": "uesf",
+  "description": "UESF framework tooling exposed over the Model Context Protocol: skill validation, scaffolding, and the dependency graph.",
+  "version": "1.0.0",
+  "transport": "stdio",
+  "implementation": {
+    "language": "python",
+    "stdlib_only": true,
+    "note": "Runtime server planned (roadmap R-06). This manifest is the contract; the tools it exposes are directly runnable today via CLI."
+  },
+  "tools": [
+    {
+      "name": "uesf_validate",
+      "description": "Validate the whole framework against the UESF skill specification. Returns a report with per-skill errors and warnings, plus an overall verdict and exit code.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "root": { "type": "string", "description": "Framework root (defaults to the repository containing tools/)." },
+          "quiet": { "type": "boolean", "description": "Only report errors/warnings." }
+        }
+      },
+      "command": ["python3", "tools/validate_framework.py", "--json", "-"]
+    },
+    {
+      "name": "uesf_scaffold",
+      "description": "Create a new spec-conformant UESF skill skeleton from the template.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["category", "slug"],
+        "properties": {
+          "category": { "type": "string", "description": "Two-letter taxonomy code." },
+          "slug": { "type": "string", "description": "Kebab-case skill slug." },
+          "name": { "type": "string", "description": "Human-readable skill name." },
+          "kind": { "type": "string", "description": "core|engineering|ai|ux|ui|meta|example" }
+        }
+      },
+      "command": ["python3", "tools/skill_scaffold.py", "new", "{category}", "{slug}"]
+    },
+    {
+      "name": "uesf_graph",
+      "description": "Print the current skill dependency graph (resolution + edges) as text.",
+      "inputSchema": { "type": "object", "properties": {} },
+      "command": ["python3", "tools/validate_framework.py", "--graph"]
+    },
+    {
+      "name": "uesf_list",
+      "description": "List the machine-checked skill inventory: id, category, kind, version, path.",
+      "inputSchema": { "type": "object", "properties": {} },
+      "command": ["python3", "tools/validate_framework.py", "--list"]
+    }
+  ]
+}

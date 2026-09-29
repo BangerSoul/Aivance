@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/interview.schema.json",
+  "title": "AiVanceInterviewSession",
+  "description": "Interview session entity covering practice simulations and real debriefs, difficulty levels, track types, question dialogs, granular evaluation rubrics (clarity, accuracy, tone, STAR method score), and comprehensive feedback summaries.",
+  "type": "object",
+  "required": [
+    "id",
+    "role",
+    "company",
+    "difficulty",
+    "type",
+    "questions",
+    "feedbackSummary"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique session identifier"
+    },
+    "role": {
+      "type": "string",
+      "description": "Target job role or title being assessed"
+    },
+    "company": {
+      "type": "string",
+      "description": "Target company name or interview context"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": ["EASY", "MEDIUM", "HARD"],
+      "description": "Complexity tier of interview session"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "BEHAVIORAL",
+        "SYSTEM_DESIGN",
+        "CODING",
+        "HIRING_MANAGER"
+      ],
+      "description": "Interview domain discipline"
+    },
+    "isSimulated": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if an AI practice session; false if logging a real corporate interview"
+    },
+    "jobId": {
+      "type": "string",
+      "description": "Optional linked job listing ID"
+    },
+    "resumeVersionId": {
+      "type": "string",
+      "description": "Optional resume version evaluated during the session"
+    },
+    "questions": {
+      "type": "array",
+      "description": "Ordered sequence of interview questions asked and answered",
+      "items": {
+        "$ref": "#/$defs/InterviewQuestionItem"
+      }
+    },
+    "evaluationRubric": {
+      "type": "object",
+      "description": "Scoring weight rubric applied to the session",
+      "properties": {
+        "clarityWeight": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.25 },
+        "accuracyWeight": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.35 },
+        "toneWeight": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.15 },
+        "starWeight": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.25 }
+      }
+    },
+    "feedbackSummary": {
+      "$ref": "#/$defs/InterviewFeedbackSummary"
+    },
+    "startedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when session commenced"
+    },
+    "completedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when session concluded"
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total elapsed interview duration in seconds"
+    },
+    "isCompleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag indicating whether session reached full conclusion"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "InterviewQuestionItem": {
+      "type": "object",
+      "required": ["id", "order", "questionText", "category"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique question instance ID"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Question position in interview order"
+        },
+        "questionText": {
+          "type": "string",
+          "description": "Prompt text presented by interviewer"
+        },
+        "category": {
+          "type": "string",
+          "description": "Question topic (e.g., 'Conflict Resolution', 'Distributed Caching')"
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["EASY", "MEDIUM", "HARD"],
+          "default": "MEDIUM"
+        },
+        "expectedKeyPoints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Key concepts or talking points expected in a stellar response"
+        },
+        "idealAnswer": {
+          "type": "string",
+          "description": "Model benchmark answer demonstrating peak competence"
+        },
+        "userAnswer": {
+          "type": "string",
+          "description": "Candidate's spoken or typed response transcript"
+        },
+        "audioRecordingUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI to stored audio recording file if voice interview"
+        },
+        "evaluation": {
+          "$ref": "#/$defs/QuestionRubricEvaluation"
+        }
+      },
+      "additionalProperties": false
+    },
+    "QuestionRubricEvaluation": {
+      "type": "object",
+      "required": ["clarity", "accuracy", "tone", "overallScore", "feedback"],
+      "properties": {
+        "clarity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Clarity of articulation, structure, and brevity (0-100)"
+        },
+        "accuracy": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Technical correctness and depth of domain insight (0-100)"
+        },
+        "tone": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Professional confidence, composure, and executive presence (0-100)"
+        },
+        "starMethodScore": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Fidelity to Situation-Task-Action-Result structure (0-100), or null for technical coding"
+        },
+        "overallScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Composite rubric score for this question (0-100)"
+        },
+        "feedback": {
+          "type": "string",
+          "description": "Qualitative critique and coaching notes"
+        },
+        "keyStrengths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Noteworthy positive attributes of the candidate's answer"
+        },
+        "improvementTips": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Concrete action items to elevate response"
+        }
+      },
+      "additionalProperties": false
+    },
+    "InterviewFeedbackSummary": {
+      "type": "object",
+      "required": ["overallScore", "readinessRecommendation", "strengths", "weaknesses", "actionItems"],
+      "properties": {
+        "overallScore": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Aggregate session evaluation score (0-100)"
+        },
+        "readinessRecommendation": {
+          "type": "string",
+          "enum": [
+            "NOT_READY",
+            "NEEDS_PRACTICE",
+            "COMPETITIVE",
+            "HIGHLY_RECOMMENDED"
+          ],
+          "description": "Holistic hiring readiness assessment"
+        },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Observed top candidate strengths across session"
+        },
+        "weaknesses": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Critical areas of weakness, knowledge gaps, or delivery concerns"
+        },
+        "actionItems": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Prescriptive steps for candidate preparation"
+        },
+        "detailedAnalysis": {
+          "type": "string",
+          "description": "Comprehensive narrative debrief"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

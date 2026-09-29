@@ -8,8 +8,6 @@ import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.usecase.resume.AnalyseResumeRequest
 import com.bangersoul.aivance.core.domain.usecase.resume.AnalyseResumeUseCase
-import com.bangersoul.aivance.core.domain.usecase.resume.AtsScoreRequest
-import com.bangersoul.aivance.core.domain.usecase.resume.AtsScoreResponse
 import com.bangersoul.aivance.core.domain.usecase.resume.CalculateATSScoreUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject

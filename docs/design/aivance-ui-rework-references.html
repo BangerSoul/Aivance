@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AiVance · UI / NavGraph / Type / Icons — Rework References</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d12; --bg2:#10131a; --panel:#141821; --panel2:#1a1f2b;
+    --line:#242b3a; --line2:#2e3850;
+    --txt:#e8ecf4; --txt2:#9aa5bd; --txt3:#5d6880;
+    --indigo:#6366f1; --indigo2:#818cf8; --amber:#f59e0b; --teal:#2dd4bf; --rose:#fb7185; --violet:#a78bfa; --green:#34d399;
+    --r-lg:20px; --r-md:14px; --r-sm:10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;line-height:1.5;
+    background-image:radial-gradient(1200px 500px at 70% -10%, rgba(99,102,241,.12), transparent 60%),
+                     radial-gradient(900px 400px at 10% 110%, rgba(45,212,191,.06), transparent 60%);}
+  .deck{max-width:1180px;margin:0 auto;padding:48px 28px 120px}
+  header.hero{margin-bottom:44px}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--indigo2);background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.35);padding:6px 12px;border-radius:999px}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4.4vw,46px);font-weight:700;letter-spacing:-.02em;margin:16px 0 10px;line-height:1.12}
+  h1 em{font-style:normal;background:linear-gradient(92deg,var(--indigo2),var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--txt2);max-width:760px;font-size:15.5px}
+  .lede b{color:var(--txt)}
+  .facts{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .fact{font-size:12.5px;color:var(--txt2);background:var(--panel);border:1px solid var(--line);padding:7px 12px;border-radius:999px}
+  .fact b{color:var(--txt)}
+
+  /* Section chrome */
+  section{margin-top:64px}
+  .sechead{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:26px}
+  .secnum{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--indigo2)}
+  .sechead h2{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;letter-spacing:-.01em}
+  .sechead .note{margin-left:auto;color:var(--txt3);font-size:12.5px}
+  .grid{display:grid;gap:22px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:980px){.g3{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;display:flex;flex-direction:column}
+  .card .body{padding:20px}
+  .card h3{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .tag{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:999px;display:inline-block}
+  .tag.a{color:#c7d2fe;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4)}
+  .tag.b{color:#99f6e4;background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.4)}
+  .tag.c{color:#fde68a;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4)}
+  .tag.d{color:#fbcfe8;background:rgba(251,113,133,.12);border:1px solid rgba(251,113,133,.4)}
+  .card p.desc{color:var(--txt2);font-size:13px;margin-top:10px}
+  .tokens{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+  .tok{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--txt2);background:var(--bg2);border:1px solid var(--line);padding:4px 8px;border-radius:6px}
+  .pick{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line2);font-size:12px;color:var(--txt3)}
+  .pick b{color:var(--green)}
+
+  /* Phone frame */
+  .phone{width:100%;max-width:340px;margin:0 auto;border-radius:34px;border:1px solid var(--line2);
+    background:var(--bg2);padding:10px;box-shadow:0 24px 60px -24px rgba(0,0,0,.7)}
+  .screen{border-radius:26px;overflow:hidden;height:600px;display:flex;flex-direction:column;position:relative}
+  .statusbar{display:flex;justify-content:space-between;padding:10px 16px 4px;font-size:10px;font-weight:600;opacity:.75}
+  .appbar{padding:12px 18px 6px;display:flex;justify-content:space-between;align-items:center}
+  .appbar .t{font-weight:700;font-size:17px;letter-spacing:-.01em}
+  .appbar .sub{font-size:10.5px;opacity:.6;margin-top:1px}
+  .scroll{flex:1;overflow:hidden;padding:8px 14px 0;display:flex;flex-direction:column;gap:10px}
+  .navbar{display:flex;justify-content:space-around;align-items:center;padding:10px 8px 16px;position:relative}
+  .navitem{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:600;opacity:.55;flex:1}
+  .navitem.on{opacity:1}
+  .navitem svg{width:20px;height:20px}
+  .pillbar{margin:0 14px 14px;border-radius:999px;display:flex;justify-content:space-around;align-items:center;padding:8px 6px;box-shadow:0 10px 30px -10px rgba(0,0,0,.6)}
+
+  /* Kit-specific skins */
+  .kitA{background:#f6f7fb;color:#171a21}
+  .kitA .card-ui{background:#fff;border:1px solid #e6e9f2;border-radius:14px;box-shadow:0 1px 2px rgba(23,26,33,.04)}
+  .kitA .hero{background:linear-gradient(135deg,#4f46e5,#6366f1 55%,#818cf8);color:#fff;border-radius:16px;padding:14px}
+  .kitA .muted{color:#5b6474}
+  .kitA .chip{background:#eef0f8;color:#3f4657}
+  .kitA .navbar{background:#ffffffdd;border-top:1px solid #e6e9f2;backdrop-filter:blur(8px)}
+  .kitA .navitem.on{color:#4f46e5}
+  .kitB{background:#0d1017;color:#e9edf6}
+  .kitB .card-ui{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:18px;backdrop-filter:blur(10px)}
+  .kitB .hero{background:linear-gradient(140deg,rgba(129,140,248,.25),rgba(45,212,191,.14));border:1px solid rgba(129,140,248,.35);border-radius:18px;padding:14px;color:#eef1ff}
+  .kitB .muted{color:#8b95ab}
+  .kitB .chip{background:rgba(255,255,255,.07);color:#aeb8cf}
+  .kitB .navbar{background:rgba(13,16,23,.85);border-top:1px solid rgba(255,255,255,.08)}
+  .kitB .navitem.on{color:#8be9d8}
+  .kitC{background:#faf6ef;color:#231f1a}
+  .kitC .card-ui{background:#fffdf8;border:1px solid #e8e0d0;border-radius:6px;box-shadow:0 1px 0 rgba(35,31,26,.05)}
+  .kitC .hero{background:#231f1a;color:#f5eddd;border-radius:6px;padding:14px}
+  .kitC .muted{color:#77705f}
+  .kitC .chip{background:#f0e9da;color:#6b6350}
+  .kitC .navbar{background:#fffdf8;border-top:1px solid #e8e0d0}
+  .kitC .navitem.on{color:#9a6b1f}
+  .kitC .appbar .t{font-family:'Fraunces',serif}
+
+  /* mockup atoms */
+  .row{display:flex;gap:10px;align-items:center}
+  .grow{flex:1;min-width:0}
+  .nba-label{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+  .nba-title{font-size:13px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
+  .nba-sub{font-size:10px;opacity:.8;margin-top:2px}
+  .job{padding:10px;border-radius:12px;display:flex;gap:10px;align-items:center}
+  .logo{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+  .jt{font-size:11.5px;font-weight:700;letter-spacing:-.01em}
+  .jc{font-size:9.5px;opacity:.65;margin-top:1px}
+  .chips{display:flex;gap:5px;margin-top:5px}
+  .chip{font-size:8px;font-weight:700;padding:2.5px 7px;border-radius:999px}
+  .actions{display:flex;gap:8px;margin-top:4px}
+  .qa{flex:1;border-radius:12px;padding:9px 6px;text-align:center;font-size:9px;font-weight:700}
+  .badge-dot{position:absolute;top:-2px;right:-4px;width:8px;height:8px;border-radius:99px;background:#fb7185;border:2px solid rgba(0,0,0,.15)}
+  .fab{position:absolute;right:14px;bottom:84px;width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 30px -8px rgba(0,0,0,.5)}
+  .hint{font-size:10px;text-align:center;opacity:.55;margin-top:8px}
+
+  /* Nav diagrams */
+  .navcard .body{padding:18px}
+  .diagram{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .diagram svg{width:100%;height:auto;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .legend span{font-size:10.5px;color:var(--txt2);background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:4px 9px}
+  .legend .on{color:#c7d2fe;border-color:rgba(99,102,241,.5)}
+  ul.props{margin:10px 0 0 16px;color:var(--txt2);font-size:12.5px;display:grid;gap:5px}
+  ul.props b{color:var(--txt)}
+  ul.props code{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:var(--bg2);border:1px solid var(--line);padding:1px 5px;border-radius:5px;color:var(--indigo2)}
+
+  /* Type specimens */
+  .spec-line{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px dashed var(--line2);padding:10px 0}
+  .spec-line:last-child{border-bottom:0}
+  .spec-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--txt3)}
+  .f-hero{font-size:26px;letter-spacing:-.02em;line-height:1.15}
+  .f-title{font-size:17px;letter-spacing:-.01em}
+  .f-body{font-size:13px;color:var(--txt2)}
+  .f-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--indigo2)}
+  .f1 .f-hero,.f1 .f-title{font-family:'Space Grotesk',sans-serif;font-weight:700}
+  .f1 .f-body{font-family:'Inter',sans-serif}
+  .f1 .f-label{font-family:'Inter',sans-serif}
+  .f2 .f-hero{font-family:'Fraunces',serif;font-weight:600}
+  .f2 .f-title{font-family:'Fraunces',serif;font-weight:600}
+  .f2 .f-body{font-family:'Source Sans 3',sans-serif}
+  .f2 .f-label{font-family:'Source Sans 3',sans-serif}
+  .f3 .f-hero,.f3 .f-title{font-family:'Manrope',sans-serif;font-weight:800}
+  .f3 .f-body{font-family:'Manrope',sans-serif}
+  .f3 .f-label{font-family:'Manrope',sans-serif}
+  table.map{width:100%;border-collapse:collapse;margin-top:12px;font-size:11px}
+  table.map td,table.map th{border:1px solid var(--line);padding:5px 8px;text-align:left;color:var(--txt2)}
+  table.map th{color:var(--txt3);font-weight:600;background:var(--bg2);font-family:'JetBrains Mono',monospace;font-size:10px}
+  table.map code{font-family:'JetBrains Mono',monospace;color:var(--indigo2);font-size:10px}
+
+  /* Icon rows */
+  .iconrow{display:flex;gap:14px;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:12px}
+  .iconcell{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:9px;color:var(--txt3);letter-spacing:.04em}
+  .iconcell.on{color:var(--indigo2)}
+  .iconcell svg{width:26px;height:26px}
+  .icstroke{stroke:var(--txt2);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .icstroke.on{stroke:var(--indigo2)}
+  .icfill{fill:var(--indigo2)}
+  .icfill2{fill:var(--indigo2);opacity:.18}
+  .icstroke-dim{stroke:var(--txt3);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Phases */
+  .phase{display:grid;grid-template-columns:52px 1fr;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
+  .phase:last-child{border-bottom:0}
+  .pnum{font-family:'JetBrains Mono',monospace;color:var(--indigo2);font-size:13px;font-weight:600;padding-top:2px}
+  .phase h4{font-size:14.5px;font-weight:700}
+  .phase p{color:var(--txt2);font-size:12.5px;margin-top:4px}
+  .phase code{font-family:'JetBrains Mono',monospace;font-size:10.5px;background:var(--bg2);border:1px solid var(--line);padding:1px 5px;border-radius:5px;color:var(--teal)}
+  footer{margin-top:70px;border-top:1px solid var(--line);padding-top:20px;color:var(--txt3);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+<div class="deck">
+
+<header class="hero">
+  <span class="kicker">◆ Build-Your-Own-X · Phase 0 Blueprint — Design Language</span>
+  <h1>AiVance UI Rework — <em>Reference Pictures</em> for the Next Cycle</h1>
+  <p class="lede">Every proposal below is grounded in the <b>actual codebase</b>: the 5-workspace <code style="font-family:'JetBrains Mono',font-size:11px;color:var(--indigo2)">NavigationSuiteScaffold</code>
+  (HQ → Intel → Discover → Pipeline → Practice), the token system in <b>core:designsystem</b> (<code style="font-family:'JetBrains Mono',font-size:11px;color:var(--indigo2)">ThemeConfig</code>,
+  <code style="font-family:'JetBrains Mono',font-size:11px;color:var(--indigo2)">AccentSeed</code>, semantic containers, <code style="font-family:'JetBrains Mono',font-size:11px;color:var(--indigo2)">AivanceHeroCard</code>),
+  today's all-system <b>SansSerif</b> typography, and the mixed Outlined/Rounded Material icon set. Pick one option per axis — they compose.</p>
+  <div class="facts">
+    <span class="fact">Tabs today: <b>5</b></span>
+    <span class="fact">Typography: <b>FontFamily.SansSerif (system)</b></span>
+    <span class="fact">Icons: <b>Mixed Outlined + Rounded</b></span>
+    <span class="fact">Accent: <b>INDIGO seed, dynamic color on</b></span>
+    <span class="fact">Deck: <b>self-contained HTML · docs/design/</b></span>
+  </div>
+</header>
+
+<!-- ══════════════ 1 · OVERALL UI KITS ══════════════ -->
+<section id="kits">
+  <div class="sechead"><span class="secnum">01</span><h2>Overall UI Kits — three complete directions</h2><span class="note">phone mockups are live CSS, not screenshots</span></div>
+  <div class="grid g3">
+
+    <!-- KIT A -->
+    <div class="card">
+      <div class="body" style="padding-bottom:8px">
+        <span class="tag a">Kit A · Executive Slate</span>
+        <h3 style="margin-top:10px">Calm authority, light-first</h3>
+        <p class="desc">Evolution, not revolution: keeps the indigo identity, drops visual noise. Flat white cards on cool gray, one hero gradient per screen, 14–16dp radii, hairline borders. Reads "LinkedIn-grade professional".</p>
+        <div class="tokens"><span class="tok">bg #F6F7FB</span><span class="tok">surface #FFF</span><span class="tok">primary #4F46E5</span><span class="tok">r 14/16dp</span><span class="tok">grid 4dp</span></div>
+      </div>
+      <div style="padding:14px 16px 20px">
+        <div class="phone"><div class="screen kitA">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <div class="appbar"><div><div class="t">Good morning, Aarav</div><div class="sub muted">Career OS · Applying phase</div></div><div class="logo" style="background:#eef0f8;color:#4f46e5;border-radius:99px">AR</div></div>
+          <div class="scroll">
+            <div class="hero">
+              <div class="nba-label">Next best action</div>
+              <div class="nba-title">Optimize resume for Stripe</div>
+              <div class="nba-sub">ATS match 58% → target 75% · ~12 min</div>
+              <div class="actions" style="margin-top:10px">
+                <div style="background:#fff;color:#4f46e5;font-size:9.5px;font-weight:800;padding:7px 12px;border-radius:9px">Start now</div>
+                <div style="border:1px solid rgba(255,255,255,.5);font-size:9.5px;font-weight:700;padding:7px 12px;border-radius:9px">Later</div>
+              </div>
+            </div>
+            <div class="actions">
+              <div class="qa card-ui" style="color:#4f46e5">▸ Resume</div>
+              <div class="qa card-ui" style="color:#0e9488">◆ Jobs</div>
+              <div class="qa card-ui" style="color:#b45309">✎ ATS</div>
+            </div>
+            <div class="card-ui job">
+              <div class="logo" style="background:#e8f5f3;color:#0e9488">S</div>
+              <div class="grow"><div class="jt">Senior Android Engineer</div><div class="jc muted">Stripe · Bangalore · New</div>
+                <div class="chips"><span class="chip" style="background:#e8f5f3;color:#0e9488">92% match</span><span class="chip">Remote</span></div></div>
+            </div>
+            <div class="card-ui job">
+              <div class="logo" style="background:#eef0f8;color:#4f46e5">C</div>
+              <div class="grow"><div class="jt">Mobile Engineer II</div><div class="jc muted">CRED · Remote</div>
+                <div class="chips"><span class="chip" style="background:#eef0f8;color:#4f46e5">81% match</span></div></div>
+            </div>
+            <div class="card-ui job">
+              <div class="logo" style="background:#fdf1e3;color:#b45309">Z</div>
+              <div class="grow"><div class="jt">Kotlin Developer</div><div class="jc muted">Zerodha · Mumbai</div>
+                <div class="chips"><span class="chip">74% match</span></div></div>
+            </div>
+          </div>
+          <div class="navbar">
+            <div class="navitem on"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>HQ</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h5"/></svg>Intel</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Discover</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><rect x="4" y="4" width="5" height="7" rx="1"/><rect x="10.5" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="5" rx="1"/></svg>Pipeline</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>Prep</div>
+          </div>
+        </div></div>
+        <div class="hint">Light-first · flat elevation · one gradient per screen</div>
+      </div>
+      <div class="body">
+        <div class="pick"><b>Choose A if</b> you want the lowest-risk professional rework — pure token + component changes, zero nav or IA movement.</div>
+      </div>
+    </div>
+
+    <!-- KIT B -->
+    <div class="card">
+      <div class="body" style="padding-bottom:8px">
+        <span class="tag b">Kit B · Aurora Glass</span>
+        <h3 style="margin-top:10px">Dark-first AI product aesthetic</h3>
+        <p class="desc">Deep navy-black base, translucent glass cards, a teal↔indigo aurora accent reserved for AI moments. The floating Assistant orb becomes the signature gesture. High wow-factor for a career "operating system".</p>
+        <div class="tokens"><span class="tok">bg #0D1017</span><span class="tok">glass 5% white</span><span class="tok">accent teal/indigo</span><span class="tok">r 18dp</span><span class="tok">blur 10px</span></div>
+      </div>
+      <div style="padding:14px 16px 20px">
+        <div class="phone"><div class="screen kitB">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <div class="appbar"><div><div class="t" style="font-family:'Space Grotesk',sans-serif">Mission Control</div><div class="sub">3 signals today</div></div>
+            <div style="width:30px;height:30px;border-radius:99px;background:linear-gradient(135deg,#818cf8,#2dd4bf)"></div></div>
+          <div class="scroll">
+            <div class="hero">
+              <div class="nba-label" style="color:#8be9d8">◆ AI Signal</div>
+              <div class="nba-title" style="font-family:'Space Grotesk',sans-serif">Your pipeline needs one push</div>
+              <div class="nba-sub">2 stale applications · follow up before Friday</div>
+            </div>
+            <div class="card-ui" style="padding:10px">
+              <div class="row"><div class="grow"><div class="jt">Pipeline velocity</div><div class="jc">8 active · 2 interviews</div></div>
+                <svg width="84" height="30" viewBox="0 0 84 30"><polyline points="0,24 14,20 28,22 42,14 56,16 70,8 84,4" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round"/></svg></div>
+            </div>
+            <div class="actions">
+              <div class="qa card-ui" style="color:#a5b4fc">✦ Copilot</div>
+              <div class="qa card-ui" style="color:#8be9d8">⌖ Match</div>
+              <div class="qa card-ui" style="color:#fda4af">⚑ Follow-up</div>
+            </div>
+            <div class="card-ui job">
+              <div class="logo" style="background:rgba(45,212,191,.14);color:#5eead4">S</div>
+              <div class="grow"><div class="jt">Senior Android Engineer</div><div class="jc">Stripe · 92% match</div></div>
+              <div style="font-size:8.5px;color:#8be9d8;border:1px solid rgba(45,212,191,.4);padding:3px 8px;border-radius:99px;font-weight:700">APPLY</div>
+            </div>
+            <div class="card-ui job">
+              <div class="logo" style="background:rgba(129,140,248,.14);color:#a5b4fc">C</div>
+              <div class="grow"><div class="jt">Mobile Engineer II</div><div class="jc">CRED · 81% match</div></div>
+              <div style="font-size:8.5px;color:#a5b4fc;border:1px solid rgba(129,140,248,.4);padding:3px 8px;border-radius:99px;font-weight:700">SAVE</div>
+            </div>
+            <div class="card-ui job">
+              <div class="logo" style="background:rgba(251,113,133,.14);color:#fda4af">Z</div>
+              <div class="grow"><div class="jt">Kotlin Developer</div><div class="jc">Zerodha · 74% match</div></div>
+            </div>
+          </div>
+          <div class="fab" style="background:linear-gradient(135deg,#6366f1,#2dd4bf)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0b0d12" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.2" fill="#0b0d12" stroke="none"/></svg>
+          </div>
+          <div class="navbar">
+            <div class="navitem on"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>HQ</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h5"/></svg>Intel</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Discover</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><rect x="4" y="4" width="5" height="7" rx="1.5"/><rect x="10.5" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="5" height="5" rx="1.5"/></svg>Pipeline</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>Prep</div>
+          </div>
+        </div></div>
+        <div class="hint">Glass surfaces · aurora accent · signature AI orb</div>
+      </div>
+      <div class="body">
+        <div class="pick"><b>Choose B if</b> the brand should feel like an <b>AI-native OS</b> — boldest option, and it maps 1:1 onto your existing AMOLED ThemeConfig.</div>
+      </div>
+    </div>
+
+    <!-- KIT C -->
+    <div class="card">
+      <div class="body" style="padding-bottom:8px">
+        <span class="tag c">Kit C · Paper Studio</span>
+        <h3 style="margin-top:10px">Editorial calm, career-craft feel</h3>
+        <p class="desc">Warm paper background, ink text, serif display moments, 6dp "print" radii, generous whitespace. Positions AiVance as a crafted career atelier rather than a SaaS dashboard. Most differentiated; needs the Fraunces type system below.</p>
+        <div class="tokens"><span class="tok">bg #FAF6EF</span><span class="tok">ink #231F1A</span><span class="tok">accent #9A6B1F</span><span class="tok">r 6dp</span><span class="tok">hairlines</span></div>
+      </div>
+      <div style="padding:14px 16px 20px">
+        <div class="phone"><div class="screen kitC">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <div class="appbar"><div><div class="t" style="font-size:20px">Studio</div><div class="sub muted" style="font-style:italic">Tuesday — three things matter</div></div></div>
+          <div class="scroll">
+            <div class="hero">
+              <div class="nba-label" style="color:#d9c9a3">Today's focus</div>
+              <div class="nba-title" style="font-family:'Fraunces',serif;font-size:15px">Refine the Stripe résumé</div>
+              <div class="nba-sub" style="opacity:.75">One page. Every bullet earns its line.</div>
+            </div>
+            <div class="card-ui job" style="border-radius:6px">
+              <div class="logo" style="background:#f0e9da;color:#6b6350;border-radius:4px">S</div>
+              <div class="grow"><div class="jt" style="font-family:'Fraunces',serif">Senior Android Engineer</div><div class="jc muted">Stripe · saved yesterday</div></div>
+              <div style="font-size:9px;color:#9a6b1f;font-weight:700;letter-spacing:.06em">OPEN →</div>
+            </div>
+            <div class="card-ui job" style="border-radius:6px">
+              <div class="logo" style="background:#f0e9da;color:#6b6350;border-radius:4px">C</div>
+              <div class="grow"><div class="jt" style="font-family:'Fraunces',serif">Mobile Engineer II</div><div class="jc muted">CRED · APPLIED mon</div></div>
+              <div style="font-size:9px;color:#9a6b1f;font-weight:700;letter-spacing:.06em">OPEN →</div>
+            </div>
+            <div class="card-ui" style="padding:12px;border-radius:6px">
+              <div class="nba-label" style="color:#9a6b1f">Practice log</div>
+              <div class="row" style="margin-top:8px;gap:6px">
+                <div style="height:6px;border-radius:3px;background:#231f1a;flex:5"></div>
+                <div style="height:6px;border-radius:3px;background:#d9c9a3;flex:3"></div>
+                <div style="height:6px;border-radius:3px;background:#e8e0d0;flex:2"></div>
+              </div>
+              <div class="row" style="justify-content:space-between;margin-top:6px"><span class="jc muted">Technical</span><span class="jc muted">Behavioral</span><span class="jc muted">HR</span></div>
+            </div>
+          </div>
+          <div class="navbar">
+            <div class="navitem on"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>HQ</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h5"/></svg>Intel</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Discover</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><rect x="4" y="4" width="5" height="7" rx="1"/><rect x="10.5" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="5" rx="1"/></svg>Pipeline</div>
+            <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>Prep</div>
+          </div>
+        </div></div>
+        <div class="hint">Serif display · warm paper · print-shop radii</div>
+      </div>
+      <div class="body">
+        <div class="pick"><b>Choose C if</b> you want a brand competitors can't copy — highest identity, highest effort (needs full type pairing + icon redraw).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ 2 · NAVGRAPH ══════════════ -->
+<section id="nav">
+  <div class="sechead"><span class="secnum">02</span><h2>NavGraph architectures — three IA proposals</h2><span class="note">all preserve per-workspace backstacks + provider gate</span></div>
+  <div class="grid g3">
+
+    <div class="card navcard">
+      <div class="body">
+        <span class="tag a">N0 · Baseline (current)</span>
+        <h3 style="margin-top:10px">Five parallel workspaces</h3>
+        <div class="diagram">
+          <svg viewBox="0 0 300 120">
+            <g stroke="#2e3850" fill="none">
+              <path d="M150 18 L40 78 M150 18 L95 78 M150 18 L150 78 M150 18 L205 78 M150 18 L260 78" stroke-dasharray="3 4"/>
+            </g>
+            <circle cx="150" cy="18" r="14" fill="#6366f1"/><text x="150" y="22" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">Auth</text>
+            <g font-size="10" font-weight="700" text-anchor="middle">
+              <g><rect x="18" y="78" width="44" height="26" rx="8" fill="#1a1f2b" stroke="#6366f1"/><text x="40" y="94" fill="#c7d2fe">HQ</text></g>
+              <g><rect x="73" y="78" width="44" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="95" y="94" fill="#9aa5bd">Intel</text></g>
+              <g><rect x="128" y="78" width="44" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="150" y="94" fill="#9aa5bd">Disc</text></g>
+              <g><rect x="183" y="78" width="44" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="205" y="94" fill="#9aa5bd">Pipe</text></g>
+              <g><rect x="238" y="78" width="44" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="260" y="94" fill="#9aa5bd">Prep</text></g>
+            </g>
+            <text x="150" y="114" text-anchor="middle" font-size="8" fill="#5d6880">spokes: ATS · CoverLetter · JobDetails · Recruiter · LearnSkill…</text>
+          </svg>
+        </div>
+        <ul class="props">
+          <li>Today's graph: <b>5 tabs</b>, per-workspace backstacks, gate-first auth.</li>
+          <li>Cost: Intel vs Prep blur for new users; bar feels crowded on small phones.</li>
+        </ul>
+        <div class="legend"><span class="on">keep as reference</span><span>5 destinations</span><span>NavigationSuiteScaffold</span></div>
+      </div>
+    </div>
+
+    <div class="card navcard">
+      <div class="body">
+        <span class="tag b">N1 · Four Workspaces + AI orb</span>
+        <h3 style="margin-top:10px">Merge Intel + Prep into "Studio"</h3>
+        <div class="diagram">
+          <svg viewBox="0 0 300 120">
+            <g stroke="#2e3850" fill="none">
+              <path d="M150 18 L40 70 M150 18 L110 70 M150 18 L190 70 M150 18 L260 70"/>
+            </g>
+            <circle cx="150" cy="18" r="14" fill="#6366f1"/><text x="150" y="22" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">Auth</text>
+            <g font-size="10" font-weight="700" text-anchor="middle">
+              <g><rect x="16" y="70" width="48" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="40" y="86" fill="#9aa5bd">HQ</text></g>
+              <g><rect x="84" y="70" width="52" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="110" y="86" fill="#9aa5bd">Disc</text></g>
+              <g><rect x="164" y="70" width="52" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="190" y="86" fill="#9aa5bd">Pipe</text></g>
+              <g><rect x="234" y="70" width="52" height="26" rx="8" fill="#1a1f2b" stroke="#2e3850"/><text x="260" y="86" fill="#9aa5bd">Studio</text></g>
+            </g>
+            <g font-size="8" text-anchor="middle">
+              <rect x="112" y="102" width="76" height="14" rx="7" fill="rgba(45,212,191,.12)" stroke="rgba(45,212,191,.5)"/>
+              <text x="150" y="112" fill="#8be9d8">Studio = Intel + Prep</text>
+            </g>
+          </svg>
+        </div>
+        <ul class="props">
+          <li><b>4 tabs + floating AI orb</b> → every tab gets room; Assistant becomes a global surface.</li>
+          <li>Studio hosts nested segment tabs: <code>Resume</code> · <code>Practice</code> · <code>Learn</code>.</li>
+          <li>Migration: Intelligence & Prep stay as destinations; only the bar set changes (<code>rootDestinations</code>).</li>
+        </ul>
+        <div class="legend"><span class="on">recommended</span><span>4 + orb</span><span>segmented sub-tabs</span></div>
+      </div>
+    </div>
+
+    <div class="card navcard">
+      <div class="body">
+        <span class="tag c">N2 · Hub-and-Spoke "Career OS"</span>
+        <h3 style="margin-top:10px">3 tabs + central Career Graph hub</h3>
+        <div class="diagram">
+          <svg viewBox="0 0 300 120">
+            <g font-size="10" font-weight="700" text-anchor="middle">
+              <g><rect x="20" y="82" width="52" height="26" rx="13" fill="#1a1f2b" stroke="#2e3850"/><text x="46" y="98" fill="#9aa5bd">HQ</text></g>
+              <g><rect x="228" y="82" width="52" height="26" rx="13" fill="#1a1f2b" stroke="#2e3850"/><text x="254" y="98" fill="#9aa5bd">Disc</text></g>
+            </g>
+            <circle cx="150" cy="60" r="26" fill="none" stroke="#6366f1" stroke-width="2"/>
+            <circle cx="150" cy="60" r="26" fill="rgba(99,102,241,.12)"/>
+            <text x="150" y="58" text-anchor="middle" font-size="9" fill="#c7d2fe" font-weight="800">Career</text>
+            <text x="150" y="69" text-anchor="middle" font-size="9" fill="#c7d2fe" font-weight="800">Graph</text>
+            <g stroke="#2e3850" fill="none">
+              <path d="M72 88 L128 72 M228 88 L172 72"/>
+              <path d="M150 34 L150 18 M138 38 L96 22 M162 38 L204 22 M164 74 L212 100 M136 74 L88 100" stroke-dasharray="3 4"/>
+            </g>
+            <g font-size="8" text-anchor="middle" fill="#8b95ab">
+              <text x="150" y="12">Pipeline</text><text x="86" y="16">Intel</text><text x="214" y="16">Prep</text>
+              <text x="222" y="108">Jobs</text><text x="78" y="108">Tracker</text>
+            </g>
+          </svg>
+        </div>
+        <ul class="props">
+          <li>Bar: <b>HQ · [Graph hub] · Discover</b>. Hub opens a radial sheet: Pipeline / Intel / Prep / Analytics.</li>
+          <li>Brand moment: the graph <em>is</em> your Career Knowledge OS (graph tables already exist).</li>
+          <li>Risk: hub gestures are novel — needs onboarding + fallback long-press menu.</li>
+        </ul>
+        <div class="legend"><span class="on">boldest</span><span>2 + hub</span><span>radial sheet</span></div>
+      </div>
+    </div>
+
+    <!-- Nav mockups row (inline full-width card) -->
+    <div class="card" style="grid-column:1/-1">
+      <div class="body">
+        <h3>Tab-bar references — how each architecture feels in the hand</h3>
+        <p class="desc" style="margin-top:6px">Same dashboard content, three chrome treatments. Rendered in Kit A skin for comparability.</p>
+        <div class="grid g3" style="margin-top:16px">
+          <div>
+            <div class="phone" style="max-width:250px"><div class="screen kitA" style="height:380px">
+              <div class="appbar"><div class="t">Today</div></div>
+              <div class="scroll"><div class="hero"><div class="nba-label">Next best action</div><div class="nba-title">Follow up: CRED</div><div class="nba-sub">Applied Monday · silent 4 days</div></div></div>
+              <div class="navbar" style="padding-bottom:12px">
+                <div class="navitem on"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>HQ</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h5"/></svg>Intel</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Disc</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><rect x="4" y="4" width="5" height="7" rx="1"/><rect x="10.5" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="5" rx="1"/></svg>Pipe</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>Prep</div>
+              </div>
+            </div></div>
+            <div class="hint">N0 · 5 tabs — familiar, denser</div>
+          </div>
+          <div>
+            <div class="phone" style="max-width:250px"><div class="screen kitA" style="height:380px">
+              <div class="appbar"><div class="t">Today</div></div>
+              <div class="scroll"><div class="hero"><div class="nba-label">Next best action</div><div class="nba-title">Follow up: CRED</div><div class="nba-sub">Applied Monday · silent 4 days</div></div></div>
+              <div class="fab" style="bottom:78px;width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#818cf8)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="2.6" fill="#fff" stroke="none"/></svg>
+              </div>
+              <div class="navbar" style="padding-bottom:12px">
+                <div class="navitem on"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>HQ</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Disc</div>
+                <div class="navitem" style="opacity:1"><svg viewBox="0 0 24 24" class="icstroke-dim"><rect x="4" y="4" width="5" height="7" rx="1"/><rect x="10.5" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="5" rx="1"/></svg>Pipe</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M12 4v6m0 0-3-3m3 3 3-3M8 17h8" opacity="0"/></svg><span style="letter-spacing:.02em">Studio</span></div>
+              </div>
+            </div></div>
+            <div class="hint">N1 · 4 tabs + AI orb — recommended</div>
+          </div>
+          <div>
+            <div class="phone" style="max-width:250px"><div class="screen kitA" style="height:380px">
+              <div class="appbar"><div class="t">Today</div></div>
+              <div class="scroll"><div class="hero"><div class="nba-label">Next best action</div><div class="nba-title">Follow up: CRED</div><div class="nba-sub">Applied Monday · silent 4 days</div></div></div>
+              <div class="pillbar" style="background:#171a21">
+                <div class="navitem on" style="color:#c7d2fe"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>HQ</div>
+                <div class="navitem" style="color:#fff">
+                  <svg viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="12" r="10" fill="none" stroke="#818cf8" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="#4f46e5"/><circle cx="12" cy="12" r="1.6" fill="#fff"/></svg>Graph</div>
+                <div class="navitem"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Disc</div>
+              </div>
+            </div></div>
+            <div class="hint">N2 · 2 + Graph hub — boldest</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ 3 · TYPE ══════════════ -->
+<section id="type">
+  <div class="sechead"><span class="secnum">03</span><h2>Font systems — three pairings, rendered</h2><span class="note">today everything is FontFamily.SansSerif</span></div>
+  <div class="grid g3">
+    <div class="card f1">
+      <div class="body">
+        <span class="tag a">F1 · Technical AI</span>
+        <h3 style="margin-top:10px">Space Grotesk + Inter</h3>
+        <div style="margin-top:14px">
+          <div class="spec-line"><span class="f-hero">Interview prep</span><span class="spec-meta">display / 32</span></div>
+          <div class="spec-line"><span class="f-title">Optimize resume for Stripe</span><span class="spec-meta">title / 22</span></div>
+          <div class="spec-line"><span class="f-body">Your ATS match improved 12% this week. Three keywords are still missing from the summary section.</span><span class="spec-meta">body / 15</span></div>
+          <div class="spec-line"><span class="f-label">Next best action</span><span class="spec-meta">label / 11</span></div>
+        </div>
+        <table class="map">
+          <tr><th>Type.kt</th><th>Family</th></tr>
+          <tr><td>displayLarge→headline</td><td><code>SpaceGrotesk 700</code></td></tr>
+          <tr><td>titleLarge→titleSmall</td><td><code>SpaceGrotesk 600</code></td></tr>
+          <tr><td>body + label</td><td><code>Inter 400/600</code></td></tr>
+          <tr><td>data/mono</td><td><code>JetBrains Mono</code></td></tr>
+        </table>
+        <div class="pick"><b>Best for</b> Kit A/B — engineered, AI-native feel. Two families, ~180 KB woff2.</div>
+      </div>
+    </div>
+
+    <div class="card f2">
+      <div class="body">
+        <span class="tag c">F2 · Editorial premium</span>
+        <h3 style="margin-top:10px">Fraunces + Source Sans 3</h3>
+        <div style="margin-top:14px">
+          <div class="spec-line"><span class="f-hero">Interview prep</span><span class="spec-meta">display / 32</span></div>
+          <div class="spec-line"><span class="f-title">Optimize resume for Stripe</span><span class="spec-meta">title / 22</span></div>
+          <div class="spec-line"><span class="f-body">Your ATS match improved 12% this week. Three keywords are still missing from the summary section.</span><span class="spec-meta">body / 15</span></div>
+          <div class="spec-line"><span class="f-label">Next best action</span><span class="spec-meta">label / 11</span></div>
+        </div>
+        <table class="map">
+          <tr><th>Type.kt</th><th>Family</th></tr>
+          <tr><td>display + titles</td><td><code>Fraunces 600</code></td></tr>
+          <tr><td>body + label</td><td><code>Source Sans 3</code></td></tr>
+          <tr><td>data/mono</td><td><code>JetBrains Mono</code></td></tr>
+        </table>
+        <div class="pick"><b>Best for</b> Kit C — résumé-craft identity, unmistakable in screenshots. Variable font keeps size sane.</div>
+      </div>
+    </div>
+
+    <div class="card f3">
+      <div class="body">
+        <span class="tag d">F3 · One-family minimal</span>
+        <h3 style="margin-top:10px">Manrope only</h3>
+        <div style="margin-top:14px">
+          <div class="spec-line"><span class="f-hero">Interview prep</span><span class="spec-meta">display / 32</span></div>
+          <div class="spec-line"><span class="f-title">Optimize resume for Stripe</span><span class="spec-meta">title / 22</span></div>
+          <div class="spec-line"><span class="f-body">Your ATS match improved 12% this week. Three keywords are still missing from the summary section.</span><span class="spec-meta">body / 15</span></div>
+          <div class="spec-line"><span class="f-label">Next best action</span><span class="spec-meta">label / 11</span></div>
+        </div>
+        <table class="map">
+          <tr><th>Type.kt</th><th>Family</th></tr>
+          <tr><td>everything</td><td><code>Manrope 400–800</code></td></tr>
+          <tr><td>data/mono</td><td><code>JetBrains Mono</code></td></tr>
+        </table>
+        <div class="pick"><b>Best for</b> smallest diff with the biggest lift over system Roboto — one variable file, one <code>FontFamily(FontVariable)</code> swap.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ 4 · ICONS ══════════════ -->
+<section id="icons">
+  <div class="sechead"><span class="secnum">04</span><h2>Icon languages — three systems for the same 5 tabs</h2><span class="note">today: mixed Outlined + Rounded Material</span></div>
+  <div class="grid g3">
+
+    <div class="card">
+      <div class="body">
+        <span class="tag a">I1 · Unified Rounded</span>
+        <h3 style="margin-top:10px">One family, zero mixed stroke</h3>
+        <p class="desc">Resolve the current Outlined/Rounded mix to a single <b>Rounded</b> family everywhere (bar, tiles, list leading icons). 30-minute diff; consistency is the whole point.</p>
+        <div class="iconrow" style="margin-top:14px">
+          <div class="iconcell on"><svg viewBox="0 0 24 24" class="icstroke on" style="stroke-width:2"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>HQ</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke" style="stroke-width:2"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h5"/></svg>Intel</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke" style="stroke-width:2"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Disc</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke" style="stroke-width:2"><rect x="4" y="4" width="5" height="7" rx="1.5"/><rect x="10.5" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="5" height="5" rx="1.5"/></svg>Pipe</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke" style="stroke-width:2"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>Prep</div>
+        </div>
+        <div class="pick"><b>Effort:</b> trivial · <b>Risk:</b> none. Do this regardless of kit choice.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="body">
+        <span class="tag b">I2 · Custom 1.6px line set</span>
+        <h3 style="margin-top:10px">Own the visual language</h3>
+        <p class="desc">BYOX move: hand-draw the 5 tab glyphs + 12 core icons as <b>inline ImageVectors</b> (1.6dp stroke, 24 grid, shared corner radius). The bespoke set below is live SVG — exactly what the Kotlin vectors would encode.</p>
+        <div class="iconrow" style="margin-top:14px">
+          <div class="iconcell on"><svg viewBox="0 0 24 24" class="icstroke on"><rect x="4.5" y="4.5" width="6.4" height="6.4" rx="2"/><rect x="13.1" y="4.5" width="6.4" height="6.4" rx="2"/><rect x="4.5" y="13.1" width="6.4" height="6.4" rx="2"/><rect x="13.1" y="13.1" width="6.4" height="6.4" rx="2"/><circle cx="20" cy="20" r="1.4" fill="currentColor" stroke="none" style="fill:#818cf8"/></svg>HQ</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke"><path d="M7 3.5h6.6L19 9v10.5a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M13.5 3.5V9H19M9.5 13h5M9.5 16.5h3.4"/></svg>Intel</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke"><circle cx="12" cy="12" r="8.6"/><path d="m15.7 8.3-2.1 5.3-5.3 2.1 2.1-5.3z"/></svg>Disc</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke"><rect x="4" y="4.5" width="4.6" height="6.8" rx="1.4"/><rect x="10.3" y="4.5" width="4.6" height="9.6" rx="1.4"/><rect x="16.6" y="4.5" width="4.6" height="4.6" rx="1.4"/><path d="M4 19h16" opacity=".5"/></svg>Pipe</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke"><path d="M12 4.2 3 9l9 4.8L21 9z"/><path d="M6.5 11.2v4.6c0 1.5 2.7 2.9 5.5 2.9s5.5-1.4 5.5-2.9v-4.6"/></svg>Prep</div>
+        </div>
+        <div class="pick"><b>Effort:</b> ~2 days · <b>Payoff:</b> a recognizable product; icons shrink to ~1 KB each as vectors.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="body">
+        <span class="tag c">I3 · Duotone selected-state</span>
+        <h3 style="margin-top:10px">Filled selection, outline rest</h3>
+        <p class="desc">Material's own pattern: inactive = outline, active = filled inside a tinted container. Highest affordance for "where am I"; pairs with any kit and the <b>AccentSeed</b> system (selected hue follows the seed).</p>
+        <div class="iconrow" style="margin-top:14px">
+          <div class="iconcell on"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2" class="icfill"/><rect x="13" y="4" width="7" height="7" rx="2" class="icfill"/><rect x="4" y="13" width="7" height="7" rx="2" class="icfill"/><rect x="13" y="13" width="7" height="7" rx="2" class="icfill"/></svg>HQ</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v6h5"/></svg>Intel</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke-dim"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>Disc</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke-dim"><rect x="4" y="4" width="5" height="7" rx="1"/><rect x="10.5" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="5" height="5" rx="1"/></svg>Pipe</div>
+          <div class="iconcell"><svg viewBox="0 0 24 24" class="icstroke-dim"><path d="M12 4 2 9l10 5 10-5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>Prep</div>
+        </div>
+        <div class="pick"><b>Effort:</b> small · <b>Note:</b> needs paired Filled/Outlined icons per destination in <code>Destination.icon</code> (selected/unselected variants).</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ 5 · BYOX PHASES ══════════════ -->
+<section id="phases">
+  <div class="sechead"><span class="secnum">05</span><h2>Implementation blueprint — 5 BYOX phases mapped to this repo</h2><span class="note">whichever options you pick</span></div>
+  <div class="card">
+    <div class="body">
+      <div class="phase"><div class="pnum">P1</div><div>
+        <h4>Barebones skeleton — token contract</h4>
+        <p>Introduce a single <code>DesignTokens</code> object (spacing, radius, elevation, type scale refs) in <code>core:designsystem/theme</code>; rewire <code>AivanceTheme</code> to consume it. No screens change; all values match today. Gate: <code>:core:designsystem:compileDebugKotlin</code> + existing <code>AccentPaletteTest</code>.</p>
+      </div></div>
+      <div class="phase"><div class="pnum">P2</div><div>
+        <h4>Core state engine — theme selection</h4>
+        <p>Extend <code>ThemeConfig</code>/<code>AccentSeed</code> with the chosen kit (<code>SLATE</code> / <code>AURORA</code> / <code>PAPER</code>) and a <code>FontFamily</code> preference persisted via <code>UserPreferencesRepository</code> — the same DataStore path the notifications work just used. Pure, testable mapping functions.</p>
+      </div></div>
+      <div class="phase"><div class="pnum">P3</div><div>
+        <h4>Protocol & parser — component contract</h4>
+        <p>Harden the shared components (<code>AivanceHeroCard</code> kicker, <code>AivanceEmptyState</code>, <code>StatusChip</code>) against the new tokens: every color/shape flows from the theme, zero hardcoded hex in features (lint gate).</p>
+      </div></div>
+      <div class="phase"><div class="pnum">P4</div><div>
+        <h4>I/O & surfaces — fonts, icons, nav chrome</h4>
+        <p>Ship downloaded font families (<code>res/font</code> + <code>Type.kt</code>), the icon strategy in <code>Destination.icon</code> (paired selected/unselected if I3), and the nav change (N1: 4-item <code>rootDestinations</code> + orb → Assistant). Feature screens inherit; only the bar and hero chrome change first.</p>
+      </div></div>
+      <div class="phase"><div class="pnum">P5</div><div>
+        <h4>Verification gates</h4>
+        <p>Screenshot-compare each workspace (phone/tablet via <code>NavigationSuiteScaffold</code>), contrast audit ≥ 4.5:1 for body text in both <code>ThemeConfig</code> modes, and the existing <code>DestinationTest</code> extended for any bar change. Commit per phase, Conventional Commits.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="facts" style="margin-top:22px">
+    <span class="fact">Suggested combo: <b>Kit B + N1 + F1 + I3</b> → coherent "AI-native OS" identity</span>
+    <span class="fact">Lowest-risk combo: <b>Kit A + N0 + F3 + I1</b> → polish without IA change</span>
+    <span class="fact">Max-identity combo: <b>Kit C + N2 + F2 + I2</b> → a brand nobody else ships</span>
+  </div>
+</section>
+
+<footer>
+  <span>AiVance · Design rework references · generated from live codebase grounding (Destination.kt · AivanceNavGraph.kt · Type.kt · designsystem tokens)</span>
+  <span>docs/design/aivance-ui-rework-references.html</span>
+</footer>
+</div>
+</body>
+</html>

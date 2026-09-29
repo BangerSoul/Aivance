@@ -3,13 +3,8 @@
     <!-- Common -->
     <string name="back">वापस</string>
     <string name="cancel">रद्द करें</string>
-    <string name="save">सहेजें</string>
     <string name="edit">संपादित करें</string>
-    <string name="ok">ठीक है</string>
     <string name="done">पूर्ण</string>
-    <string name="delete">हटाएं</string>
-    <string name="email">ईमेल</string>
-    <string name="settings">सेटिंग्स</string>
     <string name="notifications">सूचनाएं</string>
 
     <!-- Splash -->
@@ -20,15 +15,6 @@
     <!-- Welcome -->
     <string name="welcome_brand">✦  AiVance</string>
     <string name="welcome_tagline">AI संचालित करियर ऑपरेटिंग सिस्टम</string>
-    <string name="welcome_quote">“एक नौकरी चाहने वाले द्वारा, हम सबके लिए ❤️”</string>
-    <string name="welcome_headline">AI के साथ अपना अगला अवसर तेजी से पाएं।</string>
-    <string name="feature_resume_intelligence">रिज़्यूमे इंटेलिजेंस</string>
-    <string name="feature_ats_optimization">ATS अनुकूलन</string>
-    <string name="feature_job_discovery">नौकरी खोज</string>
-    <string name="feature_recruiter_intelligence">भर्तीकर्ता इंटेलिजेंस</string>
-    <string name="feature_interview_preparation">इंटरव्यू तैयारी</string>
-    <string name="feature_career_analytics">करियर एनालिटिक्स</string>
-    <string name="get_started">शुरू करें</string>
     <string name="skip_for_now">अभी के लिए छोड़ें</string>
 
     <!-- Login -->
@@ -124,8 +110,8 @@
     <string name="job_provider_desc">चुनें कि आप नौकरी लिस्टिंग और भर्तीकर्ता विवरण कहां से प्राप्त करना चाहते हैं।</string>
     <string name="enrichment_optional">एनरिचमेंट सेवा (वैकल्पिक)</string>
     <string name="enrichment_desc">सत्यापित भर्तीकर्ता संपर्क और कंपनी इंटेलिजेंस खोजें। आउटरीच के लिए अत्यधिक अनुशंसित।</string>
-    <string name="skip_all">सभी छोड़ें — मैं बाद में कॉन्फ़िगर करूंगा</string>
-    <string name="configure_later">आप बाद में सेटिंग्स में प्रदाता कॉन्फ़िगर कर सकते हैं।</string>
+    <string name="skip_all">AI प्रदाताओं के बिना जारी रखें</string>
+    <string name="configure_later">जॉब खोज मुफ़्त प्रदाताओं से काम करती रहेगी; असिस्टेंट अपने बिल्ट-इन फ़ॉलबैक का उपयोग करेगा। आप AI प्रदाता कभी भी सेटिंग्स में कॉन्फ़िगर कर सकते हैं।</string>
     <string name="validate_continue">सत्यापित करें और जारी रखें</string>
     <string name="all_set">सब तैयार है!</string>
     <string name="ai_engine">AI इंजन</string>
@@ -135,75 +121,128 @@
     <string name="go_to_dashboard">डैशबोर्ड पर जाएं</string>
 
     <!-- Profile -->
-    <string name="profile_title">प्रोफ़ाइल</string>
-    <string name="profile_photo_desc">प्रोफ़ाइल फोटो</string>
-    <string name="change_photo">फोटो बदलें</string>
-    <string name="your_name_placeholder">आपका नाम</string>
-    <string name="add_current_role">अपनी वर्तमान भूमिका जोड़ें</string>
-    <string name="designation_at"> पर </string>
-    <string name="tap_camera_hint">फोटो बदलने के लिए कैमरा टैप करें</string>
-    <string name="personal_section">व्यक्तिगत</string>
-    <string name="full_name">पूरा नाम</string>
-    <string name="email_locked">ईमेल आपके खाते से जुड़ा है और इसे बदला नहीं जा सकता।</string>
-    <string name="phone_optional">फ़ोन (वैकल्पिक)</string>
-    <string name="date_of_birth">जन्म तिथि</string>
-    <string name="linkedin_optional">LinkedIn URL (वैकल्पिक)</string>
-    <string name="github_optional">GitHub URL (वैकल्पिक)</string>
-    <string name="career_section">करियर</string>
-    <string name="current_role">वर्तमान भूमिका</string>
     <string name="company">कंपनी</string>
     <string name="target_role">लक्ष्य भूमिका</string>
-    <string name="years_experience">अनुभव के वर्ष</string>
-    <string name="years_short">%1$d वर्ष</string>
-    <string name="skills">कौशल</string>
-    <string name="no_skills">अभी तक कोई कौशल नहीं जोड़ा गया।</string>
-    <string name="remove_skill_desc">%1$s हटाएं</string>
-    <string name="settings_sub">सूचनाएं, गोपनीयता, प्रदाता और अधिक</string>
-    <string name="quick_access">त्वरित पहुंच</string>
     <string name="saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="interview">इंटरव्यू</string>
-    <string name="career_analytics">करियर एनालिटिक्स</string>
-    <string name="career_analytics_sub">KPIs, रुझान और अंतर्दृष्टि</string>
-    <string name="learning_hub">लर्निंग हब</string>
-    <string name="learning_hub_sub">कौशल और संसाधन</string>
-    <string name="notifications_sub">अलर्ट और अनुस्मारक</string>
-    <string name="provider_management">प्रदाता प्रबंधन</string>
-    <string name="provider_management_sub">AI, नौकरी और एनरिचमेंट प्रदाता</string>
-    <string name="pick">चुनें</string>
-    <string name="add_skill">+ जोड़ें</string>
-    <string name="skill_placeholder">कौशल</string>
-    <string name="add_skill_desc">कौशल जोड़ें</string>
 
-    <!-- Settings -->
-    <string name="settings_title">सेटिंग्स</string>
-    <string name="section_general">सामान्य</string>
-    <string name="appearance_item">दिखावट</string>
-    <string name="appearance_item_sub">थीम, एक्सेंट और डायनामिक रंग</string>
-    <string name="section_notifications">सूचनाएं</string>
-    <string name="job_alerts">नौकरी अलर्ट</string>
-    <string name="job_alerts_sub">नई मिलती-जुलती नौकरियां</string>
-    <string name="interview_reminders">इंटरव्यू अनुस्मारक</string>
-    <string name="interview_reminders_sub">आगामी सत्र</string>
-    <string name="follow_up_reminders">फॉलो-अप अनुस्मारक</string>
-    <string name="follow_up_reminders_sub">आवेदन फॉलो-अप</string>
-    <string name="section_providers">प्रदाता</string>
-    <string name="provider_management_item">प्रदाता प्रबंधन</string>
-    <string name="provider_management_item_sub">AI, नौकरी और एनरिचमेंट प्रदाता</string>
-    <string name="section_privacy">गोपनीयता और सुरक्षा</string>
-    <string name="privacy_center_item">गोपनीयता केंद्र</string>
-    <string name="privacy_center_item_sub">एन्क्रिप्शन, निर्यात और हटाना</string>
-    <string name="analytics_insights">एनालिटिक्स अंतर्दृष्टि</string>
-    <string name="analytics_insights_sub">विस्तृत करियर KPIs</string>
-    <string name="export_my_data">मेरा डेटा निर्यात करें</string>
-    <string name="export_my_data_sub">अपना डेटा JSON के रूप में डाउनलोड करें</string>
-    <string name="delete_account">खाता हटाएं</string>
-    <string name="delete_account_sub">अपना डेटा स्थायी रूप से हटाएं</string>
-    <string name="section_about">हमारे बारे में</string>
-    <string name="about_item">Aivance के बारे में</string>
-    <string name="sign_out">साइन आउट</string>
-    <string name="delete_account_confirm">खाता हटाएं?</string>
-    <string name="delete_account_confirm_body">यह आपकी प्रोफ़ाइल और करियर डेटा को स्थायी रूप से हटा देगा। यह क्रिया पूर्ववत नहीं की जा सकती।</string>
-    <string name="language">भाषा</string>
-    <string name="selected">चयनित</string>
-    <string name="language_english">English</string>
+    <!-- On-device model download (WorkManager worker) -->
+    <string name="model_download_channel_name">ऑन-डिवाइस मॉडल डाउनलोड</string>
+    <string name="model_download_channel_desc">ऑन-डिवाइस AI मॉडल डाउनलोड की प्रगति</string>
+    <string name="model_download_notification_title">ऑन-डिवाइस मॉडल डाउनलोड हो रहा है</string>
+    <string name="model_download_notification_percent">%1$d%%</string>
+    <string name="model_download_success_title">मॉडल तैयार है</string>
+    <string name="model_download_success_text">ऑन-डिवाइस मॉडल डाउनलोड होकर ऑफ़लाइन उपयोग के लिए तैयार है।</string>
+    <string name="model_download_failed_title">मॉडल डाउनलोड विफल</string>
+    <string name="model_download_failed_text">डाउनलोड बाधित हुआ। यह पृष्ठभूमि में फिर से प्रयास करेगा।</string>
+
+    <string name="profile_tab_identity">पहचान</string>
+    <string name="profile_tab_system">सिस्टम</string>
+    <string name="providers_title">प्रदाता</string>
+    <string name="profile_hub_title">पहचान हब</string>
+    <string name="profile_hub_subtitle">अपने करियर ऑपरेटिंग सिस्टम को नियंत्रित करें</string>
+    <string name="profile_section_personal">व्यक्तिगत जानकारी</string>
+    <string name="profile_full_name">पूरा नाम</string>
+    <string name="profile_phone">फ़ोन</string>
+    <string name="profile_email">ईमेल</string>
+    <string name="profile_section_experience">पेशेवर अनुभव</string>
+    <string name="profile_current_role">वर्तमान भूमिका</string>
+    <string name="profile_experience">अनुभव</string>
+    <string name="profile_section_preferences">करियर प्राथमिकताएँ</string>
+    <string name="profile_preferences_hint">ये सेटिंग्स आपकी सिफ़ारिशों को प्रभावित करती हैं।</string>
+    <string name="profile_remote_work">रिमोट कार्य</string>
+    <string name="profile_visa_required">वीज़ा स्पॉनसरशिप आवश्यक</string>
+    <string name="profile_visa">वीज़ा स्पॉनसरशिप</string>
+    <string name="profile_yes">हाँ</string>
+    <string name="profile_no">नहीं</string>
+    <string name="profile_required">आवश्यक</string>
+    <string name="profile_not_required">आवश्यक नहीं</string>
+    <string name="profile_section_goal">करियर लक्ष्य</string>
+    <string name="profile_target_role_hint">उदा. प्रिंसिपल सॉफ़्टवेयर इंजीनियर</string>
+    <string name="profile_section_skills">रुचि के कौशल</string>
+    <string name="profile_add_skill">+ कौशल जोड़ें</string>
+    <string name="profile_skills_label">कौशल</string>
+    <string name="profile_section_salary">वेतन अपेक्षा</string>
+    <string name="profile_salary_label">वार्षिक वेतन</string>
+    <string name="profile_salary_hint">उदा. $150,000</string>
+    <string name="profile_section_industries">पसंदीदा उद्योग</string>
+    <string name="profile_add_industry_chip">+ जोड़ें</string>
+    <string name="profile_industries_label">उद्योग</string>
+    <string name="profile_saving">सहेज रहा है...</string>
+    <string name="profile_save_changes">परिवर्तन सहेजें</string>
+    <string name="profile_add_skill_title">कौशल जोड़ें</string>
+    <string name="profile_skill_label">कौशल</string>
+    <string name="profile_skill_hint">उदा. Jetpack Compose</string>
+    <string name="profile_add">जोड़ें</string>
+    <string name="profile_add_industry_title">पसंदीदा उद्योग जोड़ें</string>
+    <string name="profile_industry_label">उद्योग</string>
+    <string name="profile_industry_hint">उदा. फ़िंटेक</string>
+    <string name="profile_not_provided">प्रदान नहीं किया गया</string>
+    <string name="providers_loading">प्रदाता लोड हो रहे हैं…</string>
+    <string name="providers_retry">पुनः प्रयास करें</string>
+    <string name="providers_subtitle">अपनी AI और नौकरी कनेक्टिविटी प्रबंधित करें।</string>
+    <string name="providers_section_ai">AI</string>
+    <string name="providers_section_job_boards">नौकरी बोर्ड</string>
+    <string name="providers_enabled">सक्रिय</string>
+    <string name="providers_disabled">निष्क्रिय</string>
+    <string name="providers_delete_model">मॉडल हटाएँ</string>
+    <string name="providers_not_downloaded">मॉडल डाउनलोड नहीं हुआ है — पूरी तरह ऑफ़लाइन उपयोग के लिए एक बार डाउनलोड करें।</string>
+    <string name="providers_model_label">मॉडल</string>
+    <string name="providers_select_model">चुनें…</string>
+    <string name="providers_save">सहेजें</string>
+    <string name="providers_testing">जाँच हो रही है…</string>
+    <string name="providers_test">जाँचें</string>
+    <string name="providers_health_healthy">स्वस्थ</string>
+    <string name="providers_health_degraded">कमज़ोर</string>
+    <string name="providers_health_unhealthy">अस्वस्थ</string>
+    <string name="providers_health_unknown">अज्ञात</string>
+    <string name="providers_download_dialog_title">ऑन-डिवाइस मॉडल डाउनलोड करें</string>
+    <string name="providers_model_size">मॉडल आकार: %1$s (%2$d बाइट)</string>
+    <string name="providers_free_storage">मुफ़्त स्टोरेज: %1$s</string>
+    <string name="providers_ram_warning">इस डिवाइस में 4 GB से कम RAM है। पूरा मॉडल धीमा चल सकता है।</string>
+    <string name="providers_storage_blocked">पूरे मॉडल के लिए पर्याप्त मुफ़्त स्टोरेज नहीं है। छोटा मॉडल फ़िट होता है — उसी का उपयोग करें।</string>
+    <string name="providers_download_compact">छोटा मॉडल डाउनलोड करें (%1$s)</string>
+    <string name="providers_compact_note">बहुत कम स्टोरेज और RAM का उपयोग करता है।</string>
+    <string name="providers_download">डाउनलोड करें</string>
+    <string name="system_controls_title">सिस्टम नियंत्रण</string>
+    <string name="system_appearance_item">रूप और थीम</string>
+    <string name="system_security_section">सुरक्षा और गोपनीयता</string>
+    <string name="system_about_section">ऐप के बारे में</string>
+    <string name="system_data_section">डेटा प्रबंधन</string>
+    <string name="system_reset">सभी सेटिंग रीसेट करें</string>
+    <string name="system_sign_out">साइन आउट</string>
+    <string name="system_version_banner">AiVance v%1$s (बीटा)</string>
+    <string name="system_tagline">आपका करियर ऑपरेटिंग सिस्टम</string>
+    <string name="privacy_passphrase_required">बैकअप पासफ़्रेज़ आवश्यक</string>
+    <string name="privacy_passphrase_invalid">अमान्य पासफ़्रेज़। कृपया इस बैकअप फ़ाइल का निर्यात पासफ़्रेज़ दोबारा दर्ज करें।</string>
+    <string name="privacy_passphrase_body">यह बैकअप किसी अन्य डिवाइस पर या कस्टम पासफ़्रेज़ से बनाया गया था। डेटा डिक्रिप्ट और पुनर्स्थापित करने के लिए अपना बैकअप निर्यात पासफ़्रेज़ दर्ज करें।</string>
+    <string name="privacy_passphrase_label">निर्यात पासफ़्रेज़</string>
+    <string name="privacy_decrypt_restore">डिक्रिप्ट और पुनर्स्थापित करें</string>
+    <string name="profile_configure_provider">%1$s कॉन्फ़िगर करें</string>
+
+    <plurals name="profile_experience_years">
+        <item quantity="one">%1$d वर्ष</item>
+        <item quantity="other">%1$d वर्ष</item>
+    </plurals>
+
+    <!-- Remote work resources hub -->
+    <string name="resources_title">रिमोट कार्य संसाधन</string>
+    <string name="resources_hub_title">रिमोट कार्य और करियर हब</string>
+    <string name="resources_hub_subtitle">चुनी हुई संदर्भ प्लेटफ़ॉर्म और इंटरव्यू तैयारी गाइड</string>
+    <string name="resources_cat_job_boards">जॉब बोर्ड</string>
+    <string name="resources_cat_curated">चयनित सूचियां</string>
+    <string name="resources_cat_prep">इंटरव्यू तैयारी</string>
+    <string name="resources_cat_companies">रिमोट कंपनियां</string>
+    <string name="open_link">लिंक खोलें</string>
+
+    <!-- On-device model download -->
+    <string name="download_model">मॉडल डाउनलोड करें</string>
+    <string name="continue_label">जारी रखें</string>
+    <string name="dismiss">खारिज करें</string>
+    <string name="model_downloaded_status">डाउनलोड हो गया</string>
+    <string name="model_offline_hint">पूरी तरह ऑफ़लाइन चलता है — किसी API कुंजी की ज़रूरत नहीं।</string>
+    <string name="model_downloading_percent">मॉडल डाउनलोड हो रहा है… %1$d%%</string>
+    <string name="model_download_background_hint">यह एक बड़ी फ़ाइल है। आप ऐप को बैकग्राउंड में रख सकते हैं — डाउनलोड जारी रहेगा।</string>
+    <string name="model_download_required">इस प्रदाता का उपयोग करने के लिए मॉडल डाउनलोड करें</string>
+    <string name="model_download_required_hint">यह मॉडल पूरी तरह आपके डिवाइस पर चलता है — कोई API कुंजी नहीं, कोई क्लाउड नहीं। एक बार डाउनलोड होने के बाद यह ऑफ़लाइन काम करता है।</string>
+
 </resources>

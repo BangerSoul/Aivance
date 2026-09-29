@@ -12,7 +12,21 @@ data class CareerState(
     val recommendations: List<CareerRecommendation> = emptyList(),
     val nextBestAction: CareerRecommendation? = null,
     val lifecycleStage: CareerLifecycleStage = CareerLifecycleStage.ONBOARDING,
-    val intelligenceHub: CareerIntelligence? = null
+    val intelligenceHub: CareerIntelligence? = null,
+    val graphNodeCount: Int = 0,
+    val graphEdgeCount: Int = 0,
+    val lastEventTimestamp: Long = 0L,
+    /**
+     * Revision of the graph projection that has been *durably persisted*.
+     *
+     * Graph persistence runs off the state transformation (R2), so a state can be built
+     * before its projection lands in the store. The writer bumps this only after a real
+     * write, which (a) makes the post-write state structurally distinct so it is always
+     * delivered, letting graph readers re-read a slice that is now guaranteed fresh, and
+     * (b) terminates after one extra emission because the re-projected graph is
+     * content-identical and is never re-persisted.
+     */
+    val graphRevision: Long = 0L
 )
 
 @Serializable
@@ -29,7 +43,13 @@ data class ProfileState(
 @Serializable
 data class IntelligenceState(
     val latestResumeId: Long? = null,
-    val atsScore: Int = 0,
+    /**
+     * Latest measured ATS score, or `null` when no ATS report exists yet.
+     *
+     * Nullable on purpose (R3-1): the dashboard used to present the `0` floor as a real
+     * "ATS Score", which reads as a measured result even though no analysis had ever run.
+     */
+    val atsScore: Int? = null,
     val lastScanDate: Long? = null,
     val totalResumes: Int = 0
 )
@@ -50,7 +70,13 @@ data class PipelineState(
 
 @Serializable
 data class GrowthState(
-    val careerScore: Int = 0,
+    /**
+     * Composite career score, or `null` when no dimension has been measured yet.
+     *
+     * Nullable on purpose (R3-1): a score of `18` used to be rendered for a brand-new install
+     * because a hardcoded readiness default was fed into the composite.
+     */
+    val careerScore: Int? = null,
     val weeklyApplicationCount: Int = 0,
     val topStrengths: List<String> = emptyList(),
     val keyBlockers: List<String> = emptyList()

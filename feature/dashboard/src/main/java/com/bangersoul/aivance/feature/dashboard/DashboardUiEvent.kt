@@ -9,4 +9,10 @@ sealed interface DashboardUiEvent {
     data object NavigateToTracker : DashboardUiEvent
     data object NavigateToSettings : DashboardUiEvent
     data object Retry : DashboardUiEvent
+
+    /** The user tapped a missing-skill chip to see jobs demanding that skill. */
+    data class ExploreSkillJobs(val skill: String) : DashboardUiEvent
+
+    /** The user tapped the learn action on a missing-skill chip. */
+    data class LearnSkill(val skill: String) : DashboardUiEvent
 }

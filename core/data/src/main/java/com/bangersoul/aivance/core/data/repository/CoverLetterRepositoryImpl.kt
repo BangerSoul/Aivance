@@ -82,30 +82,33 @@ class CoverLetterRepositoryImpl @Inject constructor(
     override suspend fun generateCoverLetter(
         resumeId: Long,
         resumeVersionId: Long,
-        jobId: Long,
+        jobId: Long?,
         recruiterId: String?,
         writingStyle: String
     ): CoreResult<Long> = runCatchingCore {
-        val job = jobDao.getJobWithDetailsById(jobId) ?: throw Exception("Job not found")
+        val job = jobId?.let { jobDao.getJobWithDetailsById(it) }
+        val (companyName, roleTitle) = letterTarget(job)
 
         val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
             ?: throw Exception("No AI provider available")
 
-        val prompt = buildPrompt(job.company.name, job.job.title, writingStyle)
+        val prompt = buildPrompt(companyName, roleTitle, writingStyle)
         val content = provider.generateText(prompt).getOrNull() ?: throw Exception("AI generation failed")
 
-        persistLetter(jobId, resumeVersionId, recruiterId, writingStyle, job.company.name, job.job.title, content)
+        persistLetter(jobId, resumeVersionId, recruiterId, writingStyle, companyName, roleTitle, content)
     }
 
     override fun streamGenerateCoverLetter(
         resumeId: Long,
         resumeVersionId: Long,
-        jobId: Long,
+        jobId: Long?,
         recruiterId: String?,
         writingStyle: String
     ): Flow<String> = flow {
-        val job = jobDao.getJobWithDetailsById(jobId) ?: throw Exception("Job not found")
-        val prompt = buildPrompt(job.company.name, job.job.title, writingStyle)
+        // jobId null → generic letter ("Generate cover letter" without a job).
+        val job = jobId?.let { jobDao.getJobWithDetailsById(it) }
+        val (companyName, roleTitle) = letterTarget(job)
+        val prompt = buildPrompt(companyName, roleTitle, writingStyle)
 
         val streamingProvider =
             providerManager.getBestProviderFor(ProviderCapability.AI.Streaming) as? AIProvider
@@ -129,12 +132,25 @@ class CoverLetterRepositoryImpl @Inject constructor(
 
         persistLetter(
             jobId, resumeVersionId, recruiterId, writingStyle,
-            job.company.name, job.job.title, content.toString()
+            companyName, roleTitle, content.toString()
         )
     }
 
+    /**
+     * Resolves the letter's audience: a real job listing when one is attached,
+     * otherwise a neutral generic target so a letter can be generated without
+     * picking a job first.
+     */
+    private fun letterTarget(job: com.bangersoul.aivance.core.database.model.JobWithDetails?): Pair<String, String> {
+        return if (job != null) {
+            job.company.name to job.job.title
+        } else {
+            "Your Next Employer" to "your target role"
+        }
+    }
+
     private suspend fun persistLetter(
-        jobId: Long,
+        jobId: Long?,
         resumeVersionId: Long,
         recruiterId: String?,
         writingStyle: String,

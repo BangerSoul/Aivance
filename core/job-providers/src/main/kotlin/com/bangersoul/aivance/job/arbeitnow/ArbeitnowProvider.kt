@@ -1,11 +1,11 @@
 package com.bangersoul.aivance.job.arbeitnow
 
 import com.bangersoul.aivance.core.common.enums.JobSortOrder
-import com.bangersoul.aivance.core.common.enums.RemoteType
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
 import com.bangersoul.aivance.core.common.result.ProviderError
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.job.base.ProviderHttpException
 import com.bangersoul.aivance.job.base.RestJobProvider
 import com.bangersoul.aivance.job.cache.JobCache
 import com.bangersoul.aivance.job.mapper.JobMapper
@@ -46,16 +46,27 @@ class ArbeitnowProvider(
         sortOrder: JobSortOrder,
         page: Int
     ): List<JobListing> {
+        // NOTE: the API's `remote` query param is a no-op. Verified live against
+        // https://www.arbeitnow.com/api/job-board-api (Aug 2026): identical
+        // 175-job responses with and without `remote=true`, and only a handful
+        // of listings carry `remote: true`. Sending it would imply API-level
+        // remote filtering that never happens, so we omit it; the client-side
+        // matcher accepts remote-signaling listings even when the board's
+        // structured field says ON_SITE.
         val response = api.getJobs(
             page = page,
             search = filter.query.ifBlank { null },
-            location = filter.location.ifBlank { null },
-            remote = filter.remoteType?.let { it == RemoteType.REMOTE }
+            location = filter.location.ifBlank { null }
         )
         if (response.isSuccessful) {
             return response.body()?.data?.map { JobMapper.mapToJobListing(it, metadata.id) } ?: emptyList()
         } else {
-            throw Exception("Arbeitnow API failed: ${response.code()}")
+            throw ProviderHttpException(
+                providerId = metadata.id,
+                statusCode = response.code(),
+                message = "Arbeitnow API failed",
+                retryAfterSeconds = response.headers()["Retry-After"]?.toLongOrNull()
+            )
         }
     }
 

@@ -85,6 +85,9 @@ class SyncManager @Inject constructor(
     private val workManager = WorkManager.getInstance(context)
     private val pendingQueue = ConcurrentLinkedQueue<PendingOperation>()
 
+    /** Guards against concurrent [drainQueue] passes over [pendingQueue]. */
+    private val draining = java.util.concurrent.atomic.AtomicBoolean(false)
+
     private val _syncState = MutableStateFlow(SyncState.IDLE)
     val syncState: StateFlow<SyncState> = _syncState.asStateFlow()
 
@@ -119,48 +122,78 @@ class SyncManager @Inject constructor(
     }
 
     suspend fun drainQueue() {
-        if (!connectivityMonitor.isOnline) {
-            _syncState.value = SyncState.OFFLINE
+        // Only one drain may be in flight. enqueue() launches a drain per call,
+        // so without this guard N rapid enqueues raced N coroutines over the same
+        // queue. A suppressed caller is safe: the in-flight drain re-polls below
+        // before it exits, so anything enqueued meanwhile is still picked up.
+        if (!draining.compareAndSet(false, true)) {
+            Timber.d("Drain already in flight — skipping duplicate drain request")
             return
         }
 
-        _syncState.value = SyncState.SYNCING
-        var failures = 0
-        val batch = mutableListOf<PendingOperation>()
-
-        while (true) {
-            val op = pendingQueue.poll() ?: break
-            batch.add(op)
-        }
-
-        if (batch.isEmpty()) {
-            _syncState.value = SyncState.IDLE
-            return
-        }
-
-        for (operation in batch) {
-            val result = executeWithRetry(operation)
-            when (result) {
-                is SyncResult.Success -> Timber.d("Sync OK: %s [%s]", operation.type, operation.entityId)
-                is SyncResult.Failure -> {
-                    failures++
-                    if (result.retryable) reenqueueWithBackoff(operation)
-                    _syncState.tryEmit(SyncState.PARTIAL_FAILURE)
-                }
-                is SyncResult.Conflict -> {
-                    failures++
-                    Timber.w("Sync conflict: %s [%s] — %s", operation.type, operation.entityId, result.resolution)
-                }
-                is SyncResult.Skipped -> Timber.d("Sync skipped: %s — %s", operation.type, result.reason)
+        try {
+            if (!connectivityMonitor.isOnline) {
+                _syncState.value = SyncState.OFFLINE
+                return
             }
-        }
 
-        _pendingCount.value = pendingQueue.size
-        _lastSyncTime.value = System.currentTimeMillis()
-        _syncState.value = when {
-            failures == 0 -> SyncState.SUCCESS
-            failures < batch.size -> SyncState.PARTIAL_FAILURE
-            else -> SyncState.FAILURE
+            _syncState.value = SyncState.SYNCING
+            var totalFailures = 0
+            var totalProcessed = 0
+
+            while (true) {
+                val batch = mutableListOf<PendingOperation>()
+                while (true) {
+                    val op = pendingQueue.poll() ?: break
+                    batch.add(op)
+                }
+
+                if (batch.isEmpty()) break
+
+                var reenqueued = 0
+                for (operation in batch) {
+                    val result = executeWithRetry(operation)
+                    when (result) {
+                        is SyncResult.Success -> Timber.d("Sync OK: %s [%s]", operation.type, operation.entityId)
+                        is SyncResult.Failure -> {
+                            totalFailures++
+                            if (result.retryable) {
+                                reenqueueWithBackoff(operation)
+                                reenqueued++
+                            }
+                            _syncState.tryEmit(SyncState.PARTIAL_FAILURE)
+                        }
+                        is SyncResult.Conflict -> {
+                            totalFailures++
+                            Timber.w("Sync conflict: %s [%s] — %s", operation.type, operation.entityId, result.resolution)
+                        }
+                        is SyncResult.Skipped -> Timber.d("Sync skipped: %s — %s", operation.type, result.reason)
+                    }
+                }
+
+                totalProcessed += batch.size
+
+                // reenqueueWithBackoff puts retryable failures straight back on the
+                // queue, so loop only while there is genuinely NEW work waiting.
+                // If everything we just handled went back, stop — otherwise a
+                // persistently failing provider would spin this loop forever.
+                if (pendingQueue.size <= reenqueued) break
+            }
+
+            if (totalProcessed == 0) {
+                _syncState.value = SyncState.IDLE
+                return
+            }
+
+            _pendingCount.value = pendingQueue.size
+            _lastSyncTime.value = System.currentTimeMillis()
+            _syncState.value = when {
+                totalFailures == 0 -> SyncState.SUCCESS
+                totalFailures < totalProcessed -> SyncState.PARTIAL_FAILURE
+                else -> SyncState.FAILURE
+            }
+        } finally {
+            draining.set(false)
         }
     }
 

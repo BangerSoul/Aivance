@@ -3,11 +3,8 @@ package com.bangersoul.aivance.core.data.repository
 import com.bangersoul.aivance.core.database.dao.CompanyDao
 import com.bangersoul.aivance.core.database.dao.JobDao
 import com.bangersoul.aivance.core.database.dao.SearchDao
-import com.bangersoul.aivance.core.database.dao.TrackerDao
 import com.bangersoul.aivance.core.data.source.JobLocalDataSourceImpl
 import com.bangersoul.aivance.core.database.model.CompanyEntity
-import com.bangersoul.aivance.core.database.model.JobApplicationEntity
-import com.bangersoul.aivance.core.database.model.JobApplicationWithDetails
 import com.bangersoul.aivance.core.database.model.JobEntity
 import com.bangersoul.aivance.core.database.model.JobWithDetails
 import com.bangersoul.aivance.core.database.model.SavedSearchEntity
@@ -33,7 +30,6 @@ class JobRepositoryIntegrationTest {
     private lateinit var mockJobDao: JobDao
     private lateinit var mockCompanyDao: CompanyDao
     private lateinit var mockSearchDao: SearchDao
-    private lateinit var mockTrackerDao: TrackerDao
     private lateinit var localDataSource: JobLocalDataSourceImpl
 
     @Before
@@ -41,12 +37,10 @@ class JobRepositoryIntegrationTest {
         mockJobDao = mockk()
         mockCompanyDao = mockk()
         mockSearchDao = mockk()
-        mockTrackerDao = mockk()
         localDataSource = JobLocalDataSourceImpl(
             jobDao = mockJobDao,
             companyDao = mockCompanyDao,
-            searchDao = mockSearchDao,
-            trackerDao = mockTrackerDao
+            searchDao = mockSearchDao
         )
     }
 
@@ -111,32 +105,6 @@ class JobRepositoryIntegrationTest {
         val jobId = localDataSource.saveJob(sampleJob, companyId)
 
         assertTrue(jobId > 0)
-    }
-
-    @Test
-    fun `getApplications maps tracker entities correctly`() = runBlocking {
-        val companyEntity = sampleCompany()
-        val jobEntity = sampleJob(1, "Android Engineer")
-        val appEntity = JobApplicationEntity(
-            id = 1, jobId = 1, status = "INTERVIEWING",
-            dateApplied = System.currentTimeMillis(),
-            salaryRange = "$150k-$200k", notes = "Phone screen scheduled",
-            lastModified = System.currentTimeMillis()
-        )
-
-        every { mockTrackerDao.getApplications() } returns flowOf(
-            listOf(
-                JobApplicationWithDetails(
-                    application = appEntity,
-                    job = JobWithDetails(job = jobEntity, company = companyEntity)
-                )
-            )
-        )
-
-        val applications = localDataSource.getApplications().first()
-
-        assertEquals(1, applications.size)
-        assertEquals("INTERVIEWING", applications[0].status.name)
     }
 
     @Test

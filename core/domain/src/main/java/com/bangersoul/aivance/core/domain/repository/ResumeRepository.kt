@@ -1,9 +1,8 @@
 package com.bangersoul.aivance.core.domain.repository
 
 import android.net.Uri
-import com.bangersoul.aivance.core.common.model.AtsResult
+import com.bangersoul.aivance.core.common.model.AtsReport
 import com.bangersoul.aivance.core.common.model.Resume
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
 import com.bangersoul.aivance.core.common.model.ResumeSection
 import com.bangersoul.aivance.core.common.model.ResumeVersion
 import com.bangersoul.aivance.core.common.result.CoreResult
@@ -25,6 +24,6 @@ interface ResumeRepository {
     suspend fun parseResume(resumeId: Long): CoreResult<Unit>
 
     // Analysis
-    suspend fun analyzeResume(resumeId: Long, versionId: Long, jobDescription: String): CoreResult<ResumeAnalysis>
-    fun getAtsResults(resumeId: Long): Flow<CoreResult<List<AtsResult>>>
+    suspend fun analyzeResume(resumeId: Long, versionId: Long, jobDescription: String): CoreResult<AtsReport>
 }
+

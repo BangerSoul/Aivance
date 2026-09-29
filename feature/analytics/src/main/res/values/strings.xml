@@ -1,20 +1,25 @@
 <resources>
-    <string name="analytics_title">Career Intelligence</string>
-    <string name="analytics_unavailable_title">Analytics unavailable</string>
-    <string name="analytics_unavailable_detail">Snapshot data could not be loaded from the local database.</string>
-    <string name="analytics_current_score">Current Career Score</string>
-    <string name="analytics_score_top">Top-tier candidate readiness</string>
-    <string name="analytics_score_strong">Strong momentum — keep optimizing</string>
-    <string name="analytics_score_start">Every action moves the score — start with a resume scan</string>
-    <string name="analytics_score_trend">Score Trend</string>
-    <string name="analytics_dimensions">Performance Dimensions</string>
-    <string name="analytics_score_history">Score History</string>
-    <string name="analytics_funnel">Application Funnel</string>
-    <string name="analytics_recommendations">Priority Recommendations</string>
-    <string name="analytics_no_recommendations">No recommendations yet</string>
-    <string name="analytics_no_recommendations_detail">As you use the app, the intelligence engine will surface prioritized actions.</string>
-    <string name="analytics_dismiss">Dismiss</string>
-    <string name="analytics_funnel_applications">Applications</string>
-    <string name="analytics_funnel_interviews">Interviews</string>
-    <string name="analytics_funnel_offers">Offers</string>
+    <!-- Shown instead of three tabs of `—` / `0%` placeholders (AUDIT 19). -->
+    <string name="analytics_not_measured">Nothing scored yet</string>
+    <string name="analytics_not_measured_detail">Career health, progression and the outcome simulator all read from your scoring history, so they stay hidden until there is something real to show.</string>
+    <string name="analytics_not_measured_action">Score my resume</string>
+    <string name="analytics_intelligence_center">Intelligence Center</string>
+    <string name="analytics_predictive_insights">Predictive Career Insights</string>
+    <string name="analytics_score_progression">Score Progression</string>
+    <string name="analytics_score_progression_chart">Score progression chart</string>
+    <string name="analytics_outcome_simulator">Outcome Simulator</string>
+    <string name="analytics_outcome_simulator_detail">Adjust values to see projected impacts on your career.</string>
+    <string name="analytics_simulated_outcome">Simulated Outcome</string>
+    <string name="back">Back</string>
+
+    <string name="analytics_hireability_score">Hireability Score: %1$d</string>
+    <string name="analytics_boost_score">Boost Score</string>
+    <string name="analytics_interview_chance">Interview Chance</string>
+    <string name="analytics_offer_chance">Offer Chance</string>
+    <string name="analytics_health_dimensions">Health Dimensions</string>
+    <string name="analytics_target_ats_score">Target ATS Score: %1$d%%</string>
+    <string name="analytics_target_prep">Target Interview Prep: %1$d%%</string>
+    <string name="analytics_projected_score">Projected Score</string>
+    <string name="analytics_int_probability">Int. Probability</string>
+
 </resources>

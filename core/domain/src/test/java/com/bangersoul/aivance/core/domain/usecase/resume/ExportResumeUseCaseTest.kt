@@ -4,10 +4,12 @@ import com.bangersoul.aivance.core.common.model.ResumeSection
 import com.bangersoul.aivance.core.common.model.ResumeVersion
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
+import com.bangersoul.aivance.core.domain.usecase.resume.jsonresume.JsonResumeConverter
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -61,15 +63,22 @@ class ExportResumeUseCaseTest {
     }
 
     @Test
-    fun `should export resume as JSON`() = runTest {
+    fun `should export resume as standard JSON Resume schema`() = runTest {
         coEvery { resumeRepository.getVersions(1L) } returns flowOf(Result.Success(listOf(sampleVersion())))
 
         val result = useCase(ExportResumeRequest(resumeId = 1L, versionId = 5L, format = ExportFormat.JSON))
 
         assertTrue(result.isSuccess)
         val text = (result as Result.Success).data
-        assertTrue(text.contains("\"versionName\""))
-        assertTrue(text.contains("\"title\""))
+        // Standard JSON Resume schema: basics + work entries, and it must round-trip
+        // back through the app's own importer (R-03 interop contract).
+        assertTrue(text.contains("\"basics\""))
+        assertTrue(text.contains("\"work\""))
+        assertTrue(text.contains("Kotlin developer with 5 years"))
+
+        val imported = JsonResumeConverter.importFromJsonResume(text, resumeId = 1L)
+        assertTrue(imported.sections.isNotEmpty())
+        assertEquals("Kotlin developer with 5 years", imported.sections.single().content)
     }
 
     @Test

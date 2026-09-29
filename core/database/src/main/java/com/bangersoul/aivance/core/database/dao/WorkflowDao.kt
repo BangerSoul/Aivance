@@ -43,6 +43,9 @@ interface WorkflowDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTimelineEvent(event: ApplicationTimelineEntity): Long
 
+    @Query("DELETE FROM application_timeline WHERE id = :id")
+    suspend fun deleteTimelineEvent(id: Long)
+
     // Tasks
     @Query("SELECT * FROM application_tasks WHERE applicationId = :applicationId ORDER BY dueDate ASC")
     fun getTasksForApplication(applicationId: Long): Flow<List<TaskEntity>>

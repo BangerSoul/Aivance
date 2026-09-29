@@ -1,6 +1,6 @@
 package com.bangersoul.aivance.sdk.api
 
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
+import com.bangersoul.aivance.core.common.model.AtsReport
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.sdk.core.BaseProvider
 import com.bangersoul.aivance.sdk.core.ProviderCapability
@@ -18,7 +18,8 @@ abstract class ResumeParserProvider(
     /**
      * Parses and analyzes resume text.
      * @param text The raw text of the resume.
-     * @return Result containing the analysis of the resume or an error.
+     * @return Result containing the [AtsReport] analysis or an error.
      */
-    abstract suspend fun parseResume(text: String): Result<ResumeAnalysis>
+    abstract suspend fun parseResume(text: String): Result<AtsReport>
 }
+

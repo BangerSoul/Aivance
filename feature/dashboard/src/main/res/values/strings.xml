@@ -1,19 +1,10 @@
 <resources>
     <string name="dash_greeting_fallback">Good Morning 👋</string>
     <string name="dash_designation_fallback">Your career command center</string>
-    <string name="dash_notifications_cd">Notifications</string>
-    <string name="dash_profile_cd">Profile</string>
     <string name="dash_overview">Overview</string>
     <string name="dash_ats_score">ATS Score</string>
     <string name="dash_active_apps">Active Apps</string>
     <string name="dash_saved_jobs">Saved Jobs</string>
-    <string name="dash_career_breakdown">Career Breakdown</string>
-    <string name="dash_next_interview">Next Interview</string>
-    <string name="dash_quick_actions">Quick Actions</string>
-    <string name="dash_recent_activity">Recent Activity</string>
-    <string name="dash_view_all">View All</string>
-    <string name="dash_no_activity">No activity yet</string>
-    <string name="dash_no_activity_detail">Applications, ATS scans and AI sessions will appear here.</string>
     <string name="dash_career_score">Career Score</string>
     <string name="dash_score_title_ready">Ready to apply</string>
     <string name="dash_score_title_strong">Strong profile</string>
@@ -27,20 +18,23 @@
     <string name="dash_chip_strong">Strong</string>
     <string name="dash_chip_building">Building</string>
     <string name="dash_chip_not_scored">Not scored yet</string>
-    <string name="dash_pie_career_score">Career Score</string>
-    <string name="dash_pie_ats_score">ATS Score</string>
-    <string name="dash_pie_applied">Applied</string>
-    <string name="dash_pie_saved_jobs">Saved Jobs</string>
-    <string name="dash_score_word">score</string>
-    <string name="dash_breakdown_caption">How your career activity adds up — run ATS scans, apply to more jobs, and keep your score climbing.</string>
-    <string name="dash_upcoming_interview">Upcoming interview</string>
-    <string name="dash_prepare">Prepare</string>
-    <string name="dash_ai_recommendation">AI Recommendation</string>
-    <string name="dash_open_cd">Open</string>
-    <string name="dash_action_resume">Resume</string>
-    <string name="dash_action_jobs">Jobs</string>
-    <string name="dash_action_interview">Interview</string>
-    <string name="dash_action_assistant">Assistant</string>
-    <string name="dash_action_pipeline">Pipeline</string>
-    <string name="dash_action_insights">Insights</string>
+    <string name="dash_graph_insights">Career Graph</string>
+    <string name="dash_skill_match">Skill Match</string>
+    <string name="dash_skill_match_subtitle">%1$d of %2$d target-job skills demonstrated</string>
+    <string name="dash_missing_skills">Top skills to close the gap</string>
+    <string name="dash_missing_skills_hint">Tap a skill to see jobs that want it, or the school icon for learning tips.</string>
+    <string name="dash_learn_skill_cd">Get learning recommendations for %1$s</string>
+    <string name="dash_no_skill_gaps">You demonstrate every skill your target jobs ask for. 🎯</string>
+    <string name="dash_skill_match_none">Save target jobs to measure your skill match.</string>
+    <!-- Placeholder glyph for a missing numeric value, not translatable text. -->
+    <string name="dash_no_data" translatable="false">—</string>
+    <string name="dash_skill_explored">Exploring matching jobs</string>
+    <string name="dash_skill_learning">Learning in progress</string>
+    <string name="dash_gap_progress">%1$d of %2$d gaps in progress</string>
+    <string name="dash_demanded_by_one_job">1 job</string>
+    <string name="dash_demanded_by_jobs">%1$d jobs</string>
+    <string name="dash_active_context">Active Applications</string>
+    <string name="dash_context_with_interviews">%1$s · %2$d interview(s)</string>
+    <string name="notifications_cd">Notifications</string>
+    <string name="profile_cd">Profile</string>
 </resources>

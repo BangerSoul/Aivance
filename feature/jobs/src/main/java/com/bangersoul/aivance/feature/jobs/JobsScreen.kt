@@ -1,9 +1,5 @@
 package com.bangersoul.aivance.feature.jobs
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,12 +9,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -26,10 +25,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bangersoul.aivance.core.common.enums.EmploymentType
+import com.bangersoul.aivance.core.common.enums.ExperienceLevel
+import com.bangersoul.aivance.core.common.enums.RemotePolicy
 import com.bangersoul.aivance.core.common.enums.RemoteType
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
-import com.bangersoul.aivance.core.common.model.ProfileState
 import com.bangersoul.aivance.core.designsystem.components.*
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 
@@ -37,10 +37,28 @@ import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 fun JobsScreen(
     viewModel: JobsViewModel,
     onNavigateToDetails: (String) -> Unit,
-    onNavigateToSavedJobs: () -> Unit = {}
+    onNavigateToSavedJobs: () -> Unit = {},
+    /** Quick Match needs a target role; without one this routes to the profile. */
+    onSetTargetRole: () -> Unit = {},
+    initialQuery: String? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var searchQuery by remember { mutableStateOf("") }
+    // Seed the search once when arriving from a deep link (e.g. a dashboard
+    // skill-gap chip). The ViewModel guards against re-running on the same
+    // seed after rotation/process death, so a user's later edits stick.
+    LaunchedEffect(initialQuery) {
+        if (!initialQuery.isNullOrBlank()) {
+            viewModel.onEvent(JobsUiEvent.SeedSearch(initialQuery))
+        }
+    }
+    // rememberSaveable: the typed query survives rotation/process death (the
+    // ViewModel also persists it in SavedStateHandle, so it stays until app
+    // data is cleared).
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    // Best-match sort: opt-in, ranked by merged AI/rule-based fit scores (R-04).
+    var sortByFit by rememberSaveable { mutableStateOf(false) }
+    // The demoted filter wall (AUDIT 46) lives behind one sheet.
+    var filtersExpanded by remember { mutableStateOf(false) }
 
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.job_discovery_title),
@@ -49,224 +67,207 @@ fun JobsScreen(
         error = (uiState as? JobsUiState.Error)?.message,
         onRetry = { viewModel.onEvent(JobsUiEvent.Refresh) }
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-            // Hero Section: Current Hunt status
-            (uiState as? JobsUiState.Success)?.careerContext?.let { context ->
-                DiscoveryHeroSection(
-                    targetRole = context.profile.targetRole,
-                    matchCount = (uiState as? JobsUiState.Success)?.jobs?.size ?: 0,
-                    onSearchUpdate = { searchQuery = it; viewModel.onEvent(JobsUiEvent.Search(it)) }
-                )
-                Spacer(Modifier.height(16.dp))
-            }
+        // Single scrollable surface: hero, search, filters and sort are header
+        // items; the job cards follow as list items. Previously this was a
+        // non-scrollable Column, which starved the results list of height on
+        // phone viewports — clipping filter rows and hiding every job card.
+        val success = uiState as? JobsUiState.Success
+        // Merged score per job (R-04): ViewModel-computed AI/rule-based fit
+        // scores win; a live rule-based computation and the provider-supplied
+        // match score cover the window before AI scores land so badges render
+        // immediately.
+        val mergedScores: Map<String, Int> = success?.jobs?.associate { job ->
+            job.id to (success.fitScores[job.id]
+                ?: success.careerContext?.profile?.let { JobFitScorer.calculateFitScore(job, it) }
+                ?: job.matchScore
+                ?: 0)
+        } ?: emptyMap()
+        val orderedJobs = if (sortByFit) {
+            success?.jobs?.sortedByDescending { mergedScores[it.id] ?: 0 } ?: emptyList()
+        } else {
+            success?.jobs ?: emptyList()
+        }
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                trailingIcon = {
-                    Row {
-                        if (searchQuery.isNotBlank()) {
+        // Restore the search field from the ViewModel's committed query after
+        // process death: the VM restores it from SavedStateHandle, the screen
+        // reflects it here. Only syncs when the user hasn't typed something
+        // newer locally.
+        val committedQuery = success?.filter?.query.orEmpty()
+        LaunchedEffect(committedQuery) {
+            if (committedQuery.isNotBlank() && searchQuery != committedQuery) {
+                searchQuery = committedQuery
+            }
+        }
+
+        // The "Discovery Hub" hero card is gone: the scaffold already titles the
+        // screen, and a second full-width header only pushed the first result
+        // further down (AUDIT 46/47). Its Quick Match action survives as a
+        // guarded chip in the filter row.
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item(key = "search") {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        Row {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = {
+                                    searchQuery = ""
+                                    viewModel.onEvent(JobsUiEvent.Search(""))
+                                }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear_search))
+                                }
+                            }
                             IconButton(onClick = {
-                                searchQuery = ""
-                                viewModel.onEvent(JobsUiEvent.Search(""))
+                                viewModel.onEvent(JobsUiEvent.Search(searchQuery))
                             }) {
-                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.clear_search))
+                                Icon(
+                                    Icons.Rounded.Send,
+                                    contentDescription = stringResource(R.string.search),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
-                        IconButton(onClick = {
-                            viewModel.onEvent(JobsUiEvent.Search(searchQuery))
-                        }) {
-                            Icon(
-                                Icons.Rounded.Send,
-                                contentDescription = stringResource(R.string.search),
-                                tint = MaterialTheme.colorScheme.primary
+                    },
+                    singleLine = true,
+                    shape = AivanceTheme.shapes.large,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { viewModel.onEvent(JobsUiEvent.Search(searchQuery)) }
+                    )
+                )
+            }
+
+            item(key = "filters") {
+                QuickFilterBar(
+                    filter = success?.filter ?: JobSearchFilter(),
+                    onFilterChange = { viewModel.onEvent(JobsUiEvent.UpdateFilter(it)) },
+                    onOpenAdvanced = { filtersExpanded = true },
+                    targetRole = success?.careerContext?.profile?.targetRole.orEmpty(),
+                    onQuickMatch = { role ->
+                        searchQuery = role
+                        viewModel.onEvent(JobsUiEvent.Search(role))
+                    },
+                    onSetTargetRole = onSetTargetRole,
+                    sortByFit = sortByFit,
+                    onSortChange = { sortByFit = it }
+                )
+            }
+
+            when (val state = uiState) {
+                is JobsUiState.Loading -> item(key = "skeleton") {
+                    SkeletonList(itemCount = 6, showAvatar = true)
+                }
+                is JobsUiState.Success ->
+                    // Cold-search guard (AUDIT 49): an in-flight search with no
+                    // results yet is not evidence of zero matches. The skeleton
+                    // stands in until the result set actually lands, so the
+                    // screen never flashes "No matches found" mid-query.
+                    if (state.isSearching && state.jobs.isEmpty()) {
+                        item(key = "searching") {
+                            SkeletonList(itemCount = 6, showAvatar = true)
+                        }
+                    } else if (state.jobs.isEmpty()) {
+                        item(key = "empty") {
+                            AivanceEmptyState(
+                                title = stringResource(R.string.no_jobs_yet),
+                                description = stringResource(R.string.no_jobs_desc),
+                                icon = Icons.Rounded.WorkOff,
+                                primaryActionText = stringResource(R.string.refresh),
+                                onPrimaryAction = { viewModel.onEvent(JobsUiEvent.Refresh) },
+                                secondaryActionText = stringResource(R.string.saved_jobs),
+                                onSecondaryAction = onNavigateToSavedJobs
                             )
                         }
+                    } else {
+                        items(orderedJobs, key = { it.id }) { job ->
+                            JobDiscoveryCard(
+                                job = job,
+                                fitScore = mergedScores[job.id] ?: 0,
+                                onClick = { onNavigateToDetails(job.id) },
+                                onBookmarkClick = { viewModel.onEvent(JobsUiEvent.ToggleBookmark(job.id)) }
+                            )
+                        }
+                        item(key = "bottom_spacer") { Spacer(Modifier.height(80.dp)) }
                     }
-                },
-                singleLine = true,
-                shape = AivanceTheme.shapes.large,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { viewModel.onEvent(JobsUiEvent.Search(searchQuery)) }
-                )
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            JobFilterBar(
-                filter = (uiState as? JobsUiState.Success)?.filter ?: JobSearchFilter(),
-                onFilterChange = { viewModel.onEvent(JobsUiEvent.UpdateFilter(it)) },
-                onClear = { viewModel.onEvent(JobsUiEvent.ClearFilters) }
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            AnimatedContent(
-                targetState = uiState,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "JobsListTransition"
-            ) { state ->
-                when (state) {
-                    is JobsUiState.Loading -> SkeletonList(itemCount = 6, showAvatar = true)
-                    is JobsUiState.Success -> JobDiscoveryList(
-                        jobs = state.jobs,
-                        isSearching = state.isSearching,
-                        profile = state.careerContext?.profile,
-                        onJobClick = onNavigateToDetails,
-                        onBookmarkClick = { viewModel.onEvent(JobsUiEvent.ToggleBookmark(it)) },
-                        onRefresh = { viewModel.onEvent(JobsUiEvent.Refresh) },
-                        onSavedJobs = onNavigateToSavedJobs
-                    )
-                    else -> {}
-                }
+                else -> {}
             }
+        }
+
+        // One sheet for the demoted dimensions — nothing here re-runs a search
+        // until the user changes something.
+        if (filtersExpanded) {
+            AdvancedFiltersSheet(
+                filter = success?.filter ?: JobSearchFilter(),
+                onFilterChange = { viewModel.onEvent(JobsUiEvent.UpdateFilter(it)) },
+                onClear = { viewModel.onEvent(JobsUiEvent.ClearFilters) },
+                onDismiss = { filtersExpanded = false }
+            )
         }
     }
 }
 
-@Composable
-private fun DiscoveryHeroSection(
-    targetRole: String,
-    matchCount: Int,
-    onSearchUpdate: (String) -> Unit
-) {
-    AivanceHeroCard(
-        title = if (targetRole.isNotBlank()) "Hunting for $targetRole" else "Discovery Hub",
-        description = "Found $matchCount active opportunities matching your profile.",
-        actionLabel = "Quick Match",
-        onClick = { onSearchUpdate(targetRole) }
-    )
-}
-
 /**
- * Dropdown filter bar for the Job Search tab.
- *
- * Four filter groups:
- *  1. Location — cascading Country → State → City dropdowns.
- *  2. Type — Full Time / Part Time / Internship / Apprenticeship / Contract.
- *  3. Workplace — On Site / Remote / Hybrid.
- *  4. Experience — numeric year buckets (0–2 … 15+).
+ * The four high-signal Discovery controls (AUDIT 46/48): keywords live in the
+ * search field above, then location, experience and a remote-only toggle.
+ * Type, workplace, catalog remote policy, tech stack, keyword include/exclude
+ * and sort moved behind [AdvancedFiltersSheet].
  */
 @Composable
-private fun JobFilterBar(
+private fun QuickFilterBar(
     filter: JobSearchFilter,
     onFilterChange: (JobSearchFilter) -> Unit,
-    onClear: () -> Unit
+    onOpenAdvanced: () -> Unit,
+    targetRole: String,
+    onQuickMatch: (String) -> Unit,
+    onSetTargetRole: () -> Unit,
+    sortByFit: Boolean,
+    onSortChange: (Boolean) -> Unit
 ) {
-    var countryExpanded by remember { mutableStateOf(false) }
-    var stateExpanded by remember { mutableStateOf(false) }
-    var cityExpanded by remember { mutableStateOf(false) }
-    var typeExpanded by remember { mutableStateOf(false) }
-    var workplaceExpanded by remember { mutableStateOf(false) }
+    // Committed on IME search / focus loss, like the advanced fields, so the
+    // search pipeline is not re-run per keystroke.
+    var locationText by remember { mutableStateOf(filter.location) }
+    LaunchedEffect(filter.location) {
+        locationText = filter.location
+    }
     var experienceExpanded by remember { mutableStateOf(false) }
 
-    val hasActiveFilters =
-        filter.hasStructuredLocation ||
-            filter.location.isNotBlank() ||
-            filter.remoteType != null ||
-            filter.employmentTypes.isNotEmpty() ||
-            filter.experienceLevels.isNotEmpty() ||
-            filter.minExperienceYears != null ||
-            filter.maxExperienceYears != null
-
-    val employmentOptions = listOf(
-        EmploymentType.FULL_TIME, EmploymentType.PART_TIME,
-        EmploymentType.INTERNSHIP, EmploymentType.APPRENTICESHIP,
-        EmploymentType.CONTRACT
-    ).associateWith { it.uiLabel() }
-
-    val remoteOptions = listOf(
-        RemoteType.ON_SITE, RemoteType.REMOTE, RemoteType.HYBRID
-    ).associateWith { it.uiLabel() }
-
     val experienceOptions = ExperienceBuckets.options.associateWith { stringResource(it.labelRes) }
+    val remoteOnly = filter.remoteType == RemoteType.REMOTE
+    val advancedCount = advancedFilterCount(filter)
+
+    fun commitLocation(raw: String) {
+        val trimmed = raw.trim()
+        if (trimmed == filter.location) return
+        // Free text takes precedence over the structured fields, so clear the
+        // catalog country/state/city rather than keeping two competing
+        // location constraints alive.
+        onFilterChange(filter.copy(location = trimmed, country = "", state = "", city = ""))
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterDropdown(
-                label = if (filter.country.isNotBlank()) filter.country else stringResource(R.string.country),
-                expanded = countryExpanded,
-                onExpandedChange = { countryExpanded = it },
-                options = LocationCatalog.countryOptions,
-                selected = filter.country,
-                modifier = Modifier.weight(1f)
-            ) { selected ->
-                val newState = LocationCatalog.statesFor(selected).firstOrNull().orEmpty()
-                val newCity = LocationCatalog.citiesFor(selected, newState).firstOrNull().orEmpty()
-                onFilterChange(
-                    filter.copy(
-                        country = selected,
-                        state = if (selected == LocationCatalog.REMOTE) "" else newState,
-                        city = if (selected == LocationCatalog.REMOTE) "" else newCity,
-                        location = if (selected == LocationCatalog.REMOTE) "Remote" else ""
-                    )
-                )
-            }
-            FilterDropdown(
-                label = if (filter.state.isNotBlank()) filter.state else stringResource(R.string.state),
-                expanded = stateExpanded,
-                onExpandedChange = { stateExpanded = it },
-                options = LocationCatalog.statesFor(filter.country),
-                selected = filter.state,
-                modifier = Modifier.weight(1f),
-                enabled = filter.country.isNotBlank() && filter.country != LocationCatalog.REMOTE
-            ) { selected ->
-                val newCity = LocationCatalog.citiesFor(filter.country, selected).firstOrNull().orEmpty()
-                onFilterChange(filter.copy(state = selected, city = newCity))
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterDropdown(
-                label = if (filter.city.isNotBlank()) filter.city else stringResource(R.string.city),
-                expanded = cityExpanded,
-                onExpandedChange = { cityExpanded = it },
-                options = LocationCatalog.citiesFor(filter.country, filter.state),
-                selected = filter.city,
-                modifier = Modifier.weight(1f),
-                enabled = filter.state.isNotBlank()
-            ) { selected ->
-                onFilterChange(filter.copy(city = selected))
-            }
-            FilterDropdown(
-                label = filter.remoteType?.let { it.uiLabel() } ?: stringResource(R.string.workplace),
-                expanded = workplaceExpanded,
-                onExpandedChange = { workplaceExpanded = it },
-                options = remoteOptions.values.toList(),
-                selected = filter.remoteType?.let { it.uiLabel() }.orEmpty(),
-                modifier = Modifier.weight(1f)
-            ) { selected ->
-                val mapped = remoteOptions.entries.firstOrNull { it.value == selected }?.key
-                onFilterChange(filter.copy(remoteType = mapped))
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterDropdown(
-                label = filter.employmentTypes.firstOrNull()?.let { it.uiLabel() }
-                    ?: stringResource(R.string.type),
-                expanded = typeExpanded,
-                onExpandedChange = { typeExpanded = it },
-                options = employmentOptions.values.toList(),
-                selected = filter.employmentTypes.firstOrNull()?.let { it.uiLabel() }.orEmpty(),
-                modifier = Modifier.weight(1f)
-            ) { selected ->
-                val mapped = employmentOptions.entries.firstOrNull { it.value == selected }?.key
-                onFilterChange(
-                    filter.copy(employmentTypes = if (mapped != null) listOf(mapped) else emptyList())
-                )
-            }
+            OutlinedTextField(
+                value = locationText,
+                onValueChange = { locationText = it },
+                label = { Text(stringResource(R.string.location)) },
+                placeholder = { Text(stringResource(R.string.location_placeholder)) },
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { focus -> if (!focus.isFocused) commitLocation(locationText) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { commitLocation(locationText) })
+            )
             FilterDropdown(
                 label = experienceLabel(filter),
                 expanded = experienceExpanded,
@@ -284,17 +285,294 @@ private fun JobFilterBar(
                 )
             }
         }
-        if (hasActiveFilters) {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                TextButton(onClick = onClear) {
-                    Icon(Icons.Rounded.FilterAltOff, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.clear_all_filters))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                selected = remoteOnly,
+                onClick = {
+                    onFilterChange(
+                        filter.copy(remoteType = if (remoteOnly) null else RemoteType.REMOTE)
+                    )
+                },
+                label = { Text(stringResource(R.string.remote_only)) }
+            )
+            // Quick Match used to be a hero action that silently did nothing on
+            // a profile with no target role (AUDIT 48). It is now explicit: with
+            // a role it seeds the search, without one it offers to set it.
+            AssistChip(
+                onClick = {
+                    if (targetRole.isBlank()) onSetTargetRole() else onQuickMatch(targetRole)
+                },
+                label = {
+                    Text(
+                        stringResource(
+                            if (targetRole.isBlank()) R.string.set_target_role
+                            else R.string.quick_match
+                        )
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                selected = advancedCount > 0,
+                onClick = onOpenAdvanced,
+                label = {
+                    Text(
+                        if (advancedCount > 0) {
+                            stringResource(R.string.filters_active_count, advancedCount)
+                        } else {
+                            stringResource(R.string.filters)
+                        }
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Rounded.FilterAltOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+            // Best match stays opt-in and visible: it reorders the results the
+            // user is already looking at rather than re-running the search.
+            FilterChip(
+                selected = sortByFit,
+                onClick = { onSortChange(!sortByFit) },
+                label = { Text(stringResource(R.string.best_match)) }
+            )
+        }
+
+        if (advancedCount > 0) {
+            Text(
+                text = stringResource(R.string.filters_active_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * The demoted filter dimensions, in one sheet: employment type, workplace,
+ * catalog remote policy, tech stack and keyword include/exclude.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AdvancedFiltersSheet(
+    filter: JobSearchFilter,
+    onFilterChange: (JobSearchFilter) -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var typeExpanded by remember { mutableStateOf(false) }
+    var workplaceExpanded by remember { mutableStateOf(false) }
+    var policyExpanded by remember { mutableStateOf(false) }
+
+    var techText by remember { mutableStateOf(filter.technologies.joinToString(", ")) }
+    LaunchedEffect(filter.technologies) {
+        techText = filter.technologies.joinToString(", ")
+    }
+    var includeText by remember { mutableStateOf(filter.includedKeywords.joinToString(", ")) }
+    LaunchedEffect(filter.includedKeywords) {
+        includeText = filter.includedKeywords.joinToString(", ")
+    }
+    var excludeText by remember { mutableStateOf(filter.excludedKeywords.joinToString(", ")) }
+    LaunchedEffect(filter.excludedKeywords) {
+        excludeText = filter.excludedKeywords.joinToString(", ")
+    }
+
+    val employmentOptions = listOf(
+        EmploymentType.FULL_TIME, EmploymentType.PART_TIME,
+        EmploymentType.INTERNSHIP, EmploymentType.APPRENTICESHIP,
+        EmploymentType.CONTRACT
+    ).associateWith { it.uiLabel() }
+
+    val workplaceOptions = listOf(
+        RemoteType.ON_SITE, RemoteType.REMOTE, RemoteType.HYBRID
+    ).associateWith { it.uiLabel() }
+
+    val remotePolicyOptions = listOf(
+        RemotePolicy.FULLY_REMOTE, RemotePolicy.REMOTE_FRIENDLY, RemotePolicy.HYBRID
+    ).associateWith { it.uiLabel() }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.filters),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            FilterDropdown(
+                label = filter.employmentTypes.firstOrNull()?.let { it.uiLabel() }
+                    ?: stringResource(R.string.type),
+                expanded = typeExpanded,
+                onExpandedChange = { typeExpanded = it },
+                options = employmentOptions.values.toList(),
+                selected = filter.employmentTypes.firstOrNull()?.let { it.uiLabel() }.orEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) { selected ->
+                val mapped = employmentOptions.entries.firstOrNull { it.value == selected }?.key
+                onFilterChange(
+                    filter.copy(employmentTypes = if (mapped != null) listOf(mapped) else emptyList())
+                )
+            }
+
+            FilterDropdown(
+                label = filter.remoteType?.let { it.uiLabel() } ?: stringResource(R.string.workplace),
+                expanded = workplaceExpanded,
+                onExpandedChange = { workplaceExpanded = it },
+                options = workplaceOptions.values.toList(),
+                selected = filter.remoteType?.let { it.uiLabel() }.orEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) { selected ->
+                val mapped = workplaceOptions.entries.firstOrNull { it.value == selected }?.key
+                onFilterChange(filter.copy(remoteType = mapped))
+            }
+
+            FilterDropdown(
+                label = filter.remotePolicy?.let { it.uiLabel() } ?: stringResource(R.string.remote_policy),
+                expanded = policyExpanded,
+                onExpandedChange = { policyExpanded = it },
+                options = remotePolicyOptions.values.toList(),
+                selected = filter.remotePolicy?.let { it.uiLabel() }.orEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) { selected ->
+                val mapped = remotePolicyOptions.entries.firstOrNull { it.value == selected }?.key
+                onFilterChange(filter.copy(remotePolicy = mapped))
+            }
+
+            OutlinedTextField(
+                value = techText,
+                onValueChange = { techText = it },
+                label = { Text(stringResource(R.string.tech_stack)) },
+                placeholder = { Text(stringResource(R.string.tech_stack_placeholder)) },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focus ->
+                        if (!focus.isFocused) {
+                            val parsed = parseKeywords(techText)
+                            if (parsed != filter.technologies) {
+                                onFilterChange(filter.copy(technologies = parsed))
+                            }
+                        }
+                    },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        val parsed = parseKeywords(techText)
+                        if (parsed != filter.technologies) {
+                            onFilterChange(filter.copy(technologies = parsed))
+                        }
+                    }
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                KeywordField(
+                    value = includeText,
+                    onValueChange = { includeText = it },
+                    label = stringResource(R.string.must_include),
+                    placeholder = stringResource(R.string.must_include_placeholder),
+                    modifier = Modifier.weight(1f),
+                    onFocusLost = {
+                        val parsed = parseKeywords(includeText)
+                        if (parsed != filter.includedKeywords) {
+                            onFilterChange(filter.copy(includedKeywords = parsed))
+                        }
+                    },
+                    onSearch = {
+                        val parsed = parseKeywords(includeText)
+                        if (parsed != filter.includedKeywords) {
+                            onFilterChange(filter.copy(includedKeywords = parsed))
+                        }
+                    }
+                )
+                KeywordField(
+                    value = excludeText,
+                    onValueChange = { excludeText = it },
+                    label = stringResource(R.string.exclude),
+                    placeholder = stringResource(R.string.exclude_placeholder),
+                    modifier = Modifier.weight(1f),
+                    onFocusLost = {
+                        val parsed = parseKeywords(excludeText)
+                        if (parsed != filter.excludedKeywords) {
+                            onFilterChange(filter.copy(excludedKeywords = parsed))
+                        }
+                    },
+                    onSearch = {
+                        val parsed = parseKeywords(excludeText)
+                        if (parsed != filter.excludedKeywords) {
+                            onFilterChange(filter.copy(excludedKeywords = parsed))
+                        }
+                    }
+                )
+            }
+
+            if (hasAnyFilter(filter)) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TextButton(onClick = onClear) {
+                        Icon(Icons.Rounded.FilterAltOff, null, Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.clear_all_filters))
+                    }
                 }
             }
         }
     }
 }
+
+/** Advanced (sheet) filters currently active — drives the Filters chip badge. */
+private fun advancedFilterCount(filter: JobSearchFilter): Int {
+    var count = 0
+    if (filter.employmentTypes.isNotEmpty()) count++
+    if (filter.remoteType == RemoteType.ON_SITE || filter.remoteType == RemoteType.HYBRID) count++
+    if (filter.remotePolicy != null) count++
+    if (filter.technologies.isNotEmpty()) count++
+    if (filter.includedKeywords.isNotEmpty()) count++
+    if (filter.excludedKeywords.isNotEmpty()) count++
+    return count
+}
+
+/** Any filter at all — the sheet's Clear-all affordance. */
+private fun hasAnyFilter(filter: JobSearchFilter): Boolean =
+    advancedFilterCount(filter) > 0 ||
+        filter.remoteType != null ||
+        filter.location.isNotBlank() ||
+        filter.country.isNotBlank() ||
+        filter.state.isNotBlank() ||
+        filter.city.isNotBlank() ||
+        filter.minExperienceYears != null ||
+        filter.maxExperienceYears != null
 
 /** A single Material-3 exposed dropdown used for one filter dimension. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -363,6 +641,48 @@ private fun experienceLabel(filter: JobSearchFilter): String {
     } ?: stringResource(R.string.years_range, min, max)
 }
 
+private fun parseKeywords(raw: String): List<String> =
+    raw.split(',', '\n')
+        .map { it.trim().lowercase() }
+        .filter { it.isNotBlank() }
+        .distinct()
+
+/** Single-line keyword input committed on IME search or focus loss (R-07). */
+@Composable
+private fun KeywordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    onFocusLost: () -> Unit,
+    onSearch: () -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        placeholder = { Text(placeholder) },
+        singleLine = true,
+        modifier = modifier.onFocusChanged { focused ->
+            if (!focused.isFocused) onFocusLost()
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() })
+    )
+}
+
+@Composable
+private fun RemotePolicy.uiLabel(): String = stringResource(
+    when (this) {
+        RemotePolicy.FULLY_REMOTE -> R.string.remote_policy_fully_remote
+        RemotePolicy.REMOTE_FIRST -> R.string.remote_policy_remote_first
+        RemotePolicy.REMOTE_FRIENDLY -> R.string.remote_policy_remote_friendly
+        RemotePolicy.HYBRID -> R.string.remote_policy_hybrid
+        RemotePolicy.UNKNOWN -> R.string.remote_policy_unknown
+    }
+)
+
 @Composable
 private fun EmploymentType.uiLabel(): String = stringResource(
     when (this) {
@@ -388,51 +708,9 @@ private fun RemoteType.uiLabel(): String = stringResource(
 )
 
 @Composable
-private fun JobDiscoveryList(
-    jobs: List<JobListing>,
-    isSearching: Boolean,
-    profile: ProfileState?,
-    onJobClick: (String) -> Unit,
-    onBookmarkClick: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onSavedJobs: () -> Unit
-) {
-    if (jobs.isEmpty()) {
-        AivanceEmptyState(
-            title = if (isSearching) stringResource(R.string.no_matches_found) else stringResource(R.string.no_jobs_yet),
-            description = if (isSearching) {
-                stringResource(R.string.no_matches_desc)
-            } else {
-                stringResource(R.string.no_jobs_desc)
-            },
-            icon = Icons.Rounded.WorkOff,
-            primaryActionText = stringResource(R.string.refresh),
-            onPrimaryAction = onRefresh,
-            secondaryActionText = stringResource(R.string.saved_jobs),
-            onSecondaryAction = onSavedJobs
-        )
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(jobs, key = { it.id }) { job ->
-                JobDiscoveryCard(
-                    job = job,
-                    profile = profile,
-                    onClick = { onJobClick(job.id) },
-                    onBookmarkClick = { onBookmarkClick(job.id) }
-                )
-            }
-            item { Spacer(Modifier.height(80.dp)) }
-        }
-    }
-}
-
-@Composable
 private fun JobDiscoveryCard(
     job: JobListing,
-    profile: ProfileState?,
+    fitScore: Int,
     onClick: () -> Unit,
     onBookmarkClick: () -> Unit
 ) {
@@ -496,28 +774,25 @@ private fun JobDiscoveryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Providers rarely supply a match score, so compute a real fit
-                // score against the user's profile via JobFitScorer (R-04) and
-                // only fall back to the provider-supplied value when present.
-                val matchScore = job.matchScore ?: if (profile != null) {
-                    JobFitScorer.calculateFitScore(job, profile)
-                } else {
-                    0
-                }
-                ScoreGauge(score = matchScore, size = 32.dp)
+                // Providers rarely supply a match score, so the card shows the
+                // merged fit score (LLM-assisted, rule-based fallback — R-04)
+                // computed by the ViewModel / discovery list.
+                ScoreGauge(score = fitScore, size = 32.dp)
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (matchScore > 80) "High Match" else if (matchScore > 50) "Good Match" else "Potential Match",
+                        text = if (fitScore > 80) stringResource(R.string.job_match_high) else if (fitScore > 50) stringResource(R.string.job_match_good) else stringResource(R.string.job_match_potential),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = if (matchScore > 80) AivanceTheme.colors.success else AivanceTheme.colors.accent
+                        color = if (fitScore > 80) AivanceTheme.colors.success else AivanceTheme.colors.accent
                     )
-                    Text(
-                        text = "Matches your ${job.experienceLevel.name.lowercase()} experience.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (job.experienceLevel != ExperienceLevel.NOT_SPECIFIED) {
+                        Text(
+                            text = stringResource(R.string.job_experience_level_match, job.experienceLevel.name.lowercase()),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 

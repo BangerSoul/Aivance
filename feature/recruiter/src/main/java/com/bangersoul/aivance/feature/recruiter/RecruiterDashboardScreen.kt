@@ -26,7 +26,7 @@ import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +51,7 @@ fun RecruiterDashboardScreen(
     jobId: String,
     onBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // The custom back stack passes the destination's job ID here directly (it does
     // not populate SavedStateHandle), so drive the load from the destination arg.
@@ -112,7 +112,7 @@ private fun RecruiterListContent(
         Spacer(Modifier.height(12.dp))
 
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(state.recruiters) { recruiter ->
+            items(state.recruiters, key = { it.id }) { recruiter ->
                 Card(
                     onClick = { onSelect(recruiter) },
                     modifier = Modifier.fillMaxWidth(),
@@ -139,6 +139,7 @@ private fun RecruiterListContent(
                 recruiter = state.selectedRecruiter,
                 isGenerating = state.isGenerating,
                 draftContent = state.draft?.content,
+                outreachError = state.outreachError,
                 onGenerate = onGenerate
             )
         }
@@ -150,6 +151,7 @@ private fun OutreachSection(
     recruiter: Recruiter,
     isGenerating: Boolean,
     draftContent: String?,
+    outreachError: String?,
     onGenerate: (String) -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
@@ -175,6 +177,15 @@ private fun OutreachSection(
 
         if (isGenerating) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
+        }
+
+        if (outreachError != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = outreachError,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         if (draftContent != null) {

@@ -7,6 +7,7 @@ import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
 import com.bangersoul.aivance.core.common.result.ProviderError
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.job.base.ProviderHttpException
 import com.bangersoul.aivance.job.base.RestJobProvider
 import com.bangersoul.aivance.job.cache.JobCache
 import com.bangersoul.aivance.job.greenhouse.dto.GreenhouseJobDto
@@ -75,7 +76,12 @@ class GreenhouseProvider(
                 (filter.location.isBlank() || it.location?.name?.contains(filter.location, ignoreCase = true) == true)
             }?.map { mapToJobListing(it) } ?: emptyList()
         } else {
-            throw Exception("Greenhouse API failed: ${response.code()}")
+            throw ProviderHttpException(
+                providerId = metadata.id,
+                statusCode = response.code(),
+                message = "Greenhouse API failed",
+                retryAfterSeconds = response.headers()["Retry-After"]?.toLongOrNull()
+            )
         }
     }
 

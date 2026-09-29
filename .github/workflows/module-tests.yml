@@ -155,7 +155,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
           gradle-home-cache-cleanup: true
 
@@ -188,9 +188,16 @@ jobs:
           MODULE_GRADLE=$(echo "${{ matrix.module }}" | tr '/' ':')
           ./gradlew :${MODULE_GRADLE}:testDebugUnitTest --no-daemon --continue
 
+      # NOTE: the "=" must survive, or GITHUB_OUTPUT rejects the line
+      # ("Invalid format") and the job goes red. A negated class like
+      # s/[^a-zA-Z0-9._-]//g also eats the "=", which is the bug this replaces.
+      # Sanitize only the value by splitting on the first "=".
       - name: Sanitize module name for artifact
         id: sanitize
-        run: echo "name=${{ matrix.module }}" | sed 's/[^a-zA-Z0-9._-]//g' >> "$GITHUB_OUTPUT"
+        run: |
+          key="name"
+          value=$(echo '${{ matrix.module }}' | tr '/' '-')
+          echo "${key}=${value}" >> "$GITHUB_OUTPUT"
 
       - name: Upload test results for ${{ matrix.module }}
         if: always()

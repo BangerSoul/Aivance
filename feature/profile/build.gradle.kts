@@ -15,6 +15,12 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests {
+            // Robolectric worker tests read real string resources (notifications).
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -35,9 +41,19 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
+    // Providers surface obtains its ProviderManagementViewModel via hiltViewModel()
+    // now that it lives inside the Identity Hub tab (AUDIT 22).
+    implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)
+
+    // WorkManager + Hilt workers: the on-device Gemma model download runs as a
+    // resumable background worker so it survives app backgrounding.
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+    implementation(libs.timber)
 
     // Firebase Auth + Credential Manager (Google Sign-In, STEP 1 Phase 4)
     implementation(platform(libs.firebase.bom))
@@ -56,4 +72,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.hilt.android.testing)
     kspTest(libs.hilt.android.testing.compiler)
+
+    // WorkManager test driver for the model-download worker tests.
+    testImplementation(libs.androidx.work.testing)
 }

@@ -49,6 +49,13 @@ class PreferencesManager @Inject constructor(
         return dataStore.data.first()[intPreferencesKey(key)] ?: default
     }
 
+    /** Live variant of [getInt] — re-emits whenever the value changes. */
+    fun getIntFlow(key: String, default: Int): Flow<Int> {
+        return dataStore.data.map { prefs ->
+            prefs[intPreferencesKey(key)] ?: default
+        }
+    }
+
     suspend fun putInt(key: String, value: Int) {
         dataStore.edit { prefs ->
             prefs[intPreferencesKey(key)] = value
@@ -71,6 +78,13 @@ class PreferencesManager @Inject constructor(
 
     suspend fun getString(key: String, default: String): String {
         return dataStore.data.first()[stringPreferencesKey(key)] ?: default
+    }
+
+    /** Live variant of [getString] — re-emits whenever the value changes. */
+    fun getStringFlow(key: String, default: String): Flow<String> {
+        return dataStore.data.map { prefs ->
+            prefs[stringPreferencesKey(key)] ?: default
+        }
     }
 
     suspend fun putString(key: String, value: String) {

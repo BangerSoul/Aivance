@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/career-graph.schema.json",
+  "title": "AiVanceCareerGraph",
+  "description": "Unified Career Knowledge Graph schema connecting candidate profiles, skills, resumes, jobs, applications, and memory.",
+  "type": "object",
+  "required": ["version", "userId", "nodes", "edges", "updatedAt"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["2.0.0"]
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CareerNode"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/CareerEdge"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "CareerNode": {
+      "type": "object",
+      "required": ["id", "type", "label", "properties"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "USER",
+            "SKILL",
+            "RESUME",
+            "JOB",
+            "COMPANY",
+            "RECRUITER",
+            "APPLICATION",
+            "INTERVIEW",
+            "GOAL",
+            "EVIDENCE"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "createdAt": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "integer"
+        }
+      }
+    },
+    "CareerEdge": {
+      "type": "object",
+      "required": ["id", "sourceId", "targetId", "relationType"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        },
+        "targetId": {
+          "type": "string"
+        },
+        "relationType": {
+          "type": "string",
+          "enum": [
+            "HAS_SKILL",
+            "TARGETS_ROLE",
+            "REQUIRES_SKILL",
+            "DEMONSTRATES_SKILL",
+            "APPLIED_TO",
+            "WORKS_AT",
+            "CONTACTED_RECRUITER",
+            "EVALUATED_IN",
+            "RESOLVES_GAP",
+            "EVIDENCE_FOR"
+          ]
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 1.0
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

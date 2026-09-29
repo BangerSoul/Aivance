@@ -92,6 +92,33 @@ class JobFilterMatcherTest {
     }
 
     @Test
+    fun `remote filter accepts on-site-flagged jobs whose description signals remote`() {
+        val filter = JobSearchFilter(remoteType = RemoteType.REMOTE)
+        // Arbeitnow-style listing: board marks remote: false, description says remote.
+        assertTrue(matcher.matches(
+            job(remoteType = RemoteType.ON_SITE, description = "Fully remote position — work from home anywhere in the EU"),
+            filter
+        ))
+        assertTrue(matcher.matches(
+            job(remoteType = RemoteType.ON_SITE, description = "Home office möglich. Join our Berlin team."),
+            filter
+        ))
+    }
+
+    @Test
+    fun `remote filter still rejects explicitly on-site listings`() {
+        val filter = JobSearchFilter(remoteType = RemoteType.REMOTE)
+        assertFalse(matcher.matches(
+            job(remoteType = RemoteType.ON_SITE, description = "This is not a remote position — on-site only in Berlin"),
+            filter
+        ))
+        assertFalse(matcher.matches(
+            job(remoteType = RemoteType.ON_SITE, description = "On-site only. No home office."),
+            filter
+        ))
+    }
+
+    @Test
     fun `employment type filter respects jobs`() {
         val filter = JobSearchFilter(employmentTypes = listOf(EmploymentType.CONTRACT))
         assertTrue(matcher.matches(job(employmentType = EmploymentType.CONTRACT), filter))
@@ -154,6 +181,52 @@ class JobFilterMatcherTest {
     fun `job without salary data passes salary filters`() {
         val filter = JobSearchFilter(minSalary = 120_000.0, maxSalary = 180_000.0)
         assertTrue(matcher.matches(job(salaryMin = null, salaryMax = null), filter))
+    }
+
+    @Test
+    fun `included keywords require all terms in the listing`() {
+        val filter = JobSearchFilter(includedKeywords = listOf("kotlin", "android"))
+        assertTrue(matcher.matches(job(), filter))
+        // Kotlin present but no Android signal anywhere → rejected.
+        assertFalse(matcher.matches(job(title = "iOS Engineer", description = "Kotlin only"), filter))
+        assertFalse(matcher.matches(job(title = "iOS Engineer", description = "Swift"), filter))
+    }
+
+    @Test
+    fun `included keywords match company and title too`() {
+        val filter = JobSearchFilter(includedKeywords = listOf("google"))
+        assertTrue(matcher.matches(job(description = "Build widgets"), filter))
+        val byTitle = JobSearchFilter(includedKeywords = listOf("android"))
+        assertTrue(matcher.matches(job(description = "unrelated"), byTitle))
+    }
+
+    @Test
+    fun `excluded keywords reject listings containing any term`() {
+        val filter = JobSearchFilter(excludedKeywords = listOf("unpaid", "commission-only"))
+        assertTrue(matcher.matches(job(), filter))
+        assertFalse(matcher.matches(job(description = "Great exposure but unpaid"), filter))
+        assertFalse(matcher.matches(job(title = "Commission-only Sales Rep"), filter))
+    }
+
+    @Test
+    fun `include and exclude combine as whitelist plus blacklist`() {
+        val filter = JobSearchFilter(
+            includedKeywords = listOf("kotlin"),
+            excludedKeywords = listOf("senior")
+        )
+        assertTrue(matcher.matches(job(), filter))
+        // Blacklist wins: contains 'senior' in the title.
+        assertFalse(matcher.matches(job(title = "Senior Android Engineer", description = "Kotlin"), filter))
+        // Whitelist fails: no Kotlin signal in title/company/description.
+        assertFalse(matcher.matches(job(description = "Swift and SwiftUI only"), filter))
+    }
+
+    @Test
+    fun `keyword matching is case-insensitive and blank-tolerant`() {
+        val filter = JobSearchFilter(includedKeywords = listOf("KOTLIN", "  "))
+        assertTrue(matcher.matches(job(), filter))
+        val blankExclude = JobSearchFilter(excludedKeywords = listOf("", " "))
+        assertTrue(matcher.matches(job(title = "Any job"), blankExclude))
     }
 
     @Test

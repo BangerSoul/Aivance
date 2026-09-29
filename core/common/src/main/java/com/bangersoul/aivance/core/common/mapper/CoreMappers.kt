@@ -4,45 +4,6 @@ import com.bangersoul.aivance.core.common.dto.*
 import com.bangersoul.aivance.core.common.enums.*
 import com.bangersoul.aivance.core.common.model.*
 
-// ResumeAnalysis
-fun ResumeAnalysisDto.toDomain(): ResumeAnalysis = ResumeAnalysis(
-    overallScore = overallScore,
-    matchingKeywords = matchingKeywords,
-    missingKeywords = missingKeywords,
-    suggestions = suggestions,
-    matchSummary = matchSummary
-)
-
-fun ResumeAnalysis.toDto(): ResumeAnalysisDto = ResumeAnalysisDto(
-    overallScore = overallScore,
-    matchingKeywords = matchingKeywords,
-    missingKeywords = missingKeywords,
-    suggestions = suggestions,
-    matchSummary = matchSummary
-)
-
-// AtsResult
-fun AtsResultDto.toDomain(id: Long = 0): AtsResult = AtsResult(
-    id = id,
-    score = score,
-    date = dateEpoch,
-    resumeName = resumeName,
-    missingKeywords = missingKeywords,
-    feedback = feedback,
-    matchingKeywords = matchingKeywords,
-    formattingScore = formattingScore
-)
-
-fun AtsResult.toDto(): AtsResultDto = AtsResultDto(
-    score = score,
-    resumeName = resumeName,
-    missingKeywords = missingKeywords,
-    feedback = feedback,
-    matchingKeywords = matchingKeywords,
-    formattingScore = formattingScore,
-    dateEpoch = date
-)
-
 // CoverLetter
 fun CoverLetterDto.toDomain(id: Long = 0): CoverLetter = CoverLetter(
     id = id,

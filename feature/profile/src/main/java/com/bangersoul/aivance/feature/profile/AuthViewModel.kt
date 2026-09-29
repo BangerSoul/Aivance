@@ -111,9 +111,12 @@ class AuthViewModel @Inject constructor(
                 userId = user.id,
                 email = user.email,
                 firstName = user.firstName.ifBlank { user.email.substringBefore("@") }
-            )
-            userPreferencesRepository.updateOnboardingCompleted(true)
-
+            )            // R2.2: completing the account step is NOT onboarding completion and
+            // must never grant product entry. The gate flags are set exclusively
+            // by onboarding's own Finish / provider-optional choice; the nav graph
+            // routes `AuthUiState.NewUser` to ProviderSetup and the persisted gate
+            // keeps this user out of the product until a provider is configured (or
+            // the user explicitly chooses provider-optional mode).
             _uiState.value = if (isNew) AuthUiState.NewUser else AuthUiState.ReturningUser
         }
     }
@@ -194,10 +197,10 @@ class AuthViewModel @Inject constructor(
                     email = email,
                     firstName = entity.firstName.ifBlank { email.substringBefore("@") }
                 )
-                // Returning Google users already configured providers → straight to
-                // Dashboard; new users go through ProviderSetup first.
-                userPreferencesRepository.updateOnboardingCompleted(!isNew)
-
+                // R2.2: only a returning user may carry onboarding completion — a
+                // fresh Google account goes through provider setup like a new email
+                // account. This used to set `updateOnboardingCompleted(!isNew)`,
+                // which let a brand-new Google account skip the provider gate.
                 _uiState.value = if (isNew) AuthUiState.NewUser else AuthUiState.ReturningUser
             } catch (e: GetCredentialCancellationException) {
                 // User dismissed the account picker — not an error.

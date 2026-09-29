@@ -10,8 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,7 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,17 +69,24 @@ fun AtsScreen(
     viewModel: AtsViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToCoverLetter: () -> Unit = {},
-    initialJobDescription: String? = null
+    initialJobDescription: String? = null,
+    initialReportId: Long? = null
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val resumes by viewModel.resumes.collectAsState()
-    val jdText by viewModel.jdText.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val resumes by viewModel.resumes.collectAsStateWithLifecycle()
+    val jdText by viewModel.jdText.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(initialJobDescription) {
         if (!initialJobDescription.isNullOrBlank()) {
             viewModel.onEvent(AtsUiEvent.UpdateJobDescription(initialJobDescription))
+        }
+    }
+
+    LaunchedEffect(initialReportId) {
+        if (initialReportId != null) {
+            viewModel.loadReport(initialReportId)
         }
     }
 
@@ -98,6 +103,7 @@ fun AtsScreen(
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.ats_intelligence_title),
         subtitle = "Match analysis",
+        backContentDescription = stringResource(R.string.back),
         onBack = onNavigateBack,
         isLoading = uiState is AtsUiState.Analyzing,
         error = (uiState as? AtsUiState.Error)?.message,
@@ -105,12 +111,22 @@ fun AtsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) {
         Box(Modifier.fillMaxSize()) {
+            // Key the transition on the *step* (the state class), not the state
+            // object: AtsUiState.Analyzing.streamingText grows as tokens arrive,
+            // so keying on the object made AnimatedContent tear down and re-fade
+            // the whole subtree on every single token. The content below still
+            // reads `uiState` directly, so streaming text keeps updating.
+            //
+            // `uiState::class` is only a transition key, which is why the content
+            // lambda cannot use the target-state parameter it is handed; suppressing
+            // the lint check keeps that reading of the live state.
+            @Suppress("UnusedContentLambdaTargetStateParameter")
             AnimatedContent(
-                targetState = uiState,
+                targetState = uiState::class,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "AtsStateTransition"
-            ) { state ->
-                when (state) {
+            ) {
+                when (val state = uiState) {
                     AtsUiState.SelectingResume -> ResumeSelectionStep(
                         resumes = resumes,
                         onSelect = { r, v -> viewModel.onEvent(AtsUiEvent.SelectResumeVersion(r, v)) }
@@ -200,7 +216,7 @@ private fun ResumeSelectionStep(
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(resumes) { resume ->
+                items(resumes, key = { it.id }) { resume ->
                     resume.versions.forEach { version ->
                         Card(
                             onClick = { onSelect(resume, version) },
@@ -266,7 +282,6 @@ private fun JobDescriptionInputStep(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AtsReportContent(
     report: AtsReport,
@@ -316,7 +331,7 @@ private fun AtsReportContent(
                 Column(Modifier.padding(vertical = 4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(name, style = MaterialTheme.typography.labelLarge)
-                        Text("$score%", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ats_section_score_percent, score), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(
@@ -332,9 +347,32 @@ private fun AtsReportContent(
         item {
             Text(stringResource(R.string.keyword_gap_analysis), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                report.matchedKeywords.forEach { KeywordChip(text = it, isMatched = true) }
-                report.missingKeywords.forEach { KeywordChip(text = it, isMatched = false) }
+            // Chunked Row wrap instead of the experimental FlowRow API: the
+            // app's runtime foundation (forced to 1.11.x by Coil 3.5) ships a
+            // different compiled FlowRow signature than the module's BOM (1.7),
+            // which made the report screen crash with NoSuchMethodError.
+            val keywordChips = report.matchedKeywords.map { it to true } +
+                report.missingKeywords.map { it to false }
+            if (keywordChips.isEmpty()) {
+                Text(
+                    stringResource(R.string.no_keywords_identified),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            keywordChips.chunked(2).forEach { rowChips ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowChips.forEach { (text, matched) ->
+                        KeywordChip(
+                            text = text,
+                            isMatched = matched,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
+                }
             }
         }
 

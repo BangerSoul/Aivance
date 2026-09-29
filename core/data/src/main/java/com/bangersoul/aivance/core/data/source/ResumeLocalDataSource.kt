@@ -1,6 +1,5 @@
 package com.bangersoul.aivance.core.data.source
 
-import com.bangersoul.aivance.core.common.model.AtsResult
 import com.bangersoul.aivance.core.common.model.Resume
 import com.bangersoul.aivance.core.common.model.ResumeVersion
 import com.bangersoul.aivance.core.data.mapper.toDomain
@@ -10,7 +9,6 @@ import com.bangersoul.aivance.core.database.dao.ResumeDao
 import com.bangersoul.aivance.core.database.model.ResumeSectionEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -23,10 +21,6 @@ interface ResumeLocalDataSource {
     fun getVersionsForResume(resumeId: Long): Flow<List<ResumeVersion>>
     suspend fun saveVersion(version: ResumeVersion): Long
     suspend fun deleteVersion(version: ResumeVersion)
-
-    fun getAtsResults(): Flow<List<AtsResult>>
-    fun getLatestAtsResult(): Flow<AtsResult?>
-    suspend fun saveAtsResult(atsResult: AtsResult, resumeId: Long)
 }
 
 class ResumeLocalDataSourceImpl @Inject constructor(
@@ -87,28 +81,5 @@ class ResumeLocalDataSourceImpl @Inject constructor(
     override suspend fun deleteVersion(version: ResumeVersion) {
         resumeDao.deleteVersion(version.toEntity())
     }
-
-    override fun getAtsResults(): Flow<List<AtsResult>> {
-        return atsDao.getAtsResults().map { entities ->
-            entities.map { it.toDomain() }
-        }
-    }
-
-    override fun getLatestAtsResult(): Flow<AtsResult?> {
-        return atsDao.getLatestAtsResult().map { it?.toDomain() }
-    }
-
-    override suspend fun saveAtsResult(atsResult: AtsResult, resumeId: Long) {
-        val entity = com.bangersoul.aivance.core.database.model.ResumeAnalysisEntity(
-            id = atsResult.id,
-            resumeId = resumeId,
-            jobDescription = "",
-            score = atsResult.score,
-            matchedKeywords = atsResult.matchingKeywords.joinToString(","),
-            missingKeywords = atsResult.missingKeywords.joinToString(","),
-            feedback = atsResult.feedback,
-            date = atsResult.date
-        )
-        atsDao.insertAtsResult(entity)
-    }
 }
+

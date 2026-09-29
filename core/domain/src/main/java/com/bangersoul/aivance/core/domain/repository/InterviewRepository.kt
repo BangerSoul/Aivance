@@ -27,6 +27,18 @@ interface InterviewRepository {
         count: Int
     ): CoreResult<Unit>
 
+    /**
+     * Persists a ready-made question pack (e.g. a generated STAR pack, R-05)
+     * onto an existing session so the user's answers — submitted through
+     * [submitAnswer] — are recorded against real session rows and survive a
+     * session reload. Questions are stored with the session id, exactly like
+     * [generateQuestions]-produced ones.
+     */
+    suspend fun persistPackQuestions(
+        sessionId: String,
+        questions: List<InterviewQuestion>
+    ): CoreResult<Unit>
+
     suspend fun submitAnswer(
         sessionId: String,
         message: InterviewMessage

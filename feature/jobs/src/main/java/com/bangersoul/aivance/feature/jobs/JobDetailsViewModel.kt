@@ -9,6 +9,7 @@ import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.Recruiter
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.getOrNull
+import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.repository.crm.CompanyIntelligenceRepository
@@ -34,7 +35,12 @@ sealed interface JobDetailsUiState {
         val company: Company? = null,
         val recruiters: List<Recruiter> = emptyList(),
         val isBookmarked: Boolean = false,
-        val readinessScore: Int = 0
+        /**
+         * Profile-aware match readiness (0..100), or null when there is no
+         * usable profile to score against. Null renders an explicit
+         * "complete your profile" state instead of a fabricated number.
+         */
+        val readinessScore: Int? = null
     ) : JobDetailsUiState
     data class Error(val message: String) : JobDetailsUiState
 }
@@ -42,6 +48,7 @@ sealed interface JobDetailsUiState {
 sealed interface JobDetailsUiEvent {
     data object ToggleBookmark : JobDetailsUiEvent
     data object OpenUrl : JobDetailsUiEvent
+    data object ApplyInApp : JobDetailsUiEvent
     data object ApplyAndTrack : JobDetailsUiEvent
     data object FindRecruiters : JobDetailsUiEvent
     data object GenerateCoverLetter : JobDetailsUiEvent
@@ -53,6 +60,7 @@ sealed interface JobDetailsUiEffect {
     data class ShowSnackbar(val message: String) : JobDetailsUiEffect
     data class OpenExternalUrl(val url: String) : JobDetailsUiEffect
     data class NavigateToRecruiters(val jobId: String) : JobDetailsUiEffect
+    data class NavigateToApplyBrowser(val jobId: String) : JobDetailsUiEffect
     data class NavigateToCoverLetter(val jobId: Long) : JobDetailsUiEffect
     data class NavigateToAts(val jobDescription: String) : JobDetailsUiEffect
     data object NavigateToPipeline : JobDetailsUiEffect
@@ -67,6 +75,7 @@ class JobDetailsViewModel @Inject constructor(
     private val applicationWorkflowRepository: ApplicationWorkflowRepository,
     private val companyIntelligenceRepository: CompanyIntelligenceRepository,
     private val recruiterIntelligenceRepository: RecruiterIntelligenceRepository,
+    private val careerStateEngine: CareerStateEngine,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -100,6 +109,7 @@ class JobDetailsViewModel @Inject constructor(
         when (event) {
             JobDetailsUiEvent.ToggleBookmark -> toggleBookmark()
             JobDetailsUiEvent.OpenUrl -> openUrl()
+            JobDetailsUiEvent.ApplyInApp -> applyInApp()
             JobDetailsUiEvent.ApplyAndTrack -> applyAndTrack()
             JobDetailsUiEvent.FindRecruiters -> findRecruiters()
             JobDetailsUiEvent.GenerateCoverLetter -> generateCoverLetter()
@@ -134,9 +144,17 @@ class JobDetailsViewModel @Inject constructor(
         }
     }
 
-    private fun calculateReadiness(job: JobListing): Int {
-        // Mock readiness calculation for now
-        return (job.matchScore ?: 60).coerceIn(0, 100)
+    /**
+     * Readiness is the same profile-aware "match" concept the Jobs screen shows
+     * via [JobFitScorer]. Without a usable profile (no target role and no
+     * skills) there is nothing to score against, so we return null and let the
+     * UI show a "complete your profile" state rather than inventing a number.
+     */
+    private fun calculateReadiness(job: JobListing): Int? {
+        val profile = careerStateEngine.state.value.profile
+        val hasProfile = profile.targetRole.isNotBlank() || profile.skills.isNotEmpty()
+        if (!hasProfile) return null
+        return JobFitScorer.calculateFitScore(job, profile).coerceIn(0, 100)
     }
 
     private fun toggleBookmark() {
@@ -152,6 +170,25 @@ class JobDetailsViewModel @Inject constructor(
                     _effects.send(JobDetailsUiEffect.ShowSnackbar(result.error.message ?: "Failed to update bookmark"))
                 }
             }
+        }
+    }
+
+    /**
+     * Opens the in-app apply surface (hosted WebView + AI suggestions) instead
+     * of bouncing straight to an external browser. Only navigates when a real
+     * apply link resolves, so the WebView never opens on a dead page.
+     */
+    private fun applyInApp() {
+        val state = _uiState.value as? JobDetailsUiState.Success ?: return
+        val job = state.job
+        val resolved = resolveApplyUrl(job.url, job.sourceUrl, job.descriptionHtml)
+        if (resolved == null) {
+            _effects.trySend(JobDetailsUiEffect.ShowSnackbar("No apply link available for this job"))
+            return
+        }
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest("job_details_apply_in_app"))
+            _effects.send(JobDetailsUiEffect.NavigateToApplyBrowser(job.id))
         }
     }
 

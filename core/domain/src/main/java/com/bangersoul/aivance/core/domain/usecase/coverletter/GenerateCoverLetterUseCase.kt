@@ -9,7 +9,9 @@ import javax.inject.Inject
 data class GenerateCoverLetterRequest(
     val resumeId: Long,
     val resumeVersionId: Long,
-    val jobId: Long,
+    /** When null, the letter is written generically against the user's primary
+     *  resume (no job listing) — used by the "Generate cover letter" action. */
+    val jobId: Long? = null,
     val recruiterId: String? = null,
     val writingStyle: String = "PROFESSIONAL"
 )
@@ -23,7 +25,7 @@ class GenerateCoverLetterUseCase @Inject constructor(
 
     override suspend operator fun invoke(input: GenerateCoverLetterRequest): CoreResult<Long> {
         if (input.resumeId <= 0) return com.bangersoul.aivance.core.common.result.Result.Failure(ValidationError("resumeId", "Invalid ID"))
-        if (input.jobId <= 0) return com.bangersoul.aivance.core.common.result.Result.Failure(ValidationError("jobId", "Invalid ID"))
+        if (input.jobId != null && input.jobId <= 0) return com.bangersoul.aivance.core.common.result.Result.Failure(ValidationError("jobId", "Invalid ID"))
 
         return coverLetterRepository.generateCoverLetter(
             resumeId = input.resumeId,

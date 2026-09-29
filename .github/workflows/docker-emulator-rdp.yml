@@ -44,7 +44,7 @@ jobs:
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Create local.properties
         run: |
@@ -86,7 +86,8 @@ jobs:
       - name: Compile & Install Debug APK
         run: |
           ./gradlew :app:assembleDebug --no-daemon
-          adb -s localhost:5555 install -r app/build/outputs/apk/debug/app-debug.apk
+          # Debug builds are per-ABI splits; the budtmo emulator is x86_64.
+          adb -s localhost:5555 install -r app/build/outputs/apk/debug/app-x86_64-debug.apk
           adb -s localhost:5555 shell am start -n com.bangersoul.aivance.debug/com.bangersoul.aivance.MainActivity
 
       - name: Run Connected Instrumented Tests

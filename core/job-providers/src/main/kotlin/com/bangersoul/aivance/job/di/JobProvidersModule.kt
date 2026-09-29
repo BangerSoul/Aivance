@@ -17,12 +17,16 @@ import com.bangersoul.aivance.job.remotive.RemotiveProvider
 import com.bangersoul.aivance.job.usajobs.USAJobsProvider
 import com.bangersoul.aivance.job.ziprecruiter.ZipRecruiterProvider
 import com.bangersoul.aivance.sdk.api.JobProvider
+import com.bangersoul.aivance.sdk.infrastructure.ProviderFactory
+import com.bangersoul.aivance.sdk.infrastructure.credential
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoMap
 import dagger.multibindings.IntoSet
+import dagger.multibindings.StringKey
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import javax.inject.Singleton
@@ -156,6 +160,51 @@ abstract class JobProvidersModule {
             retrofit: Retrofit
         ): JobProvider {
             return USAJobsProvider("", jobCache = jobCache, okHttpClient = okHttpClient, baseRetrofit = retrofit)
+        }
+
+        /**
+         * Adzuna — keyed job provider factory. Registered in [ProviderFactory] so
+         * the SDK can construct a configured instance from persisted settings
+         * (`appId`) + secrets (`appKey`) via the formal config path (T-03).
+         */
+        @Provides
+        @IntoMap
+        @StringKey("adzuna")
+        fun provideAdzunaFactory(
+            jobCache: JobCache,
+            okHttpClient: OkHttpClient,
+            retrofit: Retrofit
+        ): ProviderFactory.Factory {
+            return ProviderFactory.Factory { config ->
+                AdzunaProvider(
+                    appId = config.credential("appId"),
+                    appKey = config.credential("appKey"),
+                    jobCache = jobCache,
+                    okHttpClient = okHttpClient,
+                    baseRetrofit = retrofit
+                )
+            }
+        }
+
+        /**
+         * USAJobs — keyed job provider factory. See [provideAdzunaFactory].
+         */
+        @Provides
+        @IntoMap
+        @StringKey("usajobs")
+        fun provideUSAJobsFactory(
+            jobCache: JobCache,
+            okHttpClient: OkHttpClient,
+            retrofit: Retrofit
+        ): ProviderFactory.Factory {
+            return ProviderFactory.Factory { config ->
+                USAJobsProvider(
+                    apiKey = config.credential("apiKey"),
+                    jobCache = jobCache,
+                    okHttpClient = okHttpClient,
+                    baseRetrofit = retrofit
+                )
+            }
         }
 
         @Provides

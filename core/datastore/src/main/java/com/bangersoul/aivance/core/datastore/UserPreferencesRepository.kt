@@ -10,7 +10,13 @@ interface UserPreferencesRepository {
     val userPreferences: Flow<UserPreferences>
     suspend fun updateGeminiApiKey(apiKey: String)
     suspend fun updateOnboardingCompleted(completed: Boolean)
+
+    /** Persists the explicit provider-optional choice made in onboarding (R2.2). */
+    suspend fun updateProviderOptional(optional: Boolean)
     suspend fun updateThemeConfig(themeConfig: ThemeConfig)
+
+    /** Persists the design-language kit selection (BYOX P2). */
+    suspend fun updateDesignKit(kit: String)
     suspend fun updateAccentSeed(accentSeed: String)
     suspend fun updateDynamicColor(enabled: Boolean)
     suspend fun updateBiometricLockEnabled(enabled: Boolean)
@@ -50,9 +56,21 @@ class UserPreferencesRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateProviderOptional(optional: Boolean) {
+        dataStore.updateData {
+            it.copy(providerOptional = optional)
+        }
+    }
+
     override suspend fun updateThemeConfig(themeConfig: ThemeConfig) {
         dataStore.updateData {
             it.copy(themeConfig = themeConfig)
+        }
+    }
+
+    override suspend fun updateDesignKit(kit: String) {
+        dataStore.updateData {
+            it.copy(designKit = kit)
         }
     }
 

@@ -9,7 +9,10 @@ lifecycleViewmodelCompose = "2.8.7"
 lifecycleRuntimeCompose = "2.8.7"
 activityCompose = "1.10.1"
 kotlin = "2.4.10"
-composeBom = "2024.09.00"
+# Compose BOM floor: 2026.06.01 is the minimum. feature/resume's ResumeEngineScreen
+# uses AnimatedContent(contentKey = ...), which requires Compose 1.7+. Do not lower
+# this without re-checking that call site.
+composeBom = "2026.06.01"
 ksp = "2.3.10"
 kotlinxSerializationJson = "1.11.0"
 navigation3Ui = "1.0.1"
@@ -58,6 +61,7 @@ opentelemetry = "1.43.0"
 mlkitTextRecognition = "16.0.1"
 benchmarkMacroJunit4 = "1.3.3"
 profileinstaller = "1.4.1"
+tasksGenai = "0.10.35"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -128,6 +132,7 @@ hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWo
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 hilt-work-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "hiltWork" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+androidx-work-testing = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 poi = { group = "org.apache.poi", name = "poi", version.ref = "poi" }
 poi-ooxml = { group = "org.apache.poi", name = "poi-ooxml", version.ref = "poi-ooxml" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
@@ -142,6 +147,7 @@ opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api", ve
 opentelemetry-sdk = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
 mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitTextRecognition" }
+tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "tasksGenai" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmarkMacroJunit4" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 

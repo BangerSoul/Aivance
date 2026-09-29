@@ -18,7 +18,15 @@ import javax.inject.Inject
 
 data class AssistantRequest(
     val conversationId: String,
-    val userMessage: String
+    val userMessage: String,
+    /**
+     * The user's original message, before any orchestrator wrapping. Intent
+     * detection runs against this raw text: the orchestrated [userMessage]
+     * embeds platform context (e.g. "Latest ATS Score: 0%"), and keyword
+     * matching against it would misroute every prompt to ANALYZE_RESUME and
+     * starve the LLM of open-ended conversation.
+     */
+    val rawUserMessage: String = userMessage
 )
 
 /**
@@ -42,7 +50,7 @@ class GetAssistantResponseUseCase @Inject constructor(
 ) : UseCase<AssistantRequest, CoreResult<String>>() {
 
     override suspend operator fun invoke(input: AssistantRequest): CoreResult<String> = runCatchingCore {
-        generateResponse(input.userMessage)
+        generateResponse(input.userMessage, input.rawUserMessage)
     }
 
     /**
@@ -56,7 +64,7 @@ class GetAssistantResponseUseCase @Inject constructor(
      */
     fun stream(input: AssistantRequest): Flow<String> = flow {
         // Stage 1: detect + execute concrete intents before falling back to chat.
-        routeOrNull(input.userMessage)?.let {
+        routeOrNull(input.rawUserMessage)?.let {
             emit(it)
             return@flow
         }
@@ -70,56 +78,169 @@ class GetAssistantResponseUseCase @Inject constructor(
             SdkAiMessage(MessageRole.USER, input.userMessage)
         )
 
+        var primaryProvider: AIProvider? = null
+
         // Prefer a streaming-capable provider for real-time token delivery.
         val streamingProvider =
             providerManager.getBestProviderFor(ProviderCapability.AI.Streaming) as? AIProvider
 
-        if (streamingProvider != null) {
-            var fullResponse = ""
-            try {
-                streamingProvider.streamChat(sdkMessages).collect { chunkResult ->
-                    when (chunkResult) {
-                        is Result.Success -> {
-                            emit(chunkResult.data)
-                            fullResponse += chunkResult.data
-                        }
-                        is Result.Failure -> {}
-                    }
-                }
-            } catch (_: Exception) {}
-
-            if (fullResponse.isBlank()) {
-                emit(generateCopilotFallback(input.userMessage, platformContext))
-            }
+        val primaryResult: StreamOutcome = if (streamingProvider != null) {
+            primaryProvider = streamingProvider
+            streamChat(streamingProvider, sdkMessages) { chunk -> emit(chunk) }
         } else {
-            // Graceful fallback: non-streaming provider or local copilot fallback.
+            // Non-streaming provider emits the full answer once.
             val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
-            val response = provider?.chat(sdkMessages)?.getOrNull()
-            if (!response.isNullOrBlank()) {
-                emit(response)
-            } else {
-                emit(generateCopilotFallback(input.userMessage, platformContext))
+            primaryProvider = provider
+            val text = provider?.chat(sdkMessages)?.getOrNull().orEmpty()
+            if (text.isNotBlank()) emit(text)
+            StreamOutcome(text, failedAfterEmitting = false)
+        }
+
+        // Case B (fail-after-partial): the primary provider emitted real tokens
+        // and THEN failed. We must NOT silently present the truncated text as a
+        // complete answer, and we must NOT switch providers and concatenate a
+        // second provider's output onto the first's partial tokens (the
+        // streamChat contract has no safe mid-stream continuation point). Preserve
+        // the partial output already emitted and end the flow with a truthful
+        // terminal failure so the UI shows a retry/failed state (see
+        // AssistantViewModel: streamFailed branch).
+        if (primaryResult.failedAfterEmitting) {
+            throw StreamInterruptedException(primaryResult.text)
+        }
+
+        var fullResponse = primaryResult.text
+
+        // Zero-connectivity fallback: the on-device model (Gemma) works without
+        // any network once its model file is downloaded. Only reached when the
+        // primary produced NOTHING (Case A: failed before the first token, or no
+        // provider) — safe because there is no partial output to corrupt.
+        if (fullResponse.isBlank()) {
+            val onDeviceProvider =
+                providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Streaming) as? AIProvider
+                    ?: providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Chat) as? AIProvider
+            // Guard against re-trying the same instance (e.g. when the on-device
+            // model is already the best configured provider).
+            if (onDeviceProvider != null && onDeviceProvider !== primaryProvider) {
+                val fallback = streamChat(onDeviceProvider, sdkMessages) { chunk -> emit(chunk) }
+                // If the on-device fallback itself fails after emitting, surface
+                // that truthfully too rather than masking it as completion.
+                if (fallback.failedAfterEmitting) {
+                    throw StreamInterruptedException(fallback.text)
+                }
+                fullResponse = fallback.text
             }
         }
+
+        if (fullResponse.isBlank()) {
+            emit(generateCopilotFallback(input.userMessage, platformContext))
+        }
     }
+
+    /**
+     * Result of a single provider streaming attempt.
+     *
+     * @property text the accumulated tokens actually emitted.
+     * @property failedAfterEmitting true when the provider emitted at least one
+     *   token and THEN errored — the caller must treat this as a truthful
+     *   terminal failure (partial output preserved), never as a completed answer
+     *   and never as a cue to concatenate a different provider's output.
+     */
+    private data class StreamOutcome(
+        val text: String,
+        val failedAfterEmitting: Boolean
+    )
+
+    /**
+     * Streams a chat response from [provider], emitting each chunk via [emit].
+     *
+     * Failure semantics (truthful, no fabricated completion):
+     *  - Failure BEFORE any token → returns blank text, [StreamOutcome.failedAfterEmitting]
+     *    = false, letting the caller safely fall back to another provider.
+     *  - Failure AFTER partial tokens → returns the partial text with
+     *    [StreamOutcome.failedAfterEmitting] = true so the caller ends in a
+     *    truthful terminal failure instead of presenting a truncated answer.
+     *  - [kotlinx.coroutines.CancellationException] is re-thrown, never swallowed,
+     *    so user cancellation stays cancellation and structured concurrency is
+     *    preserved (it must not degrade into provider fallback or a fake error).
+     */
+    private suspend fun streamChat(
+        provider: AIProvider,
+        messages: List<SdkAiMessage>,
+        emit: suspend (String) -> Unit
+    ): StreamOutcome {
+        var fullResponse = ""
+        var emittedAny = false
+        try {
+            provider.streamChat(messages).collect { chunkResult ->
+                when (chunkResult) {
+                    is Result.Success -> {
+                        emit(chunkResult.data)
+                        if (chunkResult.data.isNotEmpty()) emittedAny = true
+                        fullResponse += chunkResult.data
+                    }
+                    // A malformed/failed chunk terminates the stream. If we had
+                    // already emitted, this is a mid-stream failure (Case B/D).
+                    is Result.Failure -> return@collect run {
+                        throw StreamInterruptedException(fullResponse)
+                    }
+                }
+            }
+        } catch (ce: kotlin.coroutines.cancellation.CancellationException) {
+            // Case C: propagate cancellation unchanged.
+            throw ce
+        } catch (interrupted: StreamInterruptedException) {
+            return StreamOutcome(interrupted.partial, failedAfterEmitting = interrupted.partial.isNotBlank())
+        } catch (_: Exception) {
+            // Provider threw (network drop, malformed stream). Whether we emitted
+            // anything decides if this is a safe-to-fallback pre-token failure or
+            // a mid-stream failure that must surface truthfully.
+            return StreamOutcome(fullResponse, failedAfterEmitting = emittedAny)
+        }
+        return StreamOutcome(fullResponse, failedAfterEmitting = false)
+    }
+
+    /**
+     * Signals that a provider stream ended in failure after emitting partial
+     * output. Carries the partial text so the caller can preserve what the user
+     * already saw while still reporting a truthful terminal failure.
+     */
+    private class StreamInterruptedException(val partial: String) : Exception()
 
     /**
      * Runs the full generation pipeline for one-shot (non-streaming) callers.
      * Routed intents short-circuit; everything else goes to the context-aware
      * LLM chat path.
      */
-    private suspend fun generateResponse(userMessage: String): String {
+    private suspend fun generateResponse(userMessage: String, rawUserMessage: String): String {
         // Stage 1: detect + execute concrete intents before falling back to chat.
-        routeOrNull(userMessage)?.let { return it }
+        routeOrNull(rawUserMessage)?.let { return it }
 
         // Stage 2: context-aware LLM chat with the active provider.
         val platformContext = contextEngine.buildActiveContext()
-        val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
-            ?: throw Exception("No AI provider configured — open Settings → Providers to connect one.")
-
         val systemPrompt = buildSystemPrompt(platformContext)
-        return provider?.generateText("$systemPrompt\n\nUser: $userMessage")?.getOrNull()
-            ?: generateCopilotFallback(userMessage, platformContext)
+        val prompt = "$systemPrompt\n\nUser: $userMessage"
+
+        val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
+        val onDeviceProvider =
+            providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Chat) as? AIProvider
+        val response = provider?.generateText(prompt)?.getOrNull()
+
+        // Zero-connectivity fallback: the on-device model (Gemma) works without
+        // any network once its model file is downloaded. Guard against re-trying
+        // the same instance (when the on-device model is already the best chat
+        // provider).
+        if (response.isNullOrBlank() && onDeviceProvider != null && onDeviceProvider !== provider) {
+            onDeviceProvider.generateText(prompt)?.getOrNull()?.let { return it }
+        }
+
+        if (!response.isNullOrBlank()) return response
+
+        // No provider produced an answer: surface a clear error only when there
+        // is truly nothing to route to (no cloud provider and no on-device model).
+        if (provider == null && onDeviceProvider == null) {
+            throw Exception("No AI provider configured — open Settings → Providers to connect one.")
+        }
+        return generateCopilotFallback(userMessage, platformContext)
     }
 
     /**
@@ -147,9 +268,9 @@ class GetAssistantResponseUseCase @Inject constructor(
      * Maps a free-form user message to a (intent, params) pair using keyword
      * detection. Returns null when the message should fall back to chat.
      */
-    private fun detectIntent(message: String): Pair<String, Map<String, String>>? {
+    private suspend fun detectIntent(message: String): Pair<String, Map<String, String>>? {
         val lower = message.lowercase().trim()
-        return when {
+        val keywordIntent = when {
             (lower.contains("resume") && (lower.contains("analyz") || lower.contains("score") || lower.contains("optimiz"))) ||
                 lower.contains("ats") -> {
                 val jd = extractAfter(message, listOf("against", "for", "with"))
@@ -169,6 +290,33 @@ class GetAssistantResponseUseCase @Inject constructor(
                 "START_INTERVIEW" to mapOf("targetRole" to role)
             }
             else -> null
+        }
+
+        val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
+            ?: providerManager.getOnDeviceProviderFor(ProviderCapability.AI.Chat) as? AIProvider
+            ?: return keywordIntent
+
+        val routingPrompt = "You are a routing agent for the AiVance Career Assistant. Analyze the user's message and categorize it into one of these intents: ANALYZE_RESUME, SEARCH_JOBS, GENERATE_ROADMAP, START_INTERVIEW, or CHAT. Response Format: JSON only. Example: {\"intent\": \"SEARCH_JOBS\", \"params\": {\"query\": \"Senior Android Developer\"}}. User Message: \"$message\""
+
+        val response = provider.generateText(routingPrompt).getOrNull() ?: return keywordIntent
+        
+        return try {
+            val start = response.indexOf("{")
+            val end = response.lastIndexOf("}") + 1
+            if (start == -1 || end == 0) return keywordIntent
+            val json = response.substring(start, end)
+            if (json.contains("CHAT")) return null
+            
+            val intent = if (json.contains("ANALYZE_RESUME")) "ANALYZE_RESUME"
+            else if (json.contains("SEARCH_JOBS")) "SEARCH_JOBS"
+            else if (json.contains("GENERATE_ROADMAP")) "GENERATE_ROADMAP"
+            else if (json.contains("START_INTERVIEW")) "START_INTERVIEW"
+            else null
+            
+            if (intent == null) return keywordIntent
+            intent to emptyMap()
+        } catch (e: Exception) {
+            keywordIntent
         }
     }
 

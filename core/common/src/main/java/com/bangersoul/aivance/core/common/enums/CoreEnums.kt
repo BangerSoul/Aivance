@@ -22,6 +22,34 @@ enum class RemoteType {
     OTHER
 }
 
+/**
+ * Company-level remote-work policy from the bundled remote-company catalog
+ * (R-02). Mirrors the remoteintech/remote-jobs dataset values:
+ * `fully-remote`, `remote-first`, `remote-friendly`, `hybrid`.
+ *
+ * Matching semantics: FULLY_REMOTE and REMOTE_FIRST are treated as the same
+ * bucket (both mean the company is distributed-first), while REMOTE_FRIENDLY
+ * and HYBRID match their exact policy.
+ */
+@Serializable
+enum class RemotePolicy {
+    FULLY_REMOTE,
+    REMOTE_FIRST,
+    REMOTE_FRIENDLY,
+    HYBRID,
+    UNKNOWN;
+
+    companion object {
+        fun fromDatasetString(raw: String?): RemotePolicy = when (raw?.trim()?.lowercase()) {
+            "fully-remote" -> FULLY_REMOTE
+            "remote-first" -> REMOTE_FIRST
+            "remote-friendly" -> REMOTE_FRIENDLY
+            "hybrid" -> HYBRID
+            else -> UNKNOWN
+        }
+    }
+}
+
 @Serializable
 enum class EmploymentType {
     FULL_TIME,

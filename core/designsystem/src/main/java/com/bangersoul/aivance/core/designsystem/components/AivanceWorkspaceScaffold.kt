@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.bangersoul.aivance.core.designsystem.shell.LocalAppShellState
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 
 /**
@@ -27,27 +28,42 @@ fun AivanceWorkspaceScaffold(
     emptyDescription: String? = null,
     onRetry: () -> Unit = {},
     onBack: (() -> Unit)? = null,
-    showAssistantAction: Boolean = true,
-    onAssistantClick: () -> Unit = {},
+    /** Accessible name for the back button; caller-supplied so it can be localized. */
+    backContentDescription: String? = null,
+    /**
+     * Job-context assistant entry in the top bar. Defaults to **false**: the AI
+     * orb in the nav bar owns the plain assistant, so opting in here is only for
+     * screens that hand the assistant a specific job (AUDIT 15/32).
+     */
+    showAssistantAction: Boolean = false,
+    /** Accessible name for the assistant icon; caller-supplied so it can be localized. */
+    assistantContentDescription: String? = null,
+    /** Custom assistant action; when null the global assistant overlay opens. */
+    onAssistantClick: (() -> Unit)? = null,
     topBarActions: @Composable () -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
     content: @Composable () -> Unit
 ) {
+    val shellState = LocalAppShellState.current
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             AivanceTopBar(
                 title = title,
                 subtitle = subtitle,
+                backContentDescription = backContentDescription,
                 onBack = onBack,
                 actions = {
                     topBarActions()
                     if (showAssistantAction) {
-                        IconButton(onClick = onAssistantClick) {
+                        IconButton(
+                            onClick = onAssistantClick
+                                ?: { shellState.toggleAssistant(true) }
+                        ) {
                             Icon(
                                 Icons.Rounded.AutoAwesome,
-                                contentDescription = "AI Assistant",
+                                contentDescription = assistantContentDescription,
                                 tint = AivanceTheme.colors.accent
                             )
                         }

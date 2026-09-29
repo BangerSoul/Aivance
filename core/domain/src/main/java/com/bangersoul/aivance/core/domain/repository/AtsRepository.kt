@@ -17,6 +17,9 @@ sealed interface AtsStreamEvent {
 
 interface AtsRepository {
     fun getReportsForVersion(versionId: Long): Flow<CoreResult<List<AtsReport>>>
+
+    /** All ATS reports across every resume version, newest first. */
+    fun getAllReports(): Flow<CoreResult<List<AtsReport>>>
     suspend fun getReportById(id: Long): AtsReport?
     suspend fun saveReport(report: AtsReport): CoreResult<Long>
     suspend fun deleteReport(id: Long): CoreResult<Unit>

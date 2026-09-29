@@ -7,7 +7,9 @@ import com.bangersoul.aivance.core.common.model.ApplicationStage
 import com.bangersoul.aivance.core.common.model.CareerState
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.analytics.KPIEngine
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
+import com.bangersoul.aivance.core.domain.repository.ApplicationPreferencesRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
@@ -26,15 +28,24 @@ sealed interface TrackerUiState {
         val stages: List<ApplicationStage> = emptyList(),
         val selectedApplicationId: Long? = null,
         val careerState: CareerState? = null,
-        val pipelineMetrics: PipelineMetrics = PipelineMetrics()
+        val pipelineMetrics: PipelineMetrics = PipelineMetrics(),
+        /** Job handed in from a cross-feature jump (e.g. saved job's "Track
+         *  application") — the screen pre-fills the Add dialog with it. */
+        val pendingTrackJob: JobListing? = null,
+        /** Applications created today (R-07) — compared against [dailyCap]. */
+        val todayAppliedCount: Int = 0,
+        /** Configurable daily application cap (R-07). */
+        val dailyCap: Int = 5
     ) : TrackerUiState
     data class Error(val message: String) : TrackerUiState
 }
 
 data class PipelineMetrics(
     val activeCount: Int = 0,
-    val interviewRate: Int = 0,
-    val offerRate: Int = 0
+    /** Interview conversion (0..100), or `null` when nothing has been applied yet (0/0). */
+    val interviewRate: Int? = null,
+    /** Offer conversion (0..100), or `null` when nothing has been applied yet (0/0). */
+    val offerRate: Int? = null
 )
 
 sealed interface TrackerUiEvent {
@@ -45,6 +56,12 @@ sealed interface TrackerUiEvent {
     data class UpdateNotes(val applicationId: Long, val notes: String) : TrackerUiEvent
     /** Manually add a job application (company + role) to the selected stage. */
     data class AddApplication(val company: String, val role: String, val stageId: String) : TrackerUiEvent
+    /** Pre-select a job from another feature (saved jobs): selects the existing
+     *  application for it, or pre-fills the Add dialog when it isn't tracked yet. */
+    data class TrackJob(val jobId: String) : TrackerUiEvent
+    /** Clears the pending cross-feature job once the Add dialog is dismissed. */
+    data object ClearPendingTrackJob : TrackerUiEvent
+    data class SetDailyCap(val cap: Int) : TrackerUiEvent
     data object Refresh : TrackerUiEvent
 }
 
@@ -54,7 +71,9 @@ class TrackerViewModel @Inject constructor(
     private val workflowEngine: WorkflowEngine,
     private val careerStateEngine: CareerStateEngine,
     private val trackEventUseCase: TrackEventUseCase,
-    private val jobRepository: JobRepository
+    private val jobRepository: JobRepository,
+    private val applicationPreferencesRepository: ApplicationPreferencesRepository,
+    private val kpiEngine: KPIEngine
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TrackerUiState>(TrackerUiState.Loading)
@@ -75,15 +94,18 @@ class TrackerViewModel @Inject constructor(
             combine(
                 repository.getApplications(),
                 repository.getStages(),
-                careerStateEngine.state
-            ) { appsRes, stagesRes, careerState ->
+                careerStateEngine.state,
+                applicationPreferencesRepository.dailyApplicationCap
+            ) { appsRes, stagesRes, careerState, dailyCap ->
                 if (appsRes is Result.Success && stagesRes is Result.Success) {
                     val apps = appsRes.data
                     TrackerUiState.Success(
                         applications = apps,
                         stages = stagesRes.data,
                         careerState = careerState,
-                        pipelineMetrics = calculateMetrics(apps)
+                        pipelineMetrics = calculateMetrics(apps),
+                        todayAppliedCount = todayAppliedCount(apps),
+                        dailyCap = dailyCap
                     )
                 } else {
                     TrackerUiState.Error("Failed to load pipeline")
@@ -91,7 +113,10 @@ class TrackerViewModel @Inject constructor(
             }.collect { state ->
                 val previous = _uiState.value as? TrackerUiState.Success
                 _uiState.value = if (state is TrackerUiState.Success) {
-                    state.copy(selectedApplicationId = previous?.selectedApplicationId)
+                    state.copy(
+                        selectedApplicationId = previous?.selectedApplicationId,
+                        pendingTrackJob = previous?.pendingTrackJob
+                    )
                 } else {
                     state
                 }
@@ -101,13 +126,12 @@ class TrackerViewModel @Inject constructor(
 
     private fun calculateMetrics(apps: List<Application>): PipelineMetrics {
         val active = apps.filter { it.status == "ACTIVE" }
-        val interviewCount = apps.count { it.currentStageId.contains("INTERVIEW", ignoreCase = true) }
-        val offerCount = apps.count { it.currentStageId.contains("OFFER", ignoreCase = true) }
-
+        // KPIEngine is the single owner of conversion ratios (R4): it returns `null` for the
+        // undefined 0/0 case so the UI renders "not enough data" instead of a fake 0%.
         return PipelineMetrics(
             activeCount = active.size,
-            interviewRate = if (apps.isNotEmpty()) (interviewCount * 100 / apps.size) else 0,
-            offerRate = if (apps.isNotEmpty()) (offerCount * 100 / apps.size) else 0
+            interviewRate = kpiEngine.calculateInterviewRate(apps)?.toInt(),
+            offerRate = kpiEngine.calculateOfferRate(apps)?.toInt()
         )
     }
 
@@ -119,7 +143,30 @@ class TrackerViewModel @Inject constructor(
             TrackerUiEvent.CloseApplication -> closeApplication()
             is TrackerUiEvent.UpdateNotes -> updateNotes(event.applicationId, event.notes)
             is TrackerUiEvent.AddApplication -> addApplication(event.company, event.role, event.stageId)
+            is TrackerUiEvent.TrackJob -> trackJob(event.jobId)
+            TrackerUiEvent.ClearPendingTrackJob -> clearPendingTrackJob()
+            is TrackerUiEvent.SetDailyCap -> setDailyCap(event.cap)
             TrackerUiEvent.Refresh -> loadData()
+        }
+    }
+
+    /**
+     * Applications created today (R-07): dateApplied falls inside the current
+     * local day window. Deleted applications drop out of the count naturally
+     * because the list only reflects rows that still exist.
+     */
+    private fun todayAppliedCount(apps: List<Application>): Int {
+        val startOfDay = java.time.LocalDate.now()
+            .atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        return apps.count { (it.dateApplied ?: 0L) >= startOfDay }
+    }
+
+    private fun setDailyCap(cap: Int) {
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest("tracker_daily_cap_set"))
+            applicationPreferencesRepository.setDailyApplicationCap(cap)
         }
     }
 
@@ -154,6 +201,63 @@ class TrackerViewModel @Inject constructor(
     private fun selectApplication(applicationId: Long) {
         val current = _uiState.value as? TrackerUiState.Success ?: return
         _uiState.value = current.copy(selectedApplicationId = applicationId)
+    }
+
+    /**
+     * Cross-feature jump (e.g. saved job's "Track application"): if the job is
+     * already tracked, select its application; otherwise load the job and
+     * pre-fill the Add dialog with its company/role so one tap adds it.
+     */
+    private fun trackJob(jobId: String) {
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest("tracker_track_job"))
+            val current = _uiState.value as? TrackerUiState.Success
+
+            // Direct match first — the application's joined job carries the same id
+            // when the caller already resolved the job (e.g. via the DB id).
+            val direct = current?.applications?.firstOrNull { it.job?.id == jobId }
+            if (direct != null) {
+                selectApplication(direct.id)
+                return@launch
+            }
+
+            // Otherwise resolve through the repository (DB -> cache -> provider),
+            // which normalizes external ids to their cached DB id, then match again
+            // so an already-tracked job is selected instead of duplicated.
+            val result = jobRepository.getJobById(jobId)
+            if (result is Result.Success) {
+                val job = result.data
+                val matched = current?.applications?.firstOrNull { app ->
+                    val tracked = app.job
+                    tracked != null && (
+                        tracked.id == job.id ||
+                            // External ids never survive the DB round-trip (jobs get
+                            // auto-generated row ids), so fall back to stable identity
+                            // to avoid tracking the same role twice.
+                            (tracked.url.isNotBlank() && tracked.url == job.url) ||
+                            (tracked.company.equals(job.company, ignoreCase = true) &&
+                                tracked.title.equals(job.title, ignoreCase = true))
+                        )
+                }
+                if (matched != null) {
+                    selectApplication(matched.id)
+                    return@launch
+                }
+                val success = _uiState.value as? TrackerUiState.Success
+                if (success != null) {
+                    _uiState.value = success.copy(pendingTrackJob = job)
+                }
+            } else {
+                _effects.send(
+                    (result as? Result.Failure)?.error?.message ?: "Job not found"
+                )
+            }
+        }
+    }
+
+    private fun clearPendingTrackJob() {
+        val current = _uiState.value as? TrackerUiState.Success ?: return
+        _uiState.value = current.copy(pendingTrackJob = null)
     }
 
     private fun updateNotes(applicationId: Long, notes: String) {

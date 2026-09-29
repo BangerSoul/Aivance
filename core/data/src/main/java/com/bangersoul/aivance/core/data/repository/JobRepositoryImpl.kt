@@ -7,6 +7,7 @@ import com.bangersoul.aivance.core.common.model.JobSearchFilter
 import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.runCatchingCore
+import com.bangersoul.aivance.core.data.company.CompanyCatalog
 import com.bangersoul.aivance.core.data.job.JobFilterMatcher
 import com.bangersoul.aivance.core.data.job.JobNormalizer
 import com.bangersoul.aivance.core.data.mapper.toDomain
@@ -17,6 +18,7 @@ import com.bangersoul.aivance.core.database.model.CompanyEntity
 import com.bangersoul.aivance.core.database.model.SavedJobEntity
 import com.bangersoul.aivance.core.database.model.ViewedJobEntity
 import com.bangersoul.aivance.core.domain.repository.JobRepository
+import com.bangersoul.aivance.core.domain.repository.ProviderRepository
 import com.bangersoul.aivance.sdk.api.EnrichmentProvider
 import com.bangersoul.aivance.sdk.api.JobProvider
 import com.bangersoul.aivance.sdk.infrastructure.ProviderRegistry
@@ -35,7 +37,9 @@ class JobRepositoryImpl @Inject constructor(
     private val companyDao: CompanyDao,
     private val providerRegistry: ProviderRegistry,
     private val normalizer: JobNormalizer,
-    private val filterMatcher: JobFilterMatcher
+    private val filterMatcher: JobFilterMatcher,
+    private val companyCatalog: CompanyCatalog,
+    private val providerRepository: ProviderRepository
 ) : JobRepository {
 
     override fun getJobs(): Flow<CoreResult<List<JobListing>>> {
@@ -49,32 +53,61 @@ class JobRepositoryImpl @Inject constructor(
         sortOrder: JobSortOrder
     ): CoreResult<List<JobListing>> = coroutineScope {
         runCatchingCore {
+            // Multi-provider selection: only providers the user has enabled run.
+            // A provider with no persisted config is enabled by default (keyless
+            // boards like Arbeitnow/RemoteOK work with zero setup); a provider
+            // explicitly toggled off in Provider Management is skipped even if
+            // it still carries valid credentials.
+            val savedConfigs = providerRepository.getProviderConfigs().firstOrNull() ?: emptyList()
+            val disabledIds = savedConfigs
+                .filter { it.settings["isEnabled"]?.toBoolean() == false }
+                .map { it.providerId }
+                .toSet()
             val providers = providerRegistry.getAllProviders()
                 .filterIsInstance<JobProvider>()
+                .filter { it.metadata.id !in disabledIds }
                 .filter { it.status == com.bangersoul.aivance.sdk.core.ProviderStatus.Active ||
                            it.status == com.bangersoul.aivance.sdk.core.ProviderStatus.Ready }
 
             val deferredResults = providers.map { provider ->
-                async {
-                    provider.searchJobs(filter, sortOrder, 1).let { result ->
-                        when (result) {
-                            is Result.Success -> result.data.map { normalizer.normalize(provider.metadata.id, it) }
-                            is Result.Failure -> emptyList()
-                        }
-                    }
+                async { provider to provider.searchJobs(filter, sortOrder, 1) }
+            }
+
+            val results = deferredResults.awaitAll()
+            val providerResults = results.flatMap { (provider, result) ->
+                when (result) {
+                    is Result.Success -> result.data.map { normalizer.normalize(provider.metadata.id, it) }
+                    is Result.Failure -> emptyList()
                 }
             }
 
-            val providerResults = deferredResults.awaitAll().flatten()
-            val aggregated = providerResults.ifEmpty {
-                jobDao.getJobsWithDetails().firstOrNull()?.map { it.toDomain() } ?: emptyList()
+            // Truthful failure semantics (no seed/cache masquerade): if every
+            // queried provider errored and produced nothing, surface the failure
+            // instead of silently dumping the entire local jobs table dressed up
+            // as fresh results. The per-provider layer (RestJobProvider) already
+            // returns each provider's OWN previously-cached listings on a
+            // transient network failure — those come back as Result.Success and
+            // flow through normally — so reaching here with all-failures means
+            // there was genuinely nothing (fresh/offline, no cache) to serve.
+            // An empty result from a provider that *succeeded* stays empty: "no
+            // matches" is a real, truthful answer, not an error.
+            val allProvidersFailed = providers.isNotEmpty() && results.none { (_, r) -> r is Result.Success }
+            if (allProvidersFailed && providerResults.isEmpty()) {
+                throw Exception("All job providers failed. Check your connection and try again.")
             }
+
+            val aggregated = providerResults
 
             // Client-side filtering: provider APIs only honour a subset of the
             // filter (mostly query + location), so apply every dimension here to
             // guarantee results actually respect the user's filters. Also ranks
             // by relevance when a query is present and dedups across providers.
             val filtered = filterMatcher.filterAndRank(aggregated, filter)
+                // R-02 catalog dimensions (remote policy / tech stack) can't be
+                // known from a listing alone — they come from the bundled
+                // remote-company catalog, so apply them after the listing-level
+                // matcher. Unknown companies fail catalog-filtered searches.
+                .filter { companyCatalog.accepts(it.company, filter) }
 
             // Cache in background and remap each listing's id to the internal
             // DB row id. The Jobs list then hands getJobById an id it can
@@ -218,6 +251,24 @@ class JobRepositoryImpl @Inject constructor(
             headquarters = null,
             socialLinks = emptyMap()
         ))
-        jobDao.insertJob(job.toEntity(companyId))
+
+        // Resolve the stable DB id for this job BEFORE inserting. jobDao.insertJob
+        // is now @Upsert, which returns the new rowid only on a fresh insert and
+        // -1L on the ON CONFLICT DO UPDATE path. Callers (JobDetailsViewModel's
+        // apply/cover-letter flows) use this return value as the applications /
+        // cover-letter foreign key, so returning -1 would produce an FK violation
+        // or an unresolvable "Job not found". Reuse the existing row's id when the
+        // job is already cached — by provider URL first (the canonical dedupe key),
+        // then by a numeric id that already resolves — so re-caching updates in
+        // place and always hands back a valid jobs.id.
+        val existingId = job.url.takeIf { it.isNotBlank() }?.let { jobDao.getJobByUrl(it)?.id }
+            ?: job.id.toLongOrNull()?.takeIf { jobDao.getJobById(it) != null }
+
+        if (existingId != null) {
+            jobDao.insertJob(job.copy(id = existingId.toString()).toEntity(companyId))
+            existingId
+        } else {
+            jobDao.insertJob(job.toEntity(companyId))
+        }
     }
 }

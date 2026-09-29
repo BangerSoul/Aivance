@@ -87,7 +87,7 @@ class RestJobProviderTest {
     fun `searchJobs falls back to cache on failure`() = runTest {
         provider.searchJobsException = Exception("Network error")
         val cachedJobs = listOf(
-            JobListing(id = "1", title = "Cached Job", company = "Co", description = "", url = "", sourceProvider = "test")
+            JobListing(id = "1", title = "Cached Job", company = "Co", description = "", url = "", sourceProvider = "test-provider")
         )
         coEvery { jobCache.getJobs() } returns cachedJobs
 
@@ -95,6 +95,22 @@ class RestJobProviderTest {
 
         assertTrue(result is Result.Success)
         assertEquals("Cached Job", (result as Result.Success).data[0].title)
+    }
+
+    @Test
+    fun `searchJobs never serves another providers cached jobs on failure`() = runTest {
+        provider.searchJobsException = Exception("Network error")
+        // The shared cache holds jobs stamped with a DIFFERENT provider's id —
+        // they must not be echoed as this provider's results (the "dummy
+        // results" bug where every unconfigured provider returned the whole DB).
+        val otherProvidersJobs = listOf(
+            JobListing(id = "9", title = "Someone Else's Cache", company = "Co", description = "", url = "", sourceProvider = "other-provider")
+        )
+        coEvery { jobCache.getJobs() } returns otherProvidersJobs
+
+        val result = provider.searchJobs(JobSearchFilter(), JobSortOrder.RELEVANCE, 1)
+
+        assertTrue(result is Result.Failure)
     }
 
     @Test

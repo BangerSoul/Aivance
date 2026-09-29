@@ -242,12 +242,14 @@ class WorkerTests {
 
     @Test
     fun providerRefreshWorker_hasKnownProviders() {
-        assertEquals(5, ProviderRefreshWorker.knownProviders.size)
+        assertEquals(7, ProviderRefreshWorker.knownProviders.size)
         assertTrue(ProviderRefreshWorker.knownProviders.contains("gemini"))
         assertTrue(ProviderRefreshWorker.knownProviders.contains("openai"))
         assertTrue(ProviderRefreshWorker.knownProviders.contains("groq"))
         assertTrue(ProviderRefreshWorker.knownProviders.contains("openrouter"))
         assertTrue(ProviderRefreshWorker.knownProviders.contains("ollama"))
+        assertTrue(ProviderRefreshWorker.knownProviders.contains("anthropic"))
+        assertTrue(ProviderRefreshWorker.knownProviders.contains("gemma"))
     }
 
     // ── DownloadManager Tests ───────────────────────

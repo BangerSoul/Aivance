@@ -5,6 +5,7 @@
     <string name="export_cover_letter">कवर लेटर निर्यात करें</string>
     <string name="no_cover_letter_yet">अभी कोई कवर लेटर नहीं</string>
     <string name="no_cover_letter_desc">तैयार, भेजने योग्य अनुरूप पत्र पाने के लिए नौकरी की सूची से एक बनाएं।</string>
+    <string name="generate_cover_letter">कवर लेटर बनाएं</string>
     <string name="find_jobs">नौकरियां खोजें</string>
     <string name="copy_all">सभी कॉपी करें</string>
     <string name="export">निर्यात करें</string>

@@ -33,7 +33,9 @@ class LinkedInProvider(
         )
     ),
     apiKey = apiKey,
-    actorId = "valig~linkedin-jobs-scraper",
+    // Canonical LinkedIn jobs actor (accepts positions[] input; the previous
+    // valig actor ignored search input and returned evergreen postings only).
+    actorId = "curious_coder~linkedin-jobs-scraper",
     jobCache = jobCache,
     okHttpClient = okHttpClient,
     baseRetrofit = baseRetrofit

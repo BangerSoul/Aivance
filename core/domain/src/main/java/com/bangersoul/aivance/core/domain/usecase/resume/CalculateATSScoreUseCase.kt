@@ -1,8 +1,7 @@
 package com.bangersoul.aivance.core.domain.usecase.resume
 
-import com.bangersoul.aivance.core.common.model.AtsResult
-import com.bangersoul.aivance.core.common.model.Resume
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
+import com.bangersoul.aivance.core.common.model.AtsReport
+import com.bangersoul.aivance.core.common.model.OptimizationTip
 import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.ValidationError
@@ -19,19 +18,15 @@ data class AtsScoreRequest(
     val companyName: String? = null
 )
 
-data class AtsScoreResponse(
-    val atsResult: AtsResult,
-    val analysis: ResumeAnalysis
-)
-
 /**
  * Calculates the ATS score for a specific resume version.
+ * Returns a persisted [AtsReport] from the AI analysis pipeline.
  */
 class CalculateATSScoreUseCase @Inject constructor(
     private val resumeRepository: ResumeRepository
-) : UseCase<AtsScoreRequest, CoreResult<AtsScoreResponse>>() {
+) : UseCase<AtsScoreRequest, CoreResult<AtsReport>>() {
 
-    override suspend operator fun invoke(input: AtsScoreRequest): CoreResult<AtsScoreResponse> {
+    override suspend operator fun invoke(input: AtsScoreRequest): CoreResult<AtsReport> {
         if (input.resumeId <= 0) {
             return Result.Failure(ValidationError("resumeId", "Invalid resume ID."))
         }
@@ -47,36 +42,40 @@ class CalculateATSScoreUseCase @Inject constructor(
                 null -> throw Exception("Resume not found.")
             }
 
-            val analysis = resumeRepository.analyzeResume(input.resumeId, input.versionId, input.jobDescription)
-            val analysisData = when (analysis) {
-                is Result.Success -> analysis.data
-                is Result.Failure -> throw Exception(analysis.error.message)
+            val analysisResult = resumeRepository.analyzeResume(input.resumeId, input.versionId, input.jobDescription)
+            val report = when (analysisResult) {
+                is Result.Success -> analysisResult.data
+                is Result.Failure -> throw Exception(analysisResult.error.message)
             }
 
-            val atsResult = AtsResult(
-                score = analysisData.overallScore.coerceIn(0, 100),
-                resumeName = resume.name,
-                feedback = analysisData.matchSummary,
-                missingKeywords = analysisData.missingKeywords,
-                matchingKeywords = analysisData.matchingKeywords,
-                formattingScore = calculateFormattingScore(resume.rawText ?: "")
+            // Clamp scores at the domain boundary (matches the legacy AtsResult
+            // contract), then augment with a formatting score as an optimization
+            // tip when the resume layout is poor.
+            val formattingScore = calculateFormattingScore(resume.rawText ?: "")
+            val clamped = report.copy(
+                overallScore = report.overallScore.coerceIn(0, 100),
+                matchPercentage = report.matchPercentage.coerceIn(0, 100)
             )
-
-            AtsScoreResponse(
-                atsResult = atsResult,
-                analysis = analysisData
-            )
+            if (formattingScore < 100) {
+                clamped.copy(
+                    optimizationTips = clamped.optimizationTips + OptimizationTip(
+                        category = "Formatting",
+                        description = "Resume formatting score: $formattingScore/100. Consider using bullet points and shorter lines.",
+                        priority = if (formattingScore < 80) "HIGH" else "MEDIUM"
+                    )
+                )
+            } else {
+                clamped
+            }
         }
     }
 
     private fun calculateFormattingScore(text: String): Int {
         var score = 100
         if (text.isBlank()) return 0
-
         if (text.lines().any { it.length > 150 }) score -= 10
         val bulletPoints = text.count { it == '•' || it == '-' || it == '*' }
         if (bulletPoints == 0 && text.length > 500) score -= 15
-
         return score.coerceIn(0, 100)
     }
 }

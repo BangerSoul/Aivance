@@ -5,8 +5,10 @@ import com.bangersoul.aivance.core.common.model.Application
 import com.bangersoul.aivance.core.common.model.ApplicationStage
 import com.bangersoul.aivance.core.common.model.CareerState
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.analytics.KPIEngine
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.AnalyticsRepository
+import com.bangersoul.aivance.core.domain.repository.ApplicationPreferencesRepository
 import com.bangersoul.aivance.core.domain.repository.ApplicationWorkflowRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
@@ -27,6 +29,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -41,13 +44,24 @@ class TrackerViewModelTest {
     private val mockCareerStateEngine: CareerStateEngine = mockk()
     private val mockTrackEvent: TrackEventUseCase = mockk()
     private val mockJobRepository: JobRepository = mockk()
+    private val mockApplicationPreferences: ApplicationPreferencesRepository = mockk()
 
     private lateinit var viewModel: TrackerViewModel
 
     private fun buildViewModel(): TrackerViewModel {
-        val workflowEngine = WorkflowEngine(mockRepository, mockAnalyticsRepository, mockTaskGenerator)
+        val workflowEngine = WorkflowEngine(
+            mockRepository,
+            mockAnalyticsRepository,
+            mockTaskGenerator,
+            mockk(relaxed = true),
+            // NotificationRepository — added to WorkflowEngine when pipeline
+            // events started recording into the inbox; this fixture was never
+            // updated, so the module's unit tests did not compile.
+            mockk(relaxed = true)
+        )
         return TrackerViewModel(
-            mockRepository, workflowEngine, mockCareerStateEngine, mockTrackEvent, mockJobRepository
+            mockRepository, workflowEngine, mockCareerStateEngine, mockTrackEvent, mockJobRepository,
+            mockApplicationPreferences, KPIEngine()
         )
     }
 
@@ -72,6 +86,8 @@ class TrackerViewModelTest {
         coEvery { mockRepository.getStages() } returns flowOf(Result.Success(stages))
         every { mockCareerStateEngine.state } returns MutableStateFlow(CareerState())
         coEvery { mockTaskGenerator.invoke(any()) } returns Result.Success(Unit)
+        every { mockApplicationPreferences.dailyApplicationCap } returns flowOf(5)
+        coEvery { mockApplicationPreferences.setDailyApplicationCap(any()) } returns Unit
     }
 
     @After
@@ -98,6 +114,35 @@ class TrackerViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is TrackerUiState.Success)
         assertEquals(0, (state as TrackerUiState.Success).applications.size)
+    }
+
+    @Test
+    fun `pipeline metrics report null conversion when nothing applied`() = runTest {
+        // Only a bookmarked (SAVED) job: the interview/offer ratios are 0/0 and must be null
+        // so the UI renders "not enough data" instead of a fabricated 0% conversion (R2).
+        coEvery { mockRepository.getApplications() } returns flowOf(Result.Success(listOf(sampleApp("SAVED"))))
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertNull(state.pipelineMetrics.interviewRate)
+        assertNull(state.pipelineMetrics.offerRate)
+    }
+
+    @Test
+    fun `pipeline metrics compute conversion over applied applications`() = runTest {
+        coEvery { mockRepository.getApplications() } returns flowOf(
+            Result.Success(listOf(sampleApp("APPLIED"), sampleApp("INTERVIEW")))
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        // 1 of 2 applied reached the interview stage.
+        assertEquals(50, state.pipelineMetrics.interviewRate)
+        assertEquals(0, state.pipelineMetrics.offerRate)
     }
 
     @Test
@@ -188,6 +233,126 @@ class TrackerViewModelTest {
 
         coVerify(exactly = 0) { mockJobRepository.cacheJob(any()) }
         coVerify(exactly = 0) { mockRepository.saveApplication(any()) }
+    }
+
+    @Test
+    fun `trackJob with already-tracked job selects its application`() = runTest {
+        // The application's joined job carries the cached job's DB id as a string,
+        // which the repository normalizes the external id into before matching.
+        val trackedJob = com.bangersoul.aivance.core.common.model.JobListing(
+            id = "10", title = "Android Engineer", company = "Acme",
+            description = "Kotlin", url = "https://acme.com/jobs/1", sourceProvider = "test"
+        )
+        coEvery { mockRepository.getApplications() } returns flowOf(
+            Result.Success(listOf(sampleApp().copy(id = 7L, jobId = 10L, job = trackedJob)))
+        )
+        coEvery { mockJobRepository.getJobById("job-1") } returns Result.Success(
+            trackedJob
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(TrackerUiEvent.TrackJob("job-1"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertEquals(7L, state.selectedApplicationId)
+        assertEquals(null, state.pendingTrackJob)
+    }
+
+    @Test
+    fun `trackJob with untracked job pre-fills pending job for the add dialog`() = runTest {
+        coEvery { mockRepository.getApplications() } returns flowOf(Result.Success(emptyList()))
+        coEvery { mockJobRepository.getJobById("job-1") } returns Result.Success(
+            com.bangersoul.aivance.core.common.model.JobListing(
+                id = "job-1",
+                title = "Android Engineer",
+                company = "Acme",
+                description = "Kotlin + Compose",
+                url = "https://acme.com/jobs/android",
+                sourceProvider = "test"
+            )
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(TrackerUiEvent.TrackJob("job-1"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertEquals("Android Engineer", state.pendingTrackJob?.title)
+        assertEquals("Acme", state.pendingTrackJob?.company)
+    }
+
+    @Test
+    fun `clearPendingTrackJob drops the prefilled job`() = runTest {
+        coEvery { mockRepository.getApplications() } returns flowOf(Result.Success(emptyList()))
+        coEvery { mockJobRepository.getJobById("job-1") } returns Result.Success(
+            com.bangersoul.aivance.core.common.model.JobListing(
+                id = "job-1", title = "Engineer", company = "Acme",
+                description = "", url = "https://acme.com", sourceProvider = "test"
+            )
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onEvent(TrackerUiEvent.TrackJob("job-1"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(TrackerUiEvent.ClearPendingTrackJob)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertEquals(null, state.pendingTrackJob)
+    }
+
+    @Test
+    fun `success state carries today's application count and cap`() = runTest {
+        val now = System.currentTimeMillis()
+        coEvery { mockRepository.getApplications() } returns flowOf(
+            Result.Success(
+                listOf(
+                    sampleApp().copy(id = 1L, dateApplied = now),
+                    sampleApp().copy(id = 2L, dateApplied = now - 86_400_000L) // yesterday
+                )
+            )
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertEquals(1, state.todayAppliedCount)
+        assertEquals(5, state.dailyCap)
+    }
+
+    @Test
+    fun `application without date is not counted as today`() = runTest {
+        coEvery { mockRepository.getApplications() } returns flowOf(
+            Result.Success(listOf(sampleApp())) // dateApplied = null
+        )
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as TrackerUiState.Success
+        assertEquals(0, state.todayAppliedCount)
+    }
+
+    @Test
+    fun `set daily cap persists the new cap`() = runTest {
+        coEvery { mockRepository.getApplications() } returns flowOf(Result.Success(emptyList()))
+
+        viewModel = buildViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onEvent(TrackerUiEvent.SetDailyCap(10))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { mockApplicationPreferences.setDailyApplicationCap(10) }
+        coVerify { mockTrackEvent(TrackEventRequest("tracker_daily_cap_set")) }
     }
 
     @Test

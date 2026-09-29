@@ -17,7 +17,7 @@ class StreamGenerateCoverLetterUseCase @Inject constructor(
 ) {
     fun stream(input: GenerateCoverLetterRequest): Flow<String> = flow {
         if (input.resumeId <= 0) throw IllegalArgumentException("Invalid resume ID")
-        if (input.jobId <= 0) throw IllegalArgumentException("Invalid job ID")
+        if (input.jobId != null && input.jobId <= 0) throw IllegalArgumentException("Invalid job ID")
         coverLetterRepository.streamGenerateCoverLetter(
             resumeId = input.resumeId,
             resumeVersionId = input.resumeVersionId,

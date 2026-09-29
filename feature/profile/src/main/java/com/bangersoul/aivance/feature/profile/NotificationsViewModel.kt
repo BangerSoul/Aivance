@@ -2,10 +2,13 @@ package com.bangersoul.aivance.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bangersoul.aivance.core.common.model.NotificationItem
+import com.bangersoul.aivance.core.common.model.NotificationType
+import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.datastore.UserPreferencesRepository
+import com.bangersoul.aivance.core.domain.repository.NotificationRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
-import com.bangersoul.aivance.core.domain.usecase.settings.LoadSettingsUseCase
-import com.bangersoul.aivance.core.domain.usecase.settings.SaveSettingsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -13,27 +16,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class NotificationItem(
-    val id: String,
-    val title: String,
-    val message: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val isRead: Boolean = false,
-    val type: NotificationType = NotificationType.GENERAL
-)
-
-enum class NotificationType {
-    GENERAL,
-    APPLICATION_UPDATE,
-    INTERVIEW_REMINDER,
-    JOB_ALERT,
-    ROADMAP_MILESTONE
-}
 
 sealed interface NotificationsUiState {
     data object Loading : NotificationsUiState
@@ -62,10 +48,17 @@ sealed interface NotificationsUiEffect {
     data object RequestNotificationPermission : NotificationsUiEffect
 }
 
+/**
+ * Backed by the persisted notifications inbox (Room v29) — workers and pipeline
+ * events record entries through [NotificationRepository], and this ViewModel
+ * observes that table reactively. Notification preferences (job alerts /
+ * follow-up reminders) live in DataStore via [UserPreferencesRepository], the
+ * same toggles the background workers honor.
+ */
 @HiltViewModel
 class NotificationsViewModel @Inject constructor(
-    private val loadSettingsUseCase: LoadSettingsUseCase,
-    private val saveSettingsUseCase: SaveSettingsUseCase,
+    private val notificationRepository: NotificationRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -74,6 +67,8 @@ class NotificationsViewModel @Inject constructor(
 
     private val _effects = Channel<NotificationsUiEffect>(Channel.BUFFERED)
     val effects: Flow<NotificationsUiEffect> = _effects.receiveAsFlow()
+
+    private var loadJob: kotlinx.coroutines.Job? = null
 
     init {
         loadNotifications()
@@ -90,75 +85,90 @@ class NotificationsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Subscribes to the persisted inbox and the user's notification preferences.
+     * Room re-emits on every producer write (a worker firing in the background
+     * updates this screen live), so Refresh only needs to re-subscribe.
+     */
     private fun loadNotifications() {
-        viewModelScope.launch {
-            _uiState.value = NotificationsUiState.Loading
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             trackEventUseCase(TrackEventRequest(eventName = "notifications_load"))
 
-            val settings = loadSettingsUseCase.invoke().firstOrNull()
-            val jobAlerts = settings is com.bangersoul.aivance.core.common.result.Result.Success<*>
-
-            _uiState.value = NotificationsUiState.Success(
-                notifications = emptyList(), // Would be loaded from repo
-                unreadCount = 0,
-                jobAlertsEnabled = true,
-                followUpRemindersEnabled = true
-            )
+            combine(
+                notificationRepository.getNotifications(),
+                userPreferencesRepository.userPreferences
+            ) { notifications, preferences ->
+                val state: NotificationsUiState = if (notifications.isEmpty()) {
+                    NotificationsUiState.Empty
+                } else {
+                    NotificationsUiState.Success(
+                        notifications = notifications,
+                        unreadCount = notifications.count { !it.isRead },
+                        jobAlertsEnabled = preferences.jobAlertsEnabled,
+                        followUpRemindersEnabled = preferences.followUpRemindersEnabled
+                    )
+                }
+                state
+            }
+                .catch { throwable ->
+                    emit(
+                        NotificationsUiState.Error(
+                            throwable.message ?: "Couldn't load notifications"
+                        )
+                    )
+                }
+                .collect { state ->
+                    _uiState.value = state
+                }
         }
     }
 
     private fun markAsRead(id: String) {
-        val currentState = _uiState.value
-        if (currentState is NotificationsUiState.Success) {
-            val updated = currentState.notifications.map {
-                if (it.id == id) it.copy(isRead = true) else it
+        viewModelScope.launch {
+            when (val result = notificationRepository.markAsRead(id)) {
+                is Result.Success -> Unit // Row update re-emits through the observe flow.
+                is Result.Failure -> _effects.send(
+                    NotificationsUiEffect.ShowSnackbar(result.error.message)
+                )
             }
-            _uiState.value = currentState.copy(
-                notifications = updated,
-                unreadCount = updated.count { !it.isRead }
-            )
         }
     }
 
     private fun markAllAsRead() {
-        val currentState = _uiState.value
-        if (currentState is NotificationsUiState.Success) {
-            val updated = currentState.notifications.map { it.copy(isRead = true) }
-            _uiState.value = currentState.copy(notifications = updated, unreadCount = 0)
-            viewModelScope.launch {
-                _effects.send(NotificationsUiEffect.ShowSnackbar("All marked as read"))
+        viewModelScope.launch {
+            when (val result = notificationRepository.markAllAsRead()) {
+                is Result.Success ->
+                    _effects.send(NotificationsUiEffect.ShowSnackbar("All marked as read"))
+                is Result.Failure -> _effects.send(
+                    NotificationsUiEffect.ShowSnackbar(result.error.message)
+                )
             }
         }
     }
 
     private fun toggleJobAlerts(enabled: Boolean) {
-        val currentState = _uiState.value
-        if (currentState is NotificationsUiState.Success) {
-            _uiState.value = currentState.copy(jobAlertsEnabled = enabled)
-            viewModelScope.launch {
-                trackEventUseCase(TrackEventRequest(eventName = "notifications_toggle_job_alerts_$enabled"))
-            }
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest(eventName = "notifications_toggle_job_alerts_$enabled"))
+            userPreferencesRepository.updateJobAlertsEnabled(enabled)
         }
     }
 
     private fun toggleFollowUpReminders(enabled: Boolean) {
-        val currentState = _uiState.value
-        if (currentState is NotificationsUiState.Success) {
-            _uiState.value = currentState.copy(followUpRemindersEnabled = enabled)
-            viewModelScope.launch {
-                trackEventUseCase(TrackEventRequest(eventName = "notifications_toggle_followup_$enabled"))
-            }
+        viewModelScope.launch {
+            trackEventUseCase(TrackEventRequest(eventName = "notifications_toggle_followup_$enabled"))
+            userPreferencesRepository.updateFollowUpRemindersEnabled(enabled)
         }
     }
 
     private fun delete(id: String) {
-        val currentState = _uiState.value
-        if (currentState is NotificationsUiState.Success) {
-            val updated = currentState.notifications.filter { it.id != id }
-            _uiState.value = currentState.copy(
-                notifications = updated,
-                unreadCount = updated.count { !it.isRead }
-            )
+        viewModelScope.launch {
+            when (val result = notificationRepository.delete(id)) {
+                is Result.Success -> Unit
+                is Result.Failure -> _effects.send(
+                    NotificationsUiEffect.ShowSnackbar(result.error.message)
+                )
+            }
         }
     }
 }

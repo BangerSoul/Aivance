@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ds_keyword_a11y_matched">कीवर्ड: %1$s, मैच किया गया</string>
+    <string name="ds_keyword_a11y_missing">कीवर्ड: %1$s, अनुपस्थित</string>
+    <string name="ds_score_gauge_a11y">स्कोर गेज: %2$d में से %1$d</string>
+</resources>

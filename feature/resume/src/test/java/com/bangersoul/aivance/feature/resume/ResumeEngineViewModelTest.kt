@@ -8,15 +8,15 @@ import com.bangersoul.aivance.core.common.result.DomainError
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
-import com.bangersoul.aivance.core.domain.usecase.resume.AtsScoreResponse
+import com.bangersoul.aivance.core.domain.usecase.provider.AiProviderAvailability
+import com.bangersoul.aivance.core.domain.usecase.provider.GetAiProviderAvailabilityUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.CalculateATSScoreUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ExportResumeUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ImportResumeUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ImproveResumeUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.ParseResumeUseCase
 import com.bangersoul.aivance.core.domain.usecase.resume.StreamImproveSectionUseCase
-import com.bangersoul.aivance.core.common.model.AtsResult
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
+import com.bangersoul.aivance.core.common.model.AtsReport
 import com.bangersoul.aivance.core.util.PdfExporter
 import io.mockk.coEvery
 import io.mockk.every
@@ -46,6 +46,7 @@ class ResumeEngineViewModelTest {
     private val mockImprove: ImproveResumeUseCase = mockk()
     private val mockStreamImprove: StreamImproveSectionUseCase = mockk()
     private val mockExport: ExportResumeUseCase = mockk()
+    private val mockAiAvailability: GetAiProviderAvailabilityUseCase = mockk()
     private val mockTrackEvent: TrackEventUseCase = mockk()
     private val mockPdfExporter: PdfExporter = mockk()
     private val mockDocxExporter: com.bangersoul.aivance.core.util.DocxExporter = mockk()
@@ -65,13 +66,18 @@ class ResumeEngineViewModelTest {
 
     private fun createViewModel() = ResumeEngineViewModel(
         mockRepository, mockImport, mockParse, mockCalculateAts,
-        mockImprove, mockStreamImprove, mockExport, mockTrackEvent, mockPdfExporter, mockDocxExporter
+        mockImprove, mockStreamImprove, mockExport, mockAiAvailability, mockTrackEvent, mockPdfExporter,
+        mockDocxExporter
     )
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         coEvery { mockTrackEvent(any()) } returns Result.Success(Unit)
+        // Default to a configured provider so the AI pre-flight (B2) never
+        // short-circuits the ATS/optimization paths under test.
+        coEvery { mockAiAvailability(Unit) } returns
+            Result.Success(AiProviderAvailability(isConfigured = true, providerName = "gemini"))
     }
 
     @After
@@ -101,6 +107,110 @@ class ResumeEngineViewModelTest {
     }
 
     @Test
+    fun `importOcrText enters Preview with the scanned text section`() = runTest {
+        // B1: an import stores a draft (parent resume + first version) before
+        // Preview, so the ATS step and Save have real rows to reference.
+        coEvery { mockRepository.saveResume(any()) } returns Result.Success(7L)
+        coEvery { mockRepository.saveVersion(any()) } returns Result.Success(9L)
+        val viewModel = createViewModel()
+        viewModel.onEvent(ResumeEngineEvent.ImportOcrText("Jane Doe\nSenior Android Engineer"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state is ResumeEngineState.Preview)
+        val preview = state as ResumeEngineState.Preview
+        assertEquals("Raw Text", preview.version.sections.first().title)
+        assertEquals("Jane Doe\nSenior Android Engineer", preview.version.sections.first().content)
+        assertEquals("Camera Scan Resume", preview.resume.name)
+        assertEquals("the preview carries the persisted resume id", 7L, preview.resume.id)
+        assertEquals("the preview carries the persisted version id", 9L, preview.version.id)
+    }
+
+    @Test
+    fun `importOcrText with blank text enters Import error`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(ResumeEngineEvent.ImportOcrText("   \n  "))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state is ResumeEngineState.Error)
+        assertEquals("Import", (state as ResumeEngineState.Error).step)
+    }
+
+    @Test
+    fun `importJsonText enters Preview from a JSON Resume document`() = runTest {
+        coEvery { mockRepository.saveResume(any()) } returns Result.Success(7L)
+        coEvery { mockRepository.saveVersion(any()) } returns Result.Success(9L)
+        val json = """{"basics":{"name":"Jane Doe","summary":"Senior Android engineer"}}"""
+        val viewModel = createViewModel()
+        viewModel.onEvent(ResumeEngineEvent.ImportJsonText(json))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state is ResumeEngineState.Preview)
+        val preview = state as ResumeEngineState.Preview
+        assertEquals("Senior Android engineer", preview.version.sections.first().content)
+        // The version is stored against the real parent row — the fabricated
+        // clock id is what produced the FK failure at Save (B1).
+        assertEquals(7L, preview.version.resumeId)
+        assertEquals(9L, preview.version.id)
+    }
+
+    @Test
+    fun `importJsonText with malformed json enters Import error`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(ResumeEngineEvent.ImportJsonText("{not json"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state is ResumeEngineState.Error)
+        assertEquals("Import", (state as ResumeEngineState.Error).step)
+    }
+
+    @Test
+    fun `updateSectionContent edits the preview version section`() = runTest {
+        coEvery { mockImport.invoke(any()) } returns Result.Success(1L)
+        coEvery { mockRepository.getVersions(1L) } returns flowOf(Result.Success(listOf(version)))
+        coEvery { mockRepository.getResumeById(1L) } returns flowOf(Result.Success(resume))
+
+        val viewModel = createViewModel()
+        viewModel.onEvent(ResumeEngineEvent.ImportFile(mockk<Uri>()))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertTrue(viewModel.state.value is ResumeEngineState.Preview)
+
+        viewModel.onEvent(ResumeEngineEvent.UpdateSectionContent("Experience", "Edited content"))
+        val state = viewModel.state.value as ResumeEngineState.Preview
+        assertEquals("Edited content", state.version.sections.first().content)
+    }
+
+    @Test
+    fun `discardSuggestion removes the suggestion without applying it`() = runTest {
+        coEvery { mockImport.invoke(any()) } returns Result.Success(1L)
+        coEvery { mockRepository.getVersions(1L) } returns flowOf(Result.Success(listOf(version)))
+        coEvery { mockRepository.getResumeById(1L) } returns flowOf(Result.Success(resume))
+        every { mockStreamImprove.stream(any()) } returns flowOf("Improved content")
+
+        val viewModel = createViewModel()
+        viewModel.onEvent(ResumeEngineEvent.ImportFile(mockk<Uri>()))
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onEvent(ResumeEngineEvent.ContinueFromPreview)
+        viewModel.onEvent(ResumeEngineEvent.SkipAts)
+        viewModel.onEvent(ResumeEngineEvent.ImproveSection("Experience"))
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(
+            "Improved content",
+            (viewModel.state.value as ResumeEngineState.Optimizing).suggestions["Experience"]
+        )
+
+        viewModel.onEvent(ResumeEngineEvent.DiscardSuggestion("Experience"))
+
+        val state = viewModel.state.value as ResumeEngineState.Optimizing
+        assertTrue(state.suggestions.isEmpty())
+        // The version content is untouched — the improvement was NOT applied.
+        assertEquals("Android Engineer at Acme", state.version.sections.first().content)
+    }
+
+    @Test
     fun `import failure enters Error and retry re-imports`() = runTest {
         coEvery { mockImport.invoke(any()) } returns Result.Failure(DomainError("Bad file"))
 
@@ -120,6 +230,24 @@ class ResumeEngineViewModelTest {
         viewModel.onEvent(ResumeEngineEvent.Retry)
         testDispatcher.scheduler.advanceUntilIdle()
         assertTrue(viewModel.state.value is ResumeEngineState.Preview)
+    }
+
+    @Test
+    fun `preloaded job description is carried into the ATS scan step`() = runTest {
+        coEvery { mockImport.invoke(any()) } returns Result.Success(1L)
+        coEvery { mockRepository.getVersions(1L) } returns flowOf(Result.Success(listOf(version)))
+        coEvery { mockRepository.getResumeById(1L) } returns flowOf(Result.Success(resume))
+
+        val viewModel = createViewModel()
+        // Simulates the "Create tailored resume" cross-feature jump.
+        viewModel.onEvent(ResumeEngineEvent.SetInitialJobDescription(longJd))
+        viewModel.onEvent(ResumeEngineEvent.ImportFile(mockk<Uri>()))
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.onEvent(ResumeEngineEvent.ContinueFromPreview)
+
+        val state = viewModel.state.value
+        assertTrue(state is ResumeEngineState.AtsScanning)
+        assertEquals(longJd, (state as ResumeEngineState.AtsScanning).jdText)
     }
 
     @Test
@@ -159,13 +287,13 @@ class ResumeEngineViewModelTest {
         coEvery { mockRepository.getVersions(1L) } returns flowOf(Result.Success(listOf(version)))
         coEvery { mockRepository.getResumeById(1L) } returns flowOf(Result.Success(resume))
         coEvery { mockCalculateAts.invoke(any()) } returns Result.Success(
-            AtsScoreResponse(
-                atsResult = AtsResult(score = 80, resumeName = "resume.pdf", feedback = "Good"),
-                analysis = ResumeAnalysis(
-                    overallScore = 80,
-                    matchingKeywords = listOf("Kotlin"),
-                    missingKeywords = listOf("Rust")
-                )
+            AtsReport(
+                resumeVersionId = 1L,
+                jobDescriptionId = 1L,
+                overallScore = 80,
+                matchPercentage = 80,
+                matchedKeywords = listOf("Kotlin"),
+                missingKeywords = listOf("Rust")
             )
         )
 

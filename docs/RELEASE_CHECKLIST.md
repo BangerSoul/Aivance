@@ -1,5 +1,8 @@
 # Aivance Release Checklist
 
+> How-to (keystore setup, signing env vars, build/verify commands) lives in
+> [RELEASE.md](RELEASE.md). This is the pre-flight *what-to-verify* list.
+
 ## Pre-Release Checklist
 
 ### Build Verification

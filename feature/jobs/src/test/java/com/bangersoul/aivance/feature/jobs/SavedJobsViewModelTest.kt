@@ -1,5 +1,6 @@
 package com.bangersoul.aivance.feature.jobs
 
+import app.cash.turbine.test
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.repository.JobRepository
@@ -85,6 +86,62 @@ class SavedJobsViewModelTest {
 
         coVerify { mockToggleBookmark.invoke("1") }
         coVerify { mockTrackEvent(TrackEventRequest(eventName = "saved_jobs_remove")) }
+    }
+
+    @Test
+    fun `viewDetails emits navigation effect`() = runTest {
+        coEvery { mockJobRepository.getSavedJobs() } returns flowOf(Result.Success(sampleJobs))
+
+        val vm = SavedJobsViewModel(mockJobRepository, mockToggleBookmark, mockTrackEvent)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onEvent(SavedJobsUiEvent.ViewDetails("1"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.effects.test {
+            val effect = awaitItem()
+            assertTrue(effect is SavedJobsUiEffect.NavigateToDetails)
+            assertEquals("1", (effect as SavedJobsUiEffect.NavigateToDetails).jobId)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `removeJob failure surfaces the cause in a snackbar`() = runTest {
+        coEvery { mockJobRepository.getSavedJobs() } returns flowOf(Result.Success(sampleJobs))
+        coEvery { mockToggleBookmark.invoke(any()) } returns Result.Failure(
+            com.bangersoul.aivance.core.common.result.DomainError("Bookmark service down")
+        )
+
+        val vm = SavedJobsViewModel(mockJobRepository, mockToggleBookmark, mockTrackEvent)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.onEvent(SavedJobsUiEvent.RemoveJob("1"))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        vm.effects.test {
+            val effect = awaitItem()
+            assertTrue(effect is SavedJobsUiEffect.ShowSnackbar)
+            assertEquals("Bookmark service down", (effect as SavedJobsUiEffect.ShowSnackbar).message)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The list is not re-marked as empty when the removal fails.
+        assertTrue(vm.uiState.value is SavedJobsUiState.Success)
+    }
+
+    @Test
+    fun `refresh reloads the saved jobs`() = runTest {
+        coEvery { mockJobRepository.getSavedJobs() } returns flowOf(Result.Success(sampleJobs))
+
+        val vm = SavedJobsViewModel(mockJobRepository, mockToggleBookmark, mockTrackEvent)
+        testDispatcher.scheduler.advanceUntilIdle()
+        assertEquals(2, (vm.uiState.value as SavedJobsUiState.Success).jobs.size)
+
+        coEvery { mockJobRepository.getSavedJobs() } returns flowOf(Result.Success(emptyList()))
+        vm.onEvent(SavedJobsUiEvent.Refresh)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value is SavedJobsUiState.Empty)
     }
 
     @Test

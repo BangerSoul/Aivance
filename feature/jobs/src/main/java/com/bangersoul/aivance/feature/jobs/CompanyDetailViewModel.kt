@@ -2,9 +2,10 @@ package com.bangersoul.aivance.feature.jobs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bangersoul.aivance.core.common.model.CompanyCatalogEntry
 import com.bangersoul.aivance.core.common.model.JobListing
-import com.bangersoul.aivance.core.common.result.CoreResult
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.repository.CompanyCatalogRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
@@ -22,7 +23,12 @@ sealed interface CompanyDetailUiState {
         val companyName: String,
         val companyLogoUrl: String? = null,
         val location: String = "",
-        val openRoles: List<JobListing> = emptyList()
+        val openRoles: List<JobListing> = emptyList(),
+        /**
+         * Bundled remote-company catalog entry (R-02) when the company is
+         * indexed — carries remote policy, size, region, tech stack, careers URL.
+         */
+        val catalog: CompanyCatalogEntry? = null
     ) : CompanyDetailUiState
     data class Error(val message: String) : CompanyDetailUiState
 }
@@ -35,6 +41,7 @@ sealed interface CompanyDetailUiState {
 @HiltViewModel
 class CompanyDetailViewModel @Inject constructor(
     private val jobRepository: JobRepository,
+    private val companyCatalogRepository: CompanyCatalogRepository,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -70,11 +77,16 @@ class CompanyDetailViewModel @Inject constructor(
             if (companyJob == null) {
                 _uiState.value = CompanyDetailUiState.Error("Company not found")
             } else {
+                // Prefer the exact name lookup; fall back to the registry domain
+                // when the listing only carries a domain-style company string.
+                val catalog = companyCatalogRepository.findCompany(companyJob.company)
+                    ?: companyCatalogRepository.findCompanyByDomain(companyJob.company)
                 _uiState.value = CompanyDetailUiState.Success(
                     companyName = companyJob.company,
                     companyLogoUrl = companyJob.companyLogoUrl,
                     location = companyJob.location,
-                    openRoles = matching
+                    openRoles = matching,
+                    catalog = catalog
                 )
             }
         }

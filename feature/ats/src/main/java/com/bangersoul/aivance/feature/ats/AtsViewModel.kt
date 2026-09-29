@@ -6,6 +6,7 @@ import com.bangersoul.aivance.core.common.model.AtsReport
 import com.bangersoul.aivance.core.common.model.Resume
 import com.bangersoul.aivance.core.common.model.ResumeVersion
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.core.domain.repository.AtsRepository
 import com.bangersoul.aivance.core.domain.repository.AtsStreamEvent
 import com.bangersoul.aivance.core.domain.repository.ResumeRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
@@ -46,6 +47,7 @@ class AtsViewModel @Inject constructor(
     private val resumeRepository: ResumeRepository,
     private val analyzeJobDescriptionUseCase: AnalyzeJobDescriptionUseCase,
     private val streamAtsAnalysisUseCase: StreamAtsAnalysisUseCase,
+    private val atsRepository: AtsRepository,
     private val trackEventUseCase: TrackEventUseCase
 ) : ViewModel() {
 
@@ -123,6 +125,22 @@ class AtsViewModel @Inject constructor(
                         _uiState.value = AtsUiState.Error("Analysis failed: ${event.message}")
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Opens a previously saved ATS report directly, skipping the picker and the
+     * analysis pipeline (used when arriving with a report id, e.g. from the
+     * Intelligence Hub's recent-scans list).
+     */
+    fun loadReport(reportId: Long) {
+        viewModelScope.launch {
+            val report = atsRepository.getReportById(reportId)
+            if (report != null) {
+                _uiState.value = AtsUiState.DisplayReport(report)
+            } else {
+                _uiState.value = AtsUiState.Error("ATS report not found")
             }
         }
     }

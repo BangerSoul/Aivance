@@ -51,7 +51,9 @@ data class ApplicationEntity(
     val status: String = "ACTIVE", // ACTIVE, COMPLETED, ARCHIVED
     val dateApplied: Long? = null,
     val lastModified: Long = System.currentTimeMillis(),
-    val notes: String? = null
+    val notes: String? = null,
+    /** Free-form salary range, carried over from the retired `job_applications` table (R1). */
+    val salaryRange: String? = null
 )
 
 @Entity(tableName = "application_stages")

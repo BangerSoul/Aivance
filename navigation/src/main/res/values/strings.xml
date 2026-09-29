@@ -3,12 +3,7 @@
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
-    <string name="save">Save</string>
     <string name="retry">Retry</string>
-    <string name="loading">Loading...</string>
-    <string name="not_set">Not set</string>
-    <string name="enabled">Enabled</string>
-    <string name="disabled">Disabled</string>
 
     <!-- Auth -->
     <string name="auth_create_account_title">Create your account</string>
@@ -27,35 +22,17 @@
     <string name="auth_or_separator">"  or  "</string>
     <string name="auth_google">Continue with Google</string>
 
-    <!-- AI Settings -->
-    <string name="ai_settings">AI Settings</string>
-    <string name="ai_configuration">AI Configuration</string>
-    <string name="provider_format">Provider: %1$s</string>
-    <string name="model_format">Model: %1$s</string>
-    <string name="status_format">Status: %1$s</string>
-
     <!-- Provider Management -->
-    <string name="providers">Providers</string>
-    <string name="refresh_providers">Refresh providers</string>
-    <string name="loading_providers">Loading providers…</string>
-    <string name="section_ai_providers">AI Providers</string>
-    <string name="section_job_providers">Job Providers</string>
-    <string name="section_enrichment_providers">Enrichment Providers</string>
-    <string name="api_key_configured">API Key (configured)</string>
     <string name="api_key">API Key</string>
-    <string name="model">Model</string>
-    <string name="select">Select…</string>
-    <string name="testing">Testing…</string>
-    <string name="test">Test</string>
-    <string name="healthy">Healthy</string>
-    <string name="degraded">Degraded</string>
-    <string name="unhealthy">Unhealthy</string>
-    <string name="unknown">Unknown</string>
+    <string name="download_model">Download model</string>
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
-    <string name="unread_count">%1$d unread</string>
-    <string name="no_notifications">No notifications yet</string>
+    <string name="mark_all_read">Mark all read</string>
+    <string name="no_notifications">You\'re all caught up</string>
+    <string name="no_notifications_desc">Interview reminders, application updates and job alerts will appear here.</string>
+    <string name="notifications_load_failed">Couldn\'t load notifications</string>
+    <string name="dismiss_notification">Dismiss notification</string>
 
     <!-- Learning (Prep Studio Learn tab) -->
     <string name="recommended_skills">Recommended Skills:</string>
@@ -73,9 +50,6 @@
     <string name="job_provider_desc">Select where you want to fetch job listings and recruiter details from.</string>
     <string name="enrichment_optional">Enrichment Service (Optional)</string>
     <string name="enrichment_desc">Find verified recruiter contacts and company intelligence. Highly recommended for outreach.</string>
-    <string name="skip_for_now">Skip for now</string>
-    <string name="skip_all">Skip All — I\'ll configure later</string>
-    <string name="configure_later">You can configure providers later in Settings.</string>
     <string name="validate_continue">Validate &amp; Continue</string>
     <string name="all_set">All Set!</string>
     <string name="ai_engine">AI Engine</string>
@@ -85,23 +59,13 @@
     <string name="go_to_dashboard">Go to Dashboard</string>
 
     <!-- Prep Studio -->
-    <string name="prep_studio">Prep Studio</string>
     <string name="practice">Practice</string>
     <string name="history">History</string>
     <string name="question_bank">Question Bank</string>
-    <string name="learn">Learn</string>
-    <string name="starting_session">Starting your session…</string>
-    <string name="session_failed">Session failed</string>
-    <string name="new_practice_session">New Practice Session</string>
-    <string name="practice_subtitle">AI-driven simulations tailored to your target role.</string>
-    <string name="session_type">Session type</string>
     <string name="technical">Technical</string>
     <string name="behavioral">Behavioral</string>
-    <string name="hr_culture">HR &amp; Culture</string>
     <string name="target_role">Target role</string>
     <string name="target_role_hint">e.g. Senior Android Engineer</string>
-    <string name="company_optional">Company (optional)</string>
-    <string name="start_mock_interview">Start Mock Interview</string>
     <string name="question_progress">Q%1$d/%2$d</string>
     <string name="preparing">Preparing</string>
     <string name="question">Question</string>
@@ -111,13 +75,6 @@
     <string name="submit_answer">Submit Answer</string>
     <string name="next_question">Next Question</string>
     <string name="end_session">End Session</string>
-    <string name="session_review">Session Review</string>
-    <string name="overall_performance">Overall Performance</string>
-    <string name="ai_evaluation">AI evaluation of your answers</string>
-    <string name="key_strengths">Key Strengths</string>
-    <string name="analysis_in_progress">Analysis in progress</string>
-    <string name="analysis_pending">Detailed AI feedback will appear once evaluation completes.</string>
-    <string name="start_new_session">Start a New Session</string>
     <string name="no_sessions">No sessions yet</string>
     <string name="no_sessions_desc">Complete a practice session and your progress will appear here.</string>
     <string name="all">All</string>
@@ -140,38 +97,32 @@
     <string name="load_resources_failed">Couldn\'t load resources</string>
     <string name="no_resources">No resources yet</string>
     <string name="no_resources_desc">Complete more of your profile to unlock personalized learning paths.</string>
-    <string name="loading_ellipsis">Loading…</string>
 
     <!-- Destinations (bottom-nav & screen titles) -->
     <string name="dest_splash">Splash</string>
-    <string name="dest_welcome">Welcome</string>
-    <string name="dest_login">Login</string>
-    <string name="dest_onboarding">Onboarding</string>
     <string name="dest_dashboard">Dashboard</string>
     <string name="dest_assistant">Assistant</string>
     <string name="dest_intelligence">Intelligence</string>
+    <string name="dest_studio">Studio</string>
+    <string name="studio_segment_resumes">Resumes</string>
+    <string name="studio_segment_practice">Practice</string>
     <string name="dest_discovery">Discovery</string>
-    <string name="dest_resume">Resume</string>
-    <string name="dest_jobs">Jobs</string>
-    <string name="dest_profile">Profile</string>
+    <string name="dest_profile">Identity Hub</string>
     <string name="dest_ats">ATS Scanner</string>
     <string name="dest_cover_letter">Cover Letter</string>
     <string name="dest_job_details">Job Details</string>
+    <string name="dest_apply">Apply</string>
     <string name="dest_recruiter_discovery">Recruiter Discovery</string>
-    <string name="dest_prep_studio">Prep Studio</string>
     <string name="dest_saved_jobs">Saved Jobs</string>
-    <string name="dest_settings">Settings</string>
     <string name="dest_appearance">Appearance</string>
-    <string name="dest_ai_settings">AI Settings</string>
-    <string name="dest_providers">Providers</string>
     <string name="dest_notifications">Notifications</string>
     <string name="dest_analytics">Analytics</string>
     <string name="dest_privacy">Privacy &amp; Security</string>
     <string name="dest_sign_in">Sign In</string>
     <string name="dest_provider_setup">Provider Setup</string>
     <string name="dest_pipeline">Pipeline</string>
-    <string name="dest_job_comparison">Job Comparison</string>
     <string name="dest_company">Company</string>
     <string name="dest_resume_detail">Resume Detail</string>
     <string name="dest_about">About</string>
+    <string name="dest_resources">Resources</string>
 </resources>

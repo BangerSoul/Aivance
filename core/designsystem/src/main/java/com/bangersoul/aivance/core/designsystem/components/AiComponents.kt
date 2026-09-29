@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.bangersoul.aivance.core.designsystem.R
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 
 /**
@@ -46,10 +49,12 @@ fun KeywordChip(
     } else {
         MaterialTheme.colorScheme.error
     }
+    val description = if (isMatched) stringResource(R.string.ds_keyword_a11y_matched, text)
+        else stringResource(R.string.ds_keyword_a11y_missing, text)
 
     Surface(
         modifier = modifier.semantics {
-            contentDescription = "Keyword: $text, ${if (isMatched) "Matched" else "Missing"}"
+            contentDescription = description
         },
         shape = RoundedCornerShape(8.dp),
         color = containerColor,
@@ -79,6 +84,7 @@ fun ScoreGauge(
     val animatedProgress = remember { Animatable(0f) }
     val primaryColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val gaugeDescription = stringResource(R.string.ds_score_gauge_a11y, score, maxScore)
 
     LaunchedEffect(progress) {
         animatedProgress.animateTo(
@@ -91,7 +97,7 @@ fun ScoreGauge(
         modifier = modifier
             .size(size)
             .semantics {
-                contentDescription = "Score gauge: $score out of $maxScore"
+                contentDescription = gaugeDescription
             },
         contentAlignment = Alignment.Center
     ) {

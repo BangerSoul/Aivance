@@ -12,6 +12,8 @@ import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import com.bangersoul.aivance.MainActivity
 import com.bangersoul.aivance.R
+import com.bangersoul.aivance.core.common.model.NotificationType as InboxNotificationType
+import com.bangersoul.aivance.core.domain.repository.NotificationRepository
 import com.bangersoul.aivance.core.util.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -32,12 +34,17 @@ enum class NotificationType {
 
 /**
  * Worker that sends push notifications to the user with deep-link actions.
+ *
+ * Every dispatched notification is also recorded in the persisted notifications
+ * inbox (Room v29) under its worker-specific id, so a re-enqueued worker updates
+ * its entry in place instead of duplicating it.
  */
 @HiltWorker
 class NotificationWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val notificationRepository: NotificationRepository
 ) : CoroutineWorker(context, params) {
 
     private val appContext: Context = context
@@ -127,6 +134,15 @@ class NotificationWorker @AssistedInject constructor(
                 else -> { }
             }
 
+            // Durable inbox record — independent of tray delivery so a missed
+            // notification (permission denied, Doze) is still visible in-app.
+            notificationRepository.record(
+                id = "worker_notification_$notificationType",
+                type = notificationType.toInboxType(),
+                title = title,
+                message = message
+            )
+
             try {
                 NotificationManagerCompat.from(appContext).notify(
                     (System.currentTimeMillis() % Int.MAX_VALUE).toInt(),
@@ -150,5 +166,19 @@ class NotificationWorker @AssistedInject constructor(
         const val EXTRA_TITLE = "title"
         const val EXTRA_MESSAGE = "message"
         const val EXTRA_DEEP_LINK = "deep_link_uri"
+
+        /**
+         * Worker-side event vocabulary → user-facing inbox category.
+         * Unmappable events land in GENERAL rather than being dropped.
+         */
+        private fun NotificationType.toInboxType(): InboxNotificationType = when (this) {
+            NotificationType.FOLLOW_UP_REMINDER -> InboxNotificationType.APPLICATION_UPDATE
+            NotificationType.INTERVIEW_REMINDER -> InboxNotificationType.INTERVIEW_REMINDER
+            NotificationType.APPLICATION_UPDATE -> InboxNotificationType.APPLICATION_UPDATE
+            NotificationType.JOB_ALERT -> InboxNotificationType.JOB_ALERT
+            NotificationType.SYNC_COMPLETED,
+            NotificationType.SYNC_FAILED,
+            NotificationType.RESUME_ANALYSIS_COMPLETE -> InboxNotificationType.GENERAL
+        }
     }
 }

@@ -1,0 +1,44 @@
+name: UESF Framework Validation
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: uesf-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  # UESF framework gate: spec conformance + framework test suite.
+  # Stdlib-only Python — no dependency installation required.
+  uesf-validate:
+    name: ✅ UESF Skill Framework (validator + tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate all UESF skills (spec conformance)
+        run: python3 uesf/tools/validate_framework.py
+
+      - name: Run UESF framework test suite
+        run: python3 -m unittest discover -s uesf/tests -v
+
+      - name: Verify installed skills match the source (no drift)
+        # .agents/ is gitignored by repo policy, so on fresh checkouts the local
+        # install is absent — the check runs only when the install is present.
+        run: |
+          if [ -d .agents/skills ]; then
+            for s in planning implementation testing debugging review refactoring; do
+              diff -rq uesf/core/uesf-co-$s .agents/skills/uesf-co-$s
+            done
+          else
+            echo ".agents/skills not present in this checkout (gitignored) — skipping drift check"
+          fi
+
+      - name: Print skill dependency graph
+        run: python3 uesf/tools/validate_framework.py --graph | head -60

@@ -62,10 +62,16 @@ object UseCaseModule {
     fun provideToggleJobBookmarkUseCase(repo: JobRepository): ToggleJobBookmarkUseCase = ToggleJobBookmarkUseCase(repo)
 
     @Provides @Singleton
-    fun provideSendMessageUseCase(repo: AiRepository): SendMessageUseCase = SendMessageUseCase(repo)
+    fun provideGetCachedJobsUseCase(repo: JobRepository): GetCachedJobsUseCase = GetCachedJobsUseCase(repo)
 
     @Provides @Singleton
-    fun provideStreamResponseUseCase(repo: AiRepository, manager: com.bangersoul.aivance.sdk.infrastructure.ProviderManager): StreamResponseUseCase = StreamResponseUseCase(repo, manager)
+    fun provideGetAiProviderAvailabilityUseCase(
+        providerManager: com.bangersoul.aivance.sdk.infrastructure.ProviderManager,
+        providerRegistry: com.bangersoul.aivance.sdk.infrastructure.ProviderRegistry
+    ): GetAiProviderAvailabilityUseCase = GetAiProviderAvailabilityUseCase(providerManager, providerRegistry)
+
+    @Provides @Singleton
+    fun provideSendMessageUseCase(repo: AiRepository): SendMessageUseCase = SendMessageUseCase(repo)
 
     @Provides @Singleton
     fun provideStartInterviewSessionUseCase(repo: InterviewRepository): StartInterviewSessionUseCase = StartInterviewSessionUseCase(repo)

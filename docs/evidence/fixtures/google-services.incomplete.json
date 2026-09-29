@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "279009477701",
+    "project_id": "aivance-50360",
+    "storage_bucket": "aivance-50360.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:279009477701:android:4a0fd14eeb0c2786830f2c",
+        "android_client_info": {
+          "package_name": "com.bangersoul.aivance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7vhMdv4mklcsoGEX2vJ3elurXrXYPHHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

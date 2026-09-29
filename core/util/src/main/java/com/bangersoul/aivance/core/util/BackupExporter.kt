@@ -72,12 +72,24 @@ data class BackupCoverLetter(
     val dateCreated: Long
 )
 
+/**
+ * Backup representation of a job application (R1: sourced from the canonical
+ * `applications` table).
+ *
+ * [status] is the canonical lifecycle value (ACTIVE/COMPLETED/ARCHIVED) and
+ * [stageId] the pipeline stage. Payloads written before R1 predate [stageId] and
+ * carried the legacy application-status string in [status] instead — on import a
+ * null [stageId] is treated as that legacy layout.
+ */
 @Serializable
 data class BackupApplication(
     val id: Long,
     val jobId: Long,
     val status: String,
-    val dateApplied: Long = System.currentTimeMillis()
+    val dateApplied: Long = System.currentTimeMillis(),
+    val stageId: String? = null,
+    val salaryRange: String? = null,
+    val notes: String? = null
 )
 
 @Serializable
@@ -127,9 +139,20 @@ class BackupExporter @Inject constructor(
                 BackupCoverLetter(id = c.id, company = c.company, role = c.role, dateCreated = c.dateCreated)
             }
 
-            val appEntities = database.trackerDao().getApplications().firstOrNull() ?: emptyList()
+            val appEntities = database.workflowDao().getAllApplications().firstOrNull() ?: emptyList()
             val backupApps = appEntities.map { a ->
-                BackupApplication(id = a.application.id, jobId = a.application.jobId, status = a.application.status, dateApplied = a.application.dateApplied)
+                BackupApplication(
+                    id = a.id,
+                    jobId = a.jobId,
+                    status = a.status,
+                    // The canonical table keeps dateApplied nullable (a SAVED application was
+                    // never submitted). Fall back to lastModified so the payload stays non-null
+                    // and a restore does not anchor the follow-up window at epoch 0.
+                    dateApplied = a.dateApplied ?: a.lastModified,
+                    stageId = a.currentStageId,
+                    salaryRange = a.salaryRange,
+                    notes = a.notes
+                )
             }
 
             val profileEntity = database.profileDao().getUserProfile().firstOrNull()

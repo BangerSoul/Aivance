@@ -29,11 +29,11 @@
 -keep,allowobfuscation interface com.bangersoul.aivance.**.api.** { *; }
 -keep,allowobfuscation interface com.bangersoul.aivance.**.*Api { *; }
 
-# Keep OkHttp and Retrofit
+# OkHttp and Retrofit ship their own consumer rules; only suppress the
+# optional-JVM-class warnings (okio/java9). App Retrofit interfaces are kept
+# separately above so R8 can shrink the libraries themselves.
 -dontwarn okhttp3.**
 -dontwarn retrofit2.**
--keep class okhttp3.** { *; }
--keep class retrofit2.** { *; }
 
 # Keep Kotlin coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
@@ -42,10 +42,10 @@
 # Keep Timber
 -keep class timber.log.Timber** { *; }
 
-# Keep Compose
--keep class androidx.compose.** { *; }
+# Compose ships consumer rules — no blanket keep needed. Dropping it lets R8
+# shrink the framework (the single largest contributor to APK size).
 
-# Keep Navigation
+# Keep Navigation (navigation3 internals are newer than its consumer rules)
 -keep class androidx.navigation.** { *; }
 
 # Keep Firebase

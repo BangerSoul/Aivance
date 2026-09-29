@@ -68,7 +68,18 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
+            // By default the debug build installs as a distinct app id
+            // (com.bangersoul.aivance.debug). Pass
+            // -Paivance.useRegisteredAppId=true to build the debug variant
+            // under the already-registered release applicationId
+            // (com.bangersoul.aivance) so a single Firebase app entry — with
+            // the debug keystore SHA-1 added — covers Google sign-in on the
+            // emulator without registering a separate .debug app.
+            val useRegisteredAppId =
+                providers.gradleProperty("aivance.useRegisteredAppId").orNull == "true"
+            if (!useRegisteredAppId) {
+                applicationIdSuffix = ".debug"
+            }
             versionNameSuffix = "-debug"
 
             // Phase 4 integration-test keys (see local.properties). Debug-only:
@@ -80,6 +91,24 @@ android {
             buildConfigField("String", "HUNTER_API_KEY", "\"${integrationApiKey("hunterApiKey")}\"")
         }
     }
+
+    // The app ships ~40 MB of native libs per ABI (on-device LLM inference
+    // engine + ML Kit OCR), so a universal APK is ~165 MB. Splitting by ABI
+    // gives each device only its own slice, and the AAB does the same for Play.
+    // AGP forbids split APKs and a bundle in one build, so disable splits for
+    // bundle-only runs: ./gradlew :app:bundleRelease -Paivance.disableAbiSplits=true
+    val disableAbiSplits = providers.gradleProperty("aivance.disableAbiSplits").orNull == "true"
+    splits {
+        abi {
+            isEnable = !disableAbiSplits
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
+    // Play distributes per-ABI slices automatically from the AAB (AGP 9
+    // builds ABI splits into bundles by default; density splits are gone).
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

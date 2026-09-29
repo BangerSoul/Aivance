@@ -11,7 +11,11 @@ import com.bangersoul.aivance.core.database.dao.JobDao
 import com.bangersoul.aivance.core.database.model.CompanyEntity
 import com.bangersoul.aivance.core.database.model.JobEntity
 import com.bangersoul.aivance.core.database.model.JobWithDetails
+import com.bangersoul.aivance.core.common.model.NotificationType
+import com.bangersoul.aivance.core.datastore.UserPreferences
+import com.bangersoul.aivance.core.datastore.UserPreferencesRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
+import com.bangersoul.aivance.core.domain.repository.NotificationRepository
 import com.bangersoul.aivance.core.domain.repository.SearchRepository
 import com.bangersoul.aivance.core.util.NotificationHelper
 import io.mockk.coEvery
@@ -22,6 +26,7 @@ import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 
 /**
@@ -36,6 +41,13 @@ class JobAlertWorkerTest {
     private val searchRepository = mockk<SearchRepository>()
     private val jobDao = mockk<JobDao>()
     private val notificationHelper = mockk<NotificationHelper>(relaxed = true)
+    private val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+    private val userPreferencesRepository = mockk<UserPreferencesRepository>()
+
+    @Before
+    fun setUp() {
+        every { userPreferencesRepository.userPreferences } returns flowOf(UserPreferences())
+    }
 
     private fun jobListing(id: String, url: String) = JobListing(
         id = id,
@@ -85,11 +97,25 @@ class JobAlertWorkerTest {
         every { jobDao.getJobsWithDetails() } returns flowOf(emptyList())
         coEvery { jobRepository.searchJobs(any(), any()) } returns Result.Success(found)
 
-        val worker = JobAlertWorker(context, params, jobRepository, searchRepository, jobDao, notificationHelper)
+        val worker = JobAlertWorker(
+            context, params, jobRepository, searchRepository, jobDao,
+            notificationHelper, notificationRepository, userPreferencesRepository
+        )
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.success(), result)
         verify { notificationHelper.showJobAlert(any(), any(), any()) }
+        // The alert is also recorded in the persisted inbox with the JOB_ALERT type.
+        // (timestamp = any(): the default pins the captured call time otherwise.)
+        coVerify {
+            notificationRepository.record(
+                id = "job_alert_periodic_job_alert",
+                type = NotificationType.JOB_ALERT,
+                title = any(),
+                message = any(),
+                timestamp = any()
+            )
+        }
     }
 
     @Test
@@ -99,11 +125,18 @@ class JobAlertWorkerTest {
         every { jobDao.getJobsWithDetails() } returns flowOf(listOf(cachedEntity("https://example.com/jobs/1")))
         coEvery { jobRepository.searchJobs(any(), any()) } returns Result.Success(found)
 
-        val worker = JobAlertWorker(context, params, jobRepository, searchRepository, jobDao, notificationHelper)
+        val worker = JobAlertWorker(
+            context, params, jobRepository, searchRepository, jobDao,
+            notificationHelper, notificationRepository, userPreferencesRepository
+        )
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.success(), result)
         verify(exactly = 0) { notificationHelper.showJobAlert(any(), any(), any()) }
+        // No new jobs → no inbox entry either.
+        coVerify(exactly = 0) {
+            notificationRepository.record(any(), any(), any(), any(), any())
+        }
     }
 
     @Test
@@ -119,7 +152,10 @@ class JobAlertWorkerTest {
         every { jobDao.getJobsWithDetails() } returns flowOf(emptyList())
         coEvery { jobRepository.searchJobs(any(), any()) } returns Result.Success(emptyList())
 
-        val worker = JobAlertWorker(context, params, jobRepository, searchRepository, jobDao, notificationHelper)
+        val worker = JobAlertWorker(
+            context, params, jobRepository, searchRepository, jobDao,
+            notificationHelper, notificationRepository, userPreferencesRepository
+        )
         worker.doWork()
 
         coVerify {
@@ -137,7 +173,10 @@ class JobAlertWorkerTest {
         coEvery { jobRepository.searchJobs(any(), any()) } returns
             Result.Failure(com.bangersoul.aivance.core.common.result.DomainError("provider down"))
 
-        val worker = JobAlertWorker(context, params, jobRepository, searchRepository, jobDao, notificationHelper)
+        val worker = JobAlertWorker(
+            context, params, jobRepository, searchRepository, jobDao,
+            notificationHelper, notificationRepository, userPreferencesRepository
+        )
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.success(), result)
@@ -148,9 +187,40 @@ class JobAlertWorkerTest {
     fun retries_whenUnexpectedExceptionThrown() = runBlocking {
         every { searchRepository.getSavedSearches() } throws RuntimeException("boom")
 
-        val worker = JobAlertWorker(context, params, jobRepository, searchRepository, jobDao, notificationHelper)
+        val worker = JobAlertWorker(
+            context, params, jobRepository, searchRepository, jobDao,
+            notificationHelper, notificationRepository, userPreferencesRepository
+        )
         val result = worker.doWork()
 
         assertEquals(ListenableWorker.Result.retry(), result)
+    }
+
+    @Test
+    fun skipsTrayNotification_whenJobAlertsDisabled_butStillRecordsInboxEntry() = runBlocking {
+        val found = listOf(jobListing("1", "https://example.com/jobs/1"))
+        every { searchRepository.getSavedSearches() } returns flowOf(Result.Success(emptyList()))
+        every { jobDao.getJobsWithDetails() } returns flowOf(emptyList())
+        coEvery { jobRepository.searchJobs(any(), any()) } returns Result.Success(found)
+        every { userPreferencesRepository.userPreferences } returns
+            flowOf(UserPreferences(jobAlertsEnabled = false))
+
+        val worker = JobAlertWorker(
+            context, params, jobRepository, searchRepository, jobDao,
+            notificationHelper, notificationRepository, userPreferencesRepository
+        )
+        val result = worker.doWork()
+
+        assertEquals(ListenableWorker.Result.success(), result)
+        verify(exactly = 0) { notificationHelper.showJobAlert(any(), any(), any()) }
+        coVerify {
+            notificationRepository.record(
+                id = any(),
+                type = NotificationType.JOB_ALERT,
+                title = any(),
+                message = any(),
+                timestamp = any()
+            )
+        }
     }
 }

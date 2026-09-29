@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/resume.schema.json",
+  "title": "AiVanceResume",
+  "description": "Structured resume document model encompassing document metadata, multiple tailored versions, standardized section types, work experience bullet points, measurable achievements, and chronological dates.",
+  "type": "object",
+  "required": ["id", "userId", "title", "versions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the resume entity"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User identifier who owns this resume"
+    },
+    "title": {
+      "type": "string",
+      "description": "Display name of the master resume document"
+    },
+    "primaryVersionId": {
+      "type": "string",
+      "description": "ID of the designated active or default version"
+    },
+    "fileName": {
+      "type": "string",
+      "description": "Original file name if imported from disk"
+    },
+    "fileUri": {
+      "type": "string",
+      "description": "Storage URI of the original binary artifact (PDF/DOCX)"
+    },
+    "rawText": {
+      "type": "string",
+      "description": "Plain text extraction of the resume contents"
+    },
+    "versions": {
+      "type": "array",
+      "description": "Ordered history and role-tailored versions of this resume",
+      "items": {
+        "$ref": "#/$defs/ResumeVersion"
+      }
+    },
+    "createdAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when resume was first created"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds of most recent modification"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "ResumeVersion": {
+      "type": "object",
+      "required": ["id", "versionName", "sections"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique version identifier"
+        },
+        "versionName": {
+          "type": "string",
+          "description": "Human-readable label (e.g., 'Targeting Staff AI Systems')"
+        },
+        "templateId": {
+          "type": "string",
+          "default": "modern",
+          "description": "Rendering template layout identifier"
+        },
+        "targetJobId": {
+          "type": "string",
+          "description": "Optional Job ID this version was tailored to match"
+        },
+        "targetRole": {
+          "type": "string",
+          "description": "Target job title for this version"
+        },
+        "lastModified": {
+          "type": "integer",
+          "description": "Epoch timestamp in milliseconds of version edit"
+        },
+        "sections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResumeSection"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResumeSection": {
+      "type": "object",
+      "required": ["id", "sectionType", "title", "sectionOrder"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Section unique ID"
+        },
+        "sectionType": {
+          "type": "string",
+          "enum": [
+            "SUMMARY",
+            "EXPERIENCE",
+            "EDUCATION",
+            "SKILLS",
+            "PROJECTS",
+            "CERTIFICATIONS",
+            "AWARDS",
+            "PUBLICATIONS",
+            "VOLUNTEERING",
+            "CUSTOM"
+          ],
+          "description": "Standardized section taxonomy"
+        },
+        "title": {
+          "type": "string",
+          "description": "Rendered heading for this section"
+        },
+        "sectionOrder": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Visual sort order index"
+        },
+        "content": {
+          "type": "string",
+          "description": "Unstructured text or narrative markdown (used for SUMMARY or simple sections)"
+        },
+        "items": {
+          "type": "array",
+          "description": "Structured entries (jobs, degrees, projects, certificates)",
+          "items": {
+            "$ref": "#/$defs/ResumeItem"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResumeItem": {
+      "type": "object",
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique entry identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Job title, degree name, project title, or certification name"
+        },
+        "organization": {
+          "type": "string",
+          "description": "Company, educational institution, or issuing authority"
+        },
+        "location": {
+          "type": "string",
+          "description": "Geographic location of role or institution"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date in ISO 8601 format (YYYY-MM or YYYY-MM-DD)"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date in ISO 8601 format (YYYY-MM or YYYY-MM-DD), or null if currently active"
+        },
+        "isCurrent": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if candidate is currently employed or enrolled here"
+        },
+        "description": {
+          "type": "string",
+          "description": "General description or scope of responsibilities"
+        },
+        "bulletPoints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Action-oriented bullet statements"
+        },
+        "achievements": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Quantifiable outcomes and business impact metrics"
+        },
+        "skills": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Skills and technologies demonstrated in this item"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Link to project, publication, repository, or credential verification"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -53,6 +53,7 @@ class GetAvailableModelsUseCase @Inject constructor(
             "CLAUDE" -> listOf("claude-3-5-sonnet", "claude-3-haiku")
             "OLLAMA" -> listOf("llama3", "mistral", "codellama", "phi3")
             "OPENROUTER" -> listOf("openrouter/auto", "meta-llama/llama-3.1-70b-instruct")
+            "GEMMA" -> listOf("gemma-3n-e2b-it-int4")
             else -> listOf("unknown")
         }
     }

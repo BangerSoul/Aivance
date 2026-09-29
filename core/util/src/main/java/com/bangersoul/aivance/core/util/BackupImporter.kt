@@ -7,8 +7,8 @@ import com.bangersoul.aivance.core.common.result.DomainError
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.security.EncryptedString
 import com.bangersoul.aivance.core.database.AivanceDatabase
+import com.bangersoul.aivance.core.database.model.ApplicationEntity
 import com.bangersoul.aivance.core.database.model.CoverLetterEntity
-import com.bangersoul.aivance.core.database.model.JobApplicationEntity
 import com.bangersoul.aivance.core.database.model.JobEntity
 import com.bangersoul.aivance.core.database.model.ResumeEntity
 import com.bangersoul.aivance.core.database.model.ResumeSectionEntity
@@ -145,16 +145,21 @@ class BackupImporter @Inject constructor(
                 )
             }
 
-            // Restore Applications
+            // Restore Applications onto the canonical `applications` table (R1).
             payload.applications.forEach { a ->
-                database.trackerDao().insertApplication(
-                    JobApplicationEntity(
+                database.workflowDao().insertApplication(
+                    ApplicationEntity(
                         id = a.id,
                         jobId = a.jobId,
-                        status = a.status,
+                        // R1-era payloads carry both axes. Legacy payloads only carried the
+                        // application-status string, which is exactly what the retired table
+                        // mapped onto the pipeline stage — so reuse it as the stage and
+                        // backfill the lifecycle axis to ACTIVE.
+                        currentStageId = a.stageId ?: a.status,
+                        status = if (a.stageId != null) a.status else "ACTIVE",
                         dateApplied = a.dateApplied,
-                        salaryRange = null,
-                        notes = null,
+                        salaryRange = a.salaryRange,
+                        notes = a.notes,
                         lastModified = System.currentTimeMillis()
                     )
                 )

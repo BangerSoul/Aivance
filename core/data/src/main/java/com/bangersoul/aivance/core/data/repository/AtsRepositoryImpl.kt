@@ -40,6 +40,14 @@ class AtsRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getAllReports(): Flow<CoreResult<List<AtsReport>>> {
+        return atsDao.getAllReports().map { entities ->
+            runCatchingCore {
+                entities.map { it.toDomain() }.sortedByDescending { it.dateGenerated }
+            }
+        }
+    }
+
     override suspend fun getReportById(id: Long): AtsReport? {
         return atsDao.getReportById(id)?.toDomain()
     }

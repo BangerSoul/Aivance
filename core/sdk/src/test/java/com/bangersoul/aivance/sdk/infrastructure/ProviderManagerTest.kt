@@ -1,5 +1,6 @@
 package com.bangersoul.aivance.sdk.infrastructure
 
+import com.bangersoul.aivance.sdk.api.ModelDownloadable
 import com.bangersoul.aivance.sdk.config.ProviderConfiguration
 import com.bangersoul.aivance.sdk.core.BaseProvider
 import com.bangersoul.aivance.sdk.core.ProviderCapability
@@ -8,6 +9,7 @@ import com.bangersoul.aivance.sdk.core.ProviderStatus
 import com.bangersoul.aivance.sdk.core.ProviderType
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -160,6 +162,83 @@ class ProviderManagerTest {
     }
 
     @Test
+    fun `getOnDeviceProviderFor returns only providers with a downloaded model`() = runTest {
+        val readyOnDevice = OnDeviceTestProvider("gemma-ready")
+        readyOnDevice.modelDownloaded = true
+        readyOnDevice.updateStatus(ProviderStatus.Ready)
+        val notDownloaded = OnDeviceTestProvider("gemma-idle")
+        registry.register(readyOnDevice)
+        registry.register(notDownloaded)
+
+        assertEquals(readyOnDevice, manager.getOnDeviceProviderFor(ProviderCapability.TextAnalysis))
+    }
+
+    @Test
+    fun `getOnDeviceProviderFor returns null when no model is downloaded`() = runTest {
+        val idle = OnDeviceTestProvider("gemma-idle")
+        registry.register(idle)
+
+        assertNull(manager.getOnDeviceProviderFor(ProviderCapability.TextAnalysis))
+    }
+
+    @Test
+    fun `getOnDeviceProviderFor ignores cloud providers`() = runTest {
+        val keyedCloud = ReconfigurableTestProvider("cloud-ai")
+        keyedCloud.updateStatus(ProviderStatus.Ready)
+        keyedCloud.applyConfiguration(
+            ProviderConfiguration("cloud-ai", secrets = mapOf("apiKey" to "k"))
+        )
+        val readyOnDevice = OnDeviceTestProvider("gemma-ready")
+        readyOnDevice.modelDownloaded = true
+        readyOnDevice.updateStatus(ProviderStatus.Ready)
+        registry.register(keyedCloud)
+        registry.register(readyOnDevice)
+
+        assertEquals(readyOnDevice, manager.getOnDeviceProviderFor(ProviderCapability.TextAnalysis))
+    }
+
+    @Test
+    fun `getOnDeviceProviderFor prefers Active over Ready`() = runTest {
+        val ready = OnDeviceTestProvider("gemma-ready")
+        ready.modelDownloaded = true
+        ready.updateStatus(ProviderStatus.Ready)
+        val active = OnDeviceTestProvider("gemma-active")
+        active.modelDownloaded = true
+        active.updateStatus(ProviderStatus.Active)
+        registry.register(ready)
+        registry.register(active)
+
+        assertEquals(active, manager.getOnDeviceProviderFor(ProviderCapability.TextAnalysis))
+    }
+
+    @Test
+    fun `getBestProviderFor is deterministic regardless of registration order`() {
+        // Two same-tier candidates (both Ready, both keyed): the winner must be
+        // stable (lowest id) no matter which is registered first, so provider
+        // Set/map iteration order can never change the resolved provider.
+        fun resolveWith(firstId: String, secondId: String): String? {
+            val reg = ProviderRegistry(emptySet(), emptySet(), emptySet())
+            val mgr = ProviderManager(reg)
+            val a = ReconfigurableTestProvider(firstId)
+            a.updateStatus(ProviderStatus.Ready)
+            val b = ReconfigurableTestProvider(secondId)
+            b.updateStatus(ProviderStatus.Ready)
+            // Both configured with real credentials -> identical priority tier.
+            kotlinx.coroutines.runBlocking {
+                a.applyConfiguration(ProviderConfiguration(firstId, secrets = mapOf("apiKey" to "k")))
+                b.applyConfiguration(ProviderConfiguration(secondId, secrets = mapOf("apiKey" to "k")))
+            }
+            reg.register(a)
+            reg.register(b)
+            return mgr.getBestProviderFor(ProviderCapability.TextAnalysis)?.metadata?.id
+        }
+
+        // "alpha" < "zulu": whichever order they are registered, alpha wins.
+        assertEquals("alpha", resolveWith("alpha", "zulu"))
+        assertEquals("alpha", resolveWith("zulu", "alpha"))
+    }
+
+    @Test
     fun `getBestProviderFor should prioritize Active providers`() {
         val provider1 = TestProvider("id1", setOf(ProviderCapability.TextAnalysis))
         val provider2 = TestProvider("id2", setOf(ProviderCapability.TextAnalysis))
@@ -241,6 +320,49 @@ class ProviderManagerTest {
             updateStatus(ProviderStatus.InvalidConfiguration)
         }
 
+        override suspend fun onStart() {}
+        override suspend fun onStop() {}
+        override suspend fun onDispose() {}
+    }
+
+    /** Keyless provider whose readiness is driven by a downloaded model file. */
+    private class OnDeviceTestProvider(
+        id: String,
+        capabilities: Set<ProviderCapability> = setOf(ProviderCapability.TextAnalysis)
+    ) : BaseProvider(
+        metadata = ProviderMetadata(
+            id = id,
+            name = "On-device $id",
+            type = ProviderType.AI,
+            version = "1.0.0",
+            description = "Test on-device provider",
+            author = "Tester"
+        ),
+        capabilities = capabilities
+    ), ModelDownloadable {
+        var modelDownloaded = false
+
+        override val isModelReady: Boolean
+            get() = modelDownloaded
+
+        override val modelSizeBytes: Long = 1_000_000L
+
+        override val compactModel: com.bangersoul.aivance.sdk.api.CompactModel? = null
+
+        override suspend fun downloadModel(
+            url: String?,
+            onProgress: (Float) -> Unit
+        ): com.bangersoul.aivance.core.common.result.Result<Unit> {
+            modelDownloaded = true
+            return com.bangersoul.aivance.core.common.result.Result.Success(Unit)
+        }
+
+        override suspend fun deleteModel(): com.bangersoul.aivance.core.common.result.Result<Unit> {
+            modelDownloaded = false
+            return com.bangersoul.aivance.core.common.result.Result.Success(Unit)
+        }
+
+        override suspend fun onInitialize() {}
         override suspend fun onStart() {}
         override suspend fun onStop() {}
         override suspend fun onDispose() {}

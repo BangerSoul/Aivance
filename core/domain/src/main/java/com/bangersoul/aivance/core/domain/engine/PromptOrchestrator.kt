@@ -1,5 +1,6 @@
 package com.bangersoul.aivance.core.domain.engine
 
+import com.bangersoul.aivance.core.common.model.AssistantJobContext
 import com.bangersoul.aivance.core.common.model.CareerState
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,10 +16,14 @@ class PromptOrchestrator @Inject constructor(
     fun buildCopilotPrompt(
         userMessage: String,
         state: CareerState,
-        intent: CareerIntent
+        intent: CareerIntent,
+        jobContext: AssistantJobContext? = null
     ): String {
         val systemContext = contextEngine.generateAssistantContext(state)
         val instruction = getInstructionForIntent(intent)
+        val jobBlock = jobContext?.let { ctx ->
+            buildJobContextBlock(ctx)
+        }.orEmpty()
 
         return """
             $instruction
@@ -28,11 +33,24 @@ class PromptOrchestrator @Inject constructor(
 
             USER INTENT: $intent
 
+            $jobBlock
             USER MESSAGE:
             $userMessage
 
             Provide a helpful, actionable response. If the user needs to take a specific action (like optimizing their resume or searching for jobs), clearly state it.
         """.trimIndent()
+    }
+
+    /** Renders the job the user is currently looking at so answers stay on-target. */
+    private fun buildJobContextBlock(ctx: AssistantJobContext): String {
+        return buildString {
+            append("CURRENT JOB CONTEXT:\n")
+            append("Title: ").append(ctx.title).append('\n')
+            append("Company: ").append(ctx.company).append('\n')
+            if (!ctx.description.isNullOrBlank()) {
+                append("Job Description:\n").append(ctx.description).append('\n')
+            }
+        }
     }
 
     private fun getInstructionForIntent(intent: CareerIntent): String {

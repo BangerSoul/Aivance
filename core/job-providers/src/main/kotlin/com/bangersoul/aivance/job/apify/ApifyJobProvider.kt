@@ -53,8 +53,12 @@ open class ApifyJobProvider(
         apiKey = config.secrets["apiKey"] ?: apiKey
     }
 
-    private val maxPollAttempts = 30
-    private val pollIntervalMs = 2_000L
+    // The curious_coder~linkedin-jobs-scraper actor can take 60–120s+ to
+    // finish; the old 30×2s (60s) budget gave up before the dataset was ready
+    // and LinkedIn silently contributed nothing (QA E2E 2026-08-11, run
+    // C3Tc7OFyczet2uDyg). 90×3s ≈ 4.5 min covers the actor's 300s timeout.
+    private val maxPollAttempts = 90
+    private val pollIntervalMs = 3_000L
 
     override suspend fun executeSearch(
         filter: JobSearchFilter,
@@ -66,13 +70,22 @@ open class ApifyJobProvider(
         }
 
         // 1. Start the actor run with the search query as input.
+        // The curious_coder~linkedin-jobs-scraper actor keys off the AI search
+        // filters (`keywords` + `location`/`country`). Verified live (QA E2E
+        // 2026-08-11): with `keywords="Android Engineer"` + `location` it returns
+        // real LinkedIn roles (Waymo/Pinterest/DoorDash…); with `positions[]` +
+        // empty location it returns an explicit input error, and the old `search`
+        // key silently fell back to evergreen postings. A client-side keyword
+        // pass still trims anything non-matching.
         val input = buildJsonObject {
             if (filter.query.isNotBlank()) {
-                put("search", JsonPrimitive(filter.query))
+                put("keywords", JsonPrimitive(filter.query))
             }
             if (filter.location.isNotBlank()) {
                 put("location", JsonPrimitive(filter.location))
+                countryCode(filter.location)?.let { put("country", JsonPrimitive(it)) }
             }
+            put("maxItems", JsonPrimitive(100))
         }
         val runResponse = api.runActor(actorId, apiKey, input)
         if (!runResponse.isSuccessful) {
@@ -144,6 +157,24 @@ open class ApifyJobProvider(
                     throw Exception("Apify service unreachable: HTTP ${response.code}")
                 }
             }
+        }
+    }
+
+    /** Maps a free-text location to the ISO country code the actors expect. */
+    private fun countryCode(location: String): String? {
+        val lower = location.lowercase()
+        return when {
+            "united states" in lower || "usa" in lower || "u.s." in lower || "america" in lower -> "US"
+            "united kingdom" in lower || "uk" in lower || "england" in lower || "britain" in lower -> "GB"
+            "germany" in lower || "deutschland" in lower -> "DE"
+            "canada" in lower -> "CA"
+            "australia" in lower -> "AU"
+            "india" in lower -> "IN"
+            "france" in lower -> "FR"
+            "netherlands" in lower || "holland" in lower -> "NL"
+            "spain" in lower -> "ES"
+            "italy" in lower -> "IT"
+            else -> null
         }
     }
 }

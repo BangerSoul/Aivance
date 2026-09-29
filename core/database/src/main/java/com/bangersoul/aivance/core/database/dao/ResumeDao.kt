@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import com.bangersoul.aivance.core.database.model.ResumeEntity
 import com.bangersoul.aivance.core.database.model.ResumeSectionEntity
 import com.bangersoul.aivance.core.database.model.ResumeVersionEntity
@@ -19,7 +20,14 @@ interface ResumeDao {
     @Query("SELECT * FROM resumes WHERE id = :id")
     suspend fun getResumeById(id: Long): ResumeEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // @Upsert (not REPLACE): REPLACE deletes the conflicting parent row and
+    // re-inserts it, firing the ON DELETE CASCADE that wipes every child
+    // resume_versions row. That silently destroyed the freshly created
+    // "Original Import" version whenever the primary-version id was written
+    // back onto an existing resume (the in-wizard ATS scan then failed with
+    // "Version not found"). @Upsert emits ON CONFLICT DO UPDATE — no delete,
+    // no cascade.
+    @Upsert
     suspend fun insertResume(resume: ResumeEntity): Long
 
     @Delete
@@ -32,7 +40,9 @@ interface ResumeDao {
     @Query("SELECT * FROM resume_versions WHERE id = :versionId")
     suspend fun getVersionById(versionId: Long): ResumeVersionEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // Same rationale as upsertResume: REPLACE on a version row would delete
+    // it (cascading to its sections) before re-inserting.
+    @Upsert
     suspend fun insertVersion(version: ResumeVersionEntity): Long
 
     @Delete

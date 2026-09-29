@@ -21,8 +21,12 @@
     <string name="match_probability">%1$d%% Match Probability</string>
     <string name="section_scores">Section Scores</string>
     <string name="keyword_gap_analysis">Keyword Gap Analysis</string>
+    <string name="no_keywords_identified">No keywords identified for this scan.</string>
     <string name="optimization_suggestions">Optimization Suggestions</string>
     <string name="collapse">Collapse</string>
     <string name="expand">Expand</string>
     <string name="generate_tailored_cover_letter">Generate Tailored Cover Letter</string>
+
+    <string name="ats_section_score_percent">%1$d%%</string>
+
 </resources>

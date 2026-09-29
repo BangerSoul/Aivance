@@ -5,6 +5,7 @@
     <string name="export_cover_letter">Export Cover Letter</string>
     <string name="no_cover_letter_yet">No Cover Letter Yet</string>
     <string name="no_cover_letter_desc">Generate one from a job listing to get a tailored, ready-to-send letter.</string>
+    <string name="generate_cover_letter">Generate Cover Letter</string>
     <string name="find_jobs">Find Jobs</string>
     <string name="copy_all">Copy all</string>
     <string name="export">Export</string>

@@ -3,10 +3,8 @@
     <string name="back">वापस</string>
     <string name="cancel">रद्द करें</string>
     <string name="add">जोड़ें</string>
-    <string name="delete">हटाएं</string>
 
     <string name="career_pipeline_title">करियर पाइपलाइन</string>
-    <string name="pipeline_unavailable">पाइपलाइन अनुपलब्ध</string>
     <string name="add_application">आवेदन जोड़ें</string>
     <string name="add_application_title">आवेदन जोड़ें</string>
     <string name="company">कंपनी</string>
@@ -20,14 +18,35 @@
     <string name="unknown_company">अज्ञात कंपनी</string>
     <string name="ats_optimized">ATS अनुकूलित</string>
     <string name="open_tasks">%1$d खुले कार्य%2$s</string>
-    <string name="timeline">समयरेखा</string>
-    <string name="no_activity">अभी तक कोई गतिविधि दर्ज नहीं।</string>
-    <string name="notes">नोट्स</string>
-    <string name="notes_placeholder">फॉलो-अप नोट्स, संपर्क विवरण, लिंक जोड़ें…</string>
-    <string name="notes_autosave">टाइप करते ही स्वचालित रूप से सहेजा जाता है।</string>
-    <string name="open_job_listing">नौकरी की सूची खोलें</string>
-    <string name="delete_application">आवेदन हटाएं</string>
-    <string name="delete_application_title">आवेदन हटाएं?</string>
-    <string name="delete_application_body">यह "%1$s" और इसका पूरा इतिहास आपकी पाइपलाइन से हटा देगा। इसे पूर्ववत नहीं किया जा सकता।</string>
-    <string name="updated">अपडेट %1$s</string>
+    <string name="tracker_subtitle">अपनी निष्पादन पाइपलाइन प्रबंधित करें</string>
+    <string name="tracker_daily_quota">दैनिक आवेदन कोटा</string>
+    <string name="tracker_edit_cap">सीमा संपादित करें</string>
+    <string name="tracker_quota_progress">आज %1$d में से %2$d आवेदन</string>
+    <string name="tracker_daily_cap">दैनिक आवेदन सीमा</string>
+    <string name="tracker_daily_cap_detail">आप प्रति दिन कितने आवेदनों का लक्ष्य रखना चाहते हैं?</string>
+    <string name="tracker_preset_per_day">प्रति दिन %1$d</string>
+    <string name="tracker_preset_per_day_selected">प्रति दिन %1$d ✓</string>
+    <string name="tracker_overview">अवलोकन</string>
+    <string name="tracker_tasks">कार्य</string>
+    <string name="tracker_timeline">टाइमलाइन</string>
+    <string name="tracker_notes">नोट्स</string>
+    <string name="tracker_notes_placeholder">इस आवेदन के बारे में निजी नोट्स जोड़ें...</string>
+    <string name="tracker_open_listing">नौकरी सूची खोलें</string>
+    <string name="delete">हटाएँ</string>
+    <string name="tracker_delete_application">आवेदन हटाएँ</string>
+    <string name="tracker_delete_detail">क्या आप वाकई %1$s (%2$s) को अपनी पाइपलाइन से हटाना चाहते हैं?</string>
+    <string name="tracker_no_tasks">अभी कोई कार्य नहीं</string>
+    <string name="tracker_no_tasks_detail">पाइपलाइन में प्रगति के साथ कार्य स्वतः बनाए जाएंगे।</string>
+    <string name="tracker_no_activity">अभी कोई गतिविधि दर्ज नहीं हुई।</string>
+
+    <string name="tracker_hero_title">पाइपलाइन प्रदर्शन</string>
+    <string name="tracker_hero_description">आपके पास %1$d सक्रिय आवेदन हैं।</string>
+    <string name="tracker_hero_conversion_detail">आपका इंटरव्यू रूपांतरण %1$d%% है।</string>
+    <string name="tracker_hero_default_detail">अपने इंटरव्यू रूपांतरण को ट्रैक करना शुरू करने के लिए किसी भूमिका के लिए आवेदन करें।</string>
+    <string name="tracker_view_analytics">एनालिटिक्स देखें</string>
+    <string name="tracker_kanban_board">कानबन बोर्ड</string>
+    <string name="tracker_stat_ats_match">ATS मैच</string>
+    <string name="tracker_stat_priority">प्राथमिकता</string>
+    <string name="tracker_stat_high">उच्च</string>
+
 </resources>

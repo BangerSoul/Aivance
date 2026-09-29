@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.aivance.org/v2/career-event.schema.json",
+  "title": "AiVanceCareerEvent",
+  "description": "Reactive event envelope for the AiVance Career Event Bus, enabling asynchronous decoupling, event-driven state synchronization, and audit logging across Android, Web, Extension, and CLI runtimes.",
+  "type": "object",
+  "required": [
+    "eventId",
+    "eventType",
+    "timestamp",
+    "sourceModule",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "description": "Globally unique identifier for this event instance (UUID v4)"
+    },
+    "eventType": {
+      "type": "string",
+      "description": "Domain-scoped event topic name in dot-notation format",
+      "examples": [
+        "profile.updated",
+        "resume.version_created",
+        "resume.ats_analyzed",
+        "job.saved",
+        "job.status_changed",
+        "application.stage_transitioned",
+        "application.task_completed",
+        "interview.session_started",
+        "interview.session_completed",
+        "skill.verified",
+        "skill.gap_detected",
+        "memory.entry_recorded"
+      ]
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Epoch timestamp in milliseconds when the event occurred"
+    },
+    "sourceModule": {
+      "type": "string",
+      "description": "Originating module or client subsystem",
+      "examples": [
+        ":core:events",
+        ":core:memory",
+        ":core:database",
+        ":feature:resume",
+        ":feature:ats",
+        ":feature:jobs",
+        ":feature:tracker",
+        ":feature:interview",
+        ":clients:android",
+        ":clients:web",
+        ":clients:extension",
+        ":clients:cli"
+      ]
+    },
+    "correlationId": {
+      "type": "string",
+      "description": "Causality tracking ID linking multi-step asynchronous reactive flows"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "default": "2.0.0",
+      "description": "Version of the event bus specification"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Domain entity or state delta payload associated with this event",
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Contextual execution metadata (e.g., user ID, client runtime, session tokens)",
+      "properties": {
+        "userId": { "type": "string" },
+        "clientVersion": { "type": "string" },
+        "deviceType": {
+          "type": "string",
+          "enum": ["ANDROID", "WEB", "EXTENSION", "CLI", "SYSTEM"]
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

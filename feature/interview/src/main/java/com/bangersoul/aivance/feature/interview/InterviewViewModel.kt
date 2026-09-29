@@ -7,11 +7,15 @@ import com.bangersoul.aivance.core.common.enums.MessageSender
 import com.bangersoul.aivance.core.common.model.*
 import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.common.result.getOrNull
+import com.bangersoul.aivance.core.domain.analytics.InterviewReadinessCalculator
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.repository.InterviewRepository
 import com.bangersoul.aivance.core.domain.repository.crm.CompanyIntelligenceRepository
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
+import com.bangersoul.aivance.core.domain.usecase.interview.GenerateStarPackRequest
+import com.bangersoul.aivance.core.domain.usecase.interview.GenerateStarPackUseCase
+import com.bangersoul.aivance.core.domain.usecase.interview.STARPrepGenerator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -22,7 +26,17 @@ sealed interface InterviewUiState {
     data class Idle(
         val history: List<InterviewSession> = emptyList(),
         val careerState: CareerState? = null,
-        val readinessScore: Int = 0
+        /**
+         * Interview readiness from [InterviewReadinessCalculator] — the single owner shared
+         * with the analytics path — or `null` when no session has produced feedback yet.
+         */
+        val readinessScore: Int? = null,
+        /**
+         * Role-specific STAR pack generated for the Practice tab (R-05):
+         * AI-generated via the streaming path, template fallback offline.
+         */
+        val starPack: List<InterviewQuestion>? = null,
+        val isGeneratingPack: Boolean = false
     ) : InterviewUiState
     data object Preparing : InterviewUiState
     data class Active(
@@ -35,7 +49,20 @@ sealed interface InterviewUiState {
 }
 
 sealed interface InterviewUiEvent {
-    data class StartSession(val role: String, val company: String, val type: String, val jobId: Long? = null) : InterviewUiEvent
+    data class StartSession(
+        val role: String,
+        val company: String,
+        val type: String,
+        val jobId: Long? = null,
+        /**
+         * When set, the session is seeded with this ready-made pack instead of
+         * asking the AI provider for fresh questions — used by STAR pack
+         * practice (R-05). The pack is persisted to the session row so answers
+         * are recorded and survive reloads.
+         */
+        val packQuestions: List<InterviewQuestion>? = null
+    ) : InterviewUiEvent
+    data class GenerateStarPack(val role: String) : InterviewUiEvent
     data class SubmitAnswer(val text: String) : InterviewUiEvent
     data object NextQuestion : InterviewUiEvent
     data object Complete : InterviewUiEvent
@@ -48,7 +75,9 @@ class InterviewViewModel @Inject constructor(
     private val interviewRepository: InterviewRepository,
     private val careerStateEngine: CareerStateEngine,
     private val companyRepository: CompanyIntelligenceRepository,
-    private val trackEventUseCase: TrackEventUseCase
+    private val generateStarPackUseCase: GenerateStarPackUseCase,
+    private val trackEventUseCase: TrackEventUseCase,
+    private val interviewReadinessCalculator: InterviewReadinessCalculator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<InterviewUiState>(InterviewUiState.Idle())
@@ -70,28 +99,43 @@ class InterviewViewModel @Inject constructor(
             careerStateEngine.state.collect { state ->
                 val current = _uiState.value
                 if (current is InterviewUiState.Idle) {
-                    _uiState.value = current.copy(
-                        careerState = state,
-                        readinessScore = calculateReadiness(state, current.history)
-                    )
+                    // Readiness is deliberately NOT derived from the career state here: it is a
+                    // function of the candidate's own mock-session feedback, owned by
+                    // [InterviewReadinessCalculator] and recomputed in [loadHistory] (R3-3).
+                    // Prep Studio used to add `careerScore / 10` to it, which is how a
+                    // fabricated career score of 18 surfaced as a "1%" readiness here while the
+                    // analytics path reported 18 for the same data.
+                    _uiState.value = current.copy(careerState = state)
                 }
             }
         }
     }
 
-    private fun calculateReadiness(state: CareerState, history: List<InterviewSession>): Int {
-        val lastScore = history.firstOrNull { it.isCompleted }?.feedback?.overallScore ?: 0
-        return (lastScore + (state.growth.careerScore / 10)).coerceIn(0, 100)
-    }
-
     fun onEvent(event: InterviewUiEvent) {
         when (event) {
             is InterviewUiEvent.StartSession -> startSession(event)
+            is InterviewUiEvent.GenerateStarPack -> generateStarPack(event.role)
             is InterviewUiEvent.SubmitAnswer -> submitAnswer(event.text)
             InterviewUiEvent.NextQuestion -> nextQuestion()
             InterviewUiEvent.Complete -> completeSession()
             InterviewUiEvent.Reset -> reset()
             InterviewUiEvent.LoadHistory -> loadHistory()
+        }
+    }
+
+    /**
+     * Generates a role-specific STAR pack (R-05) for the Practice tab. AI via
+     * the streaming path when a provider is configured; the deterministic
+     * template pack otherwise — the flow never fails, it always yields a pack.
+     */
+    private fun generateStarPack(role: String) {
+        val current = _uiState.value as? InterviewUiState.Idle ?: return
+        if (current.isGeneratingPack) return
+        _uiState.value = current.copy(isGeneratingPack = true)
+        viewModelScope.launch {
+            val pack = generateStarPackUseCase(GenerateStarPackRequest(role = role, count = 5))
+            val idle = _uiState.value as? InterviewUiState.Idle ?: return@launch
+            _uiState.value = idle.copy(starPack = pack, isGeneratingPack = false)
         }
     }
 
@@ -118,24 +162,32 @@ class InterviewViewModel @Inject constructor(
             if (result is Result.Success) {
                 val session = result.data
                 _uiState.value = InterviewUiState.Active(session = session)
-                // Generate questions, then refresh the session so the screen shows them.
-                val questionsResult = interviewRepository.generateQuestions(session.id, 5)
-                val generated = if (questionsResult is Result.Success) {
-                    interviewRepository.getQuestions(session.id).firstOrNull()?.getOrNull().orEmpty()
-                } else {
-                    emptyList()
+
+                // Every question path persists onto the session row (R-05), so
+                // answers submitted through submitAnswer are recorded against
+                // real session questions and survive a session reload:
+                //  1. A ready-made pack explicitly supplied (STAR pack practice).
+                //  2. AI-generated questions, when a provider is configured.
+                //  3. The STAR prep pack fallback — now persisted too, instead
+                //     of the previous in-memory-only questions.
+                val persisted = when {
+                    event.packQuestions != null -> {
+                        interviewRepository.persistPackQuestions(session.id, event.packQuestions)
+                        readSessionQuestions(session.id)
+                    }
+                    interviewRepository.generateQuestions(session.id, 5) is Result.Success -> {
+                        readSessionQuestions(session.id)
+                    }
+                    else -> {
+                        val fallback = generateStarPackUseCase(GenerateStarPackRequest(role = event.role, count = 5))
+                        interviewRepository.persistPackQuestions(session.id, fallback)
+                        readSessionQuestions(session.id)
+                    }
                 }
-                val questions = generated.ifEmpty {
-                    // No AI provider configured (or generation failed): seed the
-                    // session with a role-specific STAR prep pack (R-05) so the
-                    // user can still practice and the screen never dead-ends on
-                    // an eternal "Preparing…" state. Note: these in-memory
-                    // questions are not persisted to InterviewDao (they have no
-                    // session row), so a later session reload won't replay them.
-                    android.util.Log.w(
-                        "InterviewViewModel",
-                        "AI question generation unavailable — using STAR prep fallback"
-                    )
+
+                val questions = persisted.ifEmpty {
+                    // Persistence unavailable for some reason — keep the screen
+                    // usable with an in-memory pack rather than dead-ending.
                     STARPrepGenerator.generateStarPack(event.role)
                 }
                 _uiState.value = InterviewUiState.Active(session = session.copy(questions = questions))
@@ -190,6 +242,9 @@ class InterviewViewModel @Inject constructor(
         }
     }
 
+    private suspend fun readSessionQuestions(sessionId: String): List<InterviewQuestion> =
+        interviewRepository.getQuestions(sessionId).firstOrNull()?.getOrNull().orEmpty()
+
     private fun reset() {
         _uiState.value = InterviewUiState.Idle()
         loadHistory()
@@ -207,7 +262,10 @@ class InterviewViewModel @Inject constructor(
                     if (sessions != null) {
                         val current = _uiState.value
                         if (current is InterviewUiState.Idle) {
-                            _uiState.value = current.copy(history = sessions)
+                            _uiState.value = current.copy(
+                                history = sessions,
+                                readinessScore = interviewReadinessCalculator.calculate(sessions)
+                            )
                         }
                     }
                 }

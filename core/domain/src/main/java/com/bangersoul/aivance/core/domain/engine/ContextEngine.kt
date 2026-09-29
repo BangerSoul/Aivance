@@ -16,10 +16,10 @@ class ContextEngine @Inject constructor(
             - Name: ${state.profile.name}
             - Target Role: ${state.profile.targetRole}
             - Profile Completion: ${state.profile.completionPercentage}%
-            - Latest ATS Score: ${state.intelligence.atsScore}%
+            - Latest ATS Score: ${state.intelligence.atsScore?.let { "$it%" } ?: "not measured yet"}
             - Active Applications: ${state.pipeline.activeApplications}
             - Upcoming Interviews: ${state.pipeline.upcomingInterviews.size}
-            - Overall Career Score: ${state.growth.careerScore}
+            - Overall Career Score: ${state.growth.careerScore ?: "not measured yet"}
             - Next Action: ${state.nextBestAction?.title ?: "N/A"}
         """.trimIndent()
     }
@@ -35,7 +35,7 @@ class ContextEngine @Inject constructor(
         }
 
         context["active_apps"] = state.pipeline.activeApplications.toString()
-        context["career_score"] = state.growth.careerScore.toString()
+        context["career_score"] = state.growth.careerScore?.toString() ?: "not_measured"
 
         return context
     }

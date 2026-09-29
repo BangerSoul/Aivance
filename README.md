@@ -23,8 +23,8 @@ Aivance leverages modern Android development practices to provide a seamless use
 - **Streaming Everywhere**: Beyond the Assistant, the **Cover Letter generator and Resume Engine optimization step now stream tokens live** with a typewriter caret — you watch the letter / improved section being written instead of staring at a spinner, with graceful fallback for non-streaming providers.
 - **Career HQ Pie Chart**: The Dashboard renders an animated **career-breakdown pie chart** (Career Score · ATS Score · Applied · Saved Jobs) alongside the hero gauge and quick stats.
 - **Masked Provider Keys**: Provider Management shows a **masked credential preview** (`sk-••••abcd`) next to the live health chip — the full API key is never rendered on screen.
-- **About AiVance**: A new About screen with creator contact (email `iamshaikhazmathulla@outlook.com` · Instagram `@Iamazmathulla`), clickable open-source license links, and a "How AiVance is Made" tech section.
-- **Fully Localized UI + Working Language Picker**: Every user-facing string across all feature modules (plus navigation and worker notifications) was extracted into `res/values*` string resources with a **complete Hindi (`values-hi`) translation**. Settings → Language (English/हिन्दी/Español/Français/Deutsch/中文/日本語) is persisted to the encrypted DataStore and applied at app startup — switching language now translates the entire app, not just system-formatted values.
+- **About AiVance**: A new About screen with creator contact (email `iamshaikhazmathulla@outlook.com` · Instagram `@Iamazmathulla`), clickable third-party license links, and a "How AiVance is Made" tech section.
+- **Fully Localized UI + Working Language Picker**: Every user-facing string across all feature modules (plus navigation and worker notifications) was extracted into `res/values*` string resources with a **complete Hindi (`values-hi`) translation**. Settings → Language (English / हिन्दी) is persisted to the encrypted DataStore and applied at app startup — switching language now translates the entire app, not just system-formatted values. Other languages are not yet translated, so they are not offered in the picker.
 - **Always-On Bottom Navigation**: The 5-tab shell stays visible across the whole main graph (including detail screens) and system back pops one screen at a time — no more accidental app exits from a random tab.
 - **Pipeline Manual Add**: Add an application by hand (company + role + stage) straight from the Kanban board via the FAB.
 - **Reliable Resume Parsing**: Section parsing no longer dead-ends — versions are fully hydrated with their sections and a deterministic heading-based parser guarantees usable output even without an AI provider.
@@ -111,20 +111,20 @@ Maximize your career growth with Aivance by following these five steps:
 
 ## Build Status
 
-[![Aivance CI/CD](https://github.com/IamAzmathullaShaikh/Aivance/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/IamAzmathullaShaikh/Aivance/actions/workflows/ci.yml)
-[![Dependabot](https://img.shields.io/badge/dependabot-active-brightgreen?logo=dependabot)](https://github.com/IamAzmathullaShaikh/Aivance/network/dependencies)
+[![Aivance CI/CD](https://github.com/BangerSoul/Aivance/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/BangerSoul/Aivance/actions/workflows/ci.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-active-brightgreen?logo=dependabot)](https://github.com/BangerSoul/Aivance/network/dependencies)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-purple?logo=kotlin)](https://kotlinlang.org)
 [![AGP](https://img.shields.io/badge/AGP-9.3.1-green?logo=android)](https://developer.android.com/build/releases/gradle-plugin)
 [![API](https://img.shields.io/badge/minSdk-26-green)](https://developer.android.com/studio)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
 
-✅ **Current build: COMPILATION SUCCESSFUL** — All 16 Gradle modules compile without errors.
+✅ **Current build: COMPILATION SUCCESSFUL** — All 26 Gradle modules compile without errors.
 
 ## Getting Started
 
 ### 1. Cloning the Repository
 ```bash
-git clone https://github.com/IamAzmathullaShaikh/Aivance.git
+git clone https://github.com/BangerSoul/Aivance.git
 cd Aivance
 ```
 
@@ -177,4 +177,14 @@ Alternatively, you can provide the API key directly within the app:
 
 ## License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+AiVance is **proprietary, all rights reserved**. It is a commercial product
+distributed through the Google Play Store, and the source in this repository is
+provided for the project's own development, operations and maintenance.
+
+The full terms — including the no-redistribution and no-reverse-engineering
+restrictions — are in the [LICENSE](LICENSE) file. Please do not open a public
+issue for a security problem; see [SECURITY.md](SECURITY.md) for the private
+reporting path.
+
+The third-party libraries AiVance depends on remain under their own licenses,
+and the in-app About screen links to each of them.

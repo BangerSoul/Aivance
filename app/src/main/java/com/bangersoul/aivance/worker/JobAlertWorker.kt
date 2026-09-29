@@ -6,8 +6,11 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.bangersoul.aivance.core.common.enums.JobSortOrder
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
+import com.bangersoul.aivance.core.common.model.NotificationType
 import com.bangersoul.aivance.core.database.dao.JobDao
+import com.bangersoul.aivance.core.datastore.UserPreferencesRepository
 import com.bangersoul.aivance.core.domain.repository.JobRepository
+import com.bangersoul.aivance.core.domain.repository.NotificationRepository
 import com.bangersoul.aivance.core.domain.repository.SearchRepository
 import com.bangersoul.aivance.core.util.NotificationHelper
 import dagger.assisted.Assisted
@@ -23,7 +26,10 @@ import timber.log.Timber
  * jobs matching the saved criteria are found.
  *
  * Registered as a unique daily periodic worker ("periodic_job_alert") in
- * [com.bangersoul.aivance.AivanceApp].
+ * [com.bangersoul.aivance.AivanceApp]. Every posted alert is also recorded in the
+ * persisted notifications inbox (Room v29) so it survives tray dismissal. The
+ * stable id upserts in place, so a daily worker re-running on the same day never
+ * duplicates the inbox entry.
  */
 @HiltWorker
 class JobAlertWorker @AssistedInject constructor(
@@ -32,7 +38,9 @@ class JobAlertWorker @AssistedInject constructor(
     private val jobRepository: JobRepository,
     private val searchRepository: SearchRepository,
     private val jobDao: JobDao,
-    private val notificationHelper: NotificationHelper
+    private val notificationHelper: NotificationHelper,
+    private val notificationRepository: NotificationRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -80,13 +88,28 @@ class JobAlertWorker @AssistedInject constructor(
             }
 
             if (totalNew > 0) {
-                notificationHelper.showJobAlert(
-                    id = NOTIFICATION_ID,
-                    title = applicationContext.getString(com.bangersoul.aivance.R.string.worker_job_alert_title),
-                    message = applicationContext.getString(
-                        com.bangersoul.aivance.R.string.worker_job_alert_message,
-                        totalNew
+                val title = applicationContext.getString(com.bangersoul.aivance.R.string.worker_job_alert_title)
+                val message = applicationContext.getString(
+                    com.bangersoul.aivance.R.string.worker_job_alert_message,
+                    totalNew
+                )
+
+                if (userPreferencesRepository.userPreferences.firstOrNull()
+                        ?.jobAlertsEnabled ?: true
+                ) {
+                    notificationHelper.showJobAlert(
+                        id = NOTIFICATION_ID,
+                        title = title,
+                        message = message
                     )
+                }
+                // Inbox entry regardless of the tray toggle: the durable record of the
+                // new matches. Same-day re-runs upsert this row rather than duplicating.
+                notificationRepository.record(
+                    id = "job_alert_$WORK_NAME",
+                    type = NotificationType.JOB_ALERT,
+                    title = title,
+                    message = message
                 )
                 Timber.i("JobAlertWorker: posted alert for %d new jobs", totalNew)
             } else {

@@ -548,17 +548,7 @@ fun ApplicationTask.toEntity(): TaskEntity {
 }
 
 // Legacy / Helper Mappers
-fun ResumeAnalysisEntity.toDomain(): AtsResult {
-    return AtsResult(
-        id = id,
-        score = score,
-        date = date,
-        resumeName = "",
-        matchingKeywords = matchedKeywords.split(",").filter { it.isNotBlank() },
-        missingKeywords = missingKeywords.split(",").filter { it.isNotBlank() },
-        feedback = feedback
-    )
-}
+
 
 fun JobWithDetails.toDomain(): JobListing {
     return JobListing(
@@ -598,19 +588,6 @@ fun JobListing.toEntity(companyId: Long): JobEntity {
         url = url,
         sourceProviderId = sourceProvider,
         postedDate = postedDate
-    )
-}
-
-fun JobApplicationWithDetails.toDomain(): JobApplication {
-    return JobApplication(
-        id = application.id,
-        company = job.company.name,
-        role = job.job.title,
-        status = try { ApplicationStatus.valueOf(application.status) } catch (e: Exception) { ApplicationStatus.SAVED },
-        dateApplied = application.dateApplied,
-        salaryRange = application.salaryRange ?: "",
-        notes = application.notes ?: "",
-        lastModified = application.lastModified
     )
 }
 

@@ -37,7 +37,9 @@ class ImproveCoverLetterUseCase @Inject constructor(
             val improvedId = coverLetterRepository.generateCoverLetter(
                 resumeId = 0L,
                 resumeVersionId = letter.resumeVersionId ?: 0L,
-                jobId = letter.jobId ?: 0L,
+                // Null job id flows through the generic (no-job) generation path
+                // instead of being rewritten to 0 (which fails validation).
+                jobId = letter.jobId,
                 recruiterId = letter.recruiterId,
                 writingStyle = "IMPROVED: ${input.feedback}"
             )

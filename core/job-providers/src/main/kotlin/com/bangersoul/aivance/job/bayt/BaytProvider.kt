@@ -4,6 +4,7 @@ import com.bangersoul.aivance.core.common.enums.JobSortOrder
 import com.bangersoul.aivance.core.common.enums.RemoteType
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
+import com.bangersoul.aivance.job.base.ProviderHttpException
 import com.bangersoul.aivance.job.base.RestJobProvider
 import com.bangersoul.aivance.job.bayt.dto.BaytResponseDto
 import com.bangersoul.aivance.job.cache.JobCache
@@ -83,7 +84,13 @@ class BaytProvider(
                     postedDate = JobMapper.parseDate(dto.datePosted)
                 )
             }
+        } else {
+            throw ProviderHttpException(
+                providerId = metadata.id,
+                statusCode = response.code(),
+                message = "Bayt API failed",
+                retryAfterSeconds = response.headers()["Retry-After"]?.toLongOrNull()
+            )
         }
-        return emptyList()
     }
 }

@@ -55,6 +55,9 @@ class JobFilterMatcher @Inject constructor() {
 
         if (!matchesSalary(job, filter)) return false
 
+        if (!matchesIncludedKeywords(job, filter)) return false
+        if (!matchesExcludedKeywords(job, filter)) return false
+
         return true
     }
 
@@ -67,6 +70,29 @@ class JobFilterMatcher @Inject constructor() {
             .joinToString(" ")
             .lowercase()
         return terms.all { haystack.contains(it.lowercase()) }
+    }
+
+    /**
+     * Apply-assist whitelist (R-07): every include keyword must appear in the
+     * listing's title/company/description. Mirrors the blacklist/whitelist UX
+     * pattern of job-applier tools, reimplemented from scratch.
+     */
+    private fun matchesIncludedKeywords(job: JobListing, filter: JobSearchFilter): Boolean {
+        val terms = filter.includedKeywords.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        if (terms.isEmpty()) return true
+        val haystack = listOf(job.title, job.company, job.description).joinToString(" ").lowercase()
+        return terms.all { haystack.contains(it) }
+    }
+
+    /**
+     * Apply-assist blacklist (R-07): no exclude keyword may appear in the
+     * listing's title/company/description (e.g. "unpaid", "commission-only").
+     */
+    private fun matchesExcludedKeywords(job: JobListing, filter: JobSearchFilter): Boolean {
+        val terms = filter.excludedKeywords.map { it.trim().lowercase() }.filter { it.isNotBlank() }
+        if (terms.isEmpty()) return true
+        val haystack = listOf(job.title, job.company, job.description).joinToString(" ").lowercase()
+        return terms.none { haystack.contains(it) }
     }
 
     private fun matchesStructuredLocation(job: JobListing, filter: JobSearchFilter): Boolean {
@@ -83,14 +109,45 @@ class JobFilterMatcher @Inject constructor() {
         return cityMatch && stateMatch && countryMatch
     }
 
+    /**
+     * REMOTE also accepts listings whose description positively signals remote
+     * (e.g. "fully remote", "work from home", "home office"), even when the
+     * board's structured field says ON_SITE. Boards like Arbeitnow ship most
+     * remote-friendly roles with `remote: false` — without this fallback a
+     * Remote filter silently drops their entire feed. Explicit negatives
+     * ("not remote", "on-site only") never match.
+     */
     private fun matchesRemoteType(job: JobListing, remoteType: RemoteType): Boolean {
         return when (remoteType) {
-            RemoteType.REMOTE -> job.remoteType == RemoteType.REMOTE || job.isRemote
+            RemoteType.REMOTE -> job.remoteType == RemoteType.REMOTE || job.isRemote ||
+                hasRemoteSignal(job)
             RemoteType.HYBRID -> job.remoteType == RemoteType.HYBRID
             RemoteType.ON_SITE -> job.remoteType == RemoteType.ON_SITE ||
                 (job.remoteType == RemoteType.OTHER && !job.isRemote)
             RemoteType.OTHER -> true
         }
+    }
+
+    private fun hasRemoteSignal(job: JobListing): Boolean {
+        val description = job.description.lowercase()
+        if (REMOTE_NEGATIVES.any { description.contains(it) }) return false
+        return REMOTE_SIGNALS.any { description.contains(it) }
+    }
+
+    private companion object {
+        /** Positive remote phrases — bounded to avoid matching incidental uses. */
+        val REMOTE_SIGNALS = listOf(
+            "fully remote", "remote-first", "remote first", "remote position",
+            "remote role", "remote job", "100% remote", "work from home",
+            "work-from-home", "work remotely", "remote work", "home office"
+        )
+
+        /** Explicit denials that must never count as remote signals. */
+        val REMOTE_NEGATIVES = listOf(
+            "not remote", "no remote", "non-remote", "not a remote",
+            "on-site only", "onsite only", "on site only",
+            "in-office only", "in office only"
+        )
     }
 
     /**

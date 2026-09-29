@@ -43,7 +43,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -59,6 +59,7 @@ import com.bangersoul.aivance.core.common.model.CoverLetterVersion
 import com.bangersoul.aivance.core.designsystem.components.ActionButton
 import com.bangersoul.aivance.core.designsystem.components.AivancePrimaryButton
 import com.bangersoul.aivance.core.designsystem.components.AivanceScreen
+import com.bangersoul.aivance.core.designsystem.components.AivanceSecondaryButton
 import com.bangersoul.aivance.core.designsystem.components.DashboardCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +70,7 @@ fun CoverLetterScreen(
     jobId: Long? = null,
     onFindJobs: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -116,7 +117,10 @@ fun CoverLetterScreen(
                 label = "CoverLetterTransition"
             ) { state ->
                 when (state) {
-                    CoverLetterUiState.Idle -> CoverLetterEmptyContent(onFindJobs = onFindJobs)
+                    CoverLetterUiState.Idle -> CoverLetterEmptyContent(
+                        onGeneratePrimary = { viewModel.onEvent(CoverLetterUiEvent.GenerateFromPrimary) },
+                        onFindJobs = onFindJobs
+                    )
                     is CoverLetterUiState.Success -> CoverLetterEditorContent(
                         version = state.selectedVersion ?: state.coverLetter?.versions?.firstOrNull(),
                         isGenerating = state.isGenerating,
@@ -159,6 +163,7 @@ private fun sharePdf(context: Context, uri: Uri) {
 
 @Composable
 private fun CoverLetterEmptyContent(
+    onGeneratePrimary: () -> Unit,
     onFindJobs: () -> Unit
 ) {
     Column(
@@ -174,8 +179,15 @@ private fun CoverLetterEmptyContent(
             textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Spacer(Modifier.height(16.dp))
         AivancePrimaryButton(
+            text = stringResource(R.string.generate_cover_letter),
+            onClick = onGeneratePrimary,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        AivanceSecondaryButton(
             text = stringResource(R.string.find_jobs),
-            onClick = onFindJobs
+            onClick = onFindJobs,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -254,7 +266,7 @@ private fun CoverLetterEditorContent(
 
         val sections = version?.sections.orEmpty()
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            itemsIndexed(sections) { index, section ->
+            itemsIndexed(sections, key = { index, section -> "${section.sectionType}_$index" }) { index, section ->
                 SectionCard(
                     title = section.title,
                     content = if (isEditing) {

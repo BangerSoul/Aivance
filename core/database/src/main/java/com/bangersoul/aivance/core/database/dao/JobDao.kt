@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import com.bangersoul.aivance.core.database.model.JobEntity
 import com.bangersoul.aivance.core.database.model.JobWithDetails
 import com.bangersoul.aivance.core.database.model.SavedJobEntity
@@ -35,10 +36,20 @@ interface JobDao {
     @Query("SELECT * FROM jobs WHERE url = :url LIMIT 1")
     suspend fun getJobByUrl(url: String): JobEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // @Upsert (not REPLACE): the jobs table is a parent for saved_jobs,
+    // viewed_jobs, and applications (all ON DELETE CASCADE). INSERT OR REPLACE
+    // resolves a primary-key conflict by DELETING the existing job row and
+    // re-inserting it, which fires those cascades and silently wipes the user's
+    // bookmark, viewed-history, and tracked application (plus its timeline and
+    // tasks) every time a job already in the DB is re-cached at the same id.
+    // @Upsert emits ON CONFLICT DO UPDATE — the row is updated in place, so no
+    // delete fires and the children survive. Callers that consume the returned
+    // rowid must resolve a stable id themselves (see JobRepositoryImpl.cacheJob),
+    // because @Upsert returns -1 on the update path.
+    @Upsert
     suspend fun insertJob(job: JobEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertJobs(jobs: List<JobEntity>)
 
     @Query("DELETE FROM jobs WHERE postedDate < :beforeTimestamp")

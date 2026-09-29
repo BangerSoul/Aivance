@@ -10,6 +10,7 @@ android {
     compileSdk = 37
     defaultConfig {
         minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     testOptions {
         unitTests {
@@ -51,4 +52,15 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+
+    // Instrumented (androidTest) — end-to-end replay against a real Room runtime (M06).
+    androidTestImplementation(project(":core:database"))
+    androidTestImplementation(project(":core:domain"))
+    androidTestImplementation(project(":core:common"))
+    androidTestImplementation(libs.androidx.room.runtime)
+    androidTestImplementation(libs.androidx.room.ktx)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.truth)
 }

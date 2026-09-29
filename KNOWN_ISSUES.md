@@ -25,17 +25,38 @@ This document tracks known limitations and defects at the **v1.0.0** release. Is
 ### M-02 — ~~Keyed free job providers dormant by default~~ ✅ RESOLVED
 - **Resolved in Phase 6**: Runtime configuration for `AdzunaProvider` and `USAJobsProvider` enabled via `ProviderManagementViewModel` and `saveProviderConfig`. Users can enter Adzuna App ID / API Key and USAJobs API Key dynamically at runtime; `reconfigure()` re-hydrates credentials instantly.
 
-### M-03 — Interview analytics timeline incomplete
+### M-03 — ~~Interview analytics timeline incomplete~~ ✅ RESOLVED (2026-08-07, UESF adoption run)
 - **Area**: `feature:analytics`.
 - **Description**: Interview improvement timeline and achievement cards require accumulated analytics history.
 - **Impact**: Charts render empty/partial for new users.
+- **Resolved**: Root cause — `AnalyticsSnapshotWorker` (weekly periodic) was the **only** producer of `analytics_snapshots` rows, so a new user's Trends timeline stayed empty for up to 7 days. The guarantee now lives in the **data layer**: `AnalyticsRepositoryImpl.getSnapshots()` is self-healing — when the snapshot list is empty it captures a real baseline snapshot (derived from actual applications/interview sessions/ATS results, never fabricated) before forwarding the Room flow, guarded by a `Mutex` so concurrent collectors can never double-insert. Every consumer (analytics dashboard, career state engine, assistant context) inherits the guarantee, not just the dashboard. The duplicated ATS-report/readiness/recruiter derivation shared with `getCareerIntelligence()` was extracted into `toAtsReport()` (mapper) + private helpers. Evidence: new `AnalyticsRepositoryImplTest` 5/5 green (self-heal, honest empty-state, no-heal-with-history, no double-insert on repeated collection, derived kpis/score persisted); `AnalyticsViewModelTest` 4/4 green; plan + review records in `docs/uesf/`.
 ### M-04 — ~~Excessive binder transaction overload during tab navigation~~ ✅ RESOLVED
 - **Resolved in End-to-End Device Pass**: `TrackerViewModel` now manages `loadJob: Job?` to cancel prior flow collection coroutines before launching new ones. Eliminates duplicate Room `combine().collect` collectors on database writes and prevents Android OS from terminating cached app processes due to binder transaction limits during rapid tab navigation.
+
+### M-05 — ~~Claude AI provider missing from refresh/selection lists~~ ✅ RESOLVED (2026-08-08)
+- **Area**: `app` `ProviderRefreshWorker`, `core:domain` `GetAvailableModelsUseCase`, `feature:profile` `AiSettingsViewModel`.
+- **Description**: The Anthropic Claude provider was registered in DI but absent from `ProviderRefreshWorker.knownProviders` and the hardcoded provider lists — so Claude was never health-checked, model-refreshed, or selectable in the AI settings list.
+- **Resolved**: `anthropic` added to all three lists (alongside the new on-device `gemma` provider). `WorkerTests.providerRefreshWorker_hasKnownProviders` updated to assert the full 7-provider set.
+
+### M-06 — ~~Dead Android-Studio template theme shipped in app module~~ ✅ RESOLVED (2026-08-08)
+- **Area**: `app/ui/theme/*`.
+- **Description**: The app module still contained the default scaffold theme (`Purple80/Purple40` color scheme) with zero references — every screen uses the real tokenized `core:designsystem` `AivanceTheme` (4 modes + accents + dynamic color).
+- **Resolved**: Deleted `app/src/main/java/com/bangersoul/aivance/ui/theme/{Color,Type,Theme}.kt` after confirming zero external imports; `assembleDebug` green.
 
 ## 🟢 Low
 
 ### L-01 — ~~Deprecation warnings in tests~~ ✅ RESOLVED
 - **Resolved in Phase 6**: Updated test suites and dependencies for `ResumeEngineViewModelTest` to use non-deprecated model constructors and mocked exporters.
+
+### M-07 — ~~Gemma download offered without a device-capability check~~ ✅ RESOLVED (2026-08-08)
+- **Area**: `feature:profile` `ProviderManagementViewModel`, `core:sdk` `ModelDownloadable`, `core:ai-providers` `GemmaOnDeviceProvider`, `navigation` `FeatureScreens`.
+- **Description**: The *Download model* button started a ~2.9 GiB download with no storage/RAM gate and no size confirmation. The provider also advertised "~1.3 GB" — the real live-verified artifact is 3,136,226,711 bytes (≈2.9 GiB).
+- **Resolved**: `DeviceCapabilityProvider` (StatFs + ActivityManager, IO-dispatched, Hilt-bound) gates the flow: free storage must be ≥2 GiB (and fit the file +15% headroom); total RAM <4 GiB triggers a warning. A confirmation dialog shows the **exact byte size**, free storage, RAM warning, and — on constrained devices — a compact alternative (FunctionGemma 270M int8, 284,342,855 bytes ≈ 271 MiB, verified live). Separate primary/compact download buttons route the chosen URL; when nothing fits the download is hard-blocked with a snackbar. `ModelDownloadable` grew `modelSizeBytes` + `compactModel`. Evidence: 12 `ProviderManagementViewModelTest` + 25 `GemmaOnDeviceProviderTest` green (dialog flow, compact URL routing, storage/RAM branches, hard-block).
+
+### M-08 — ~~AI Assistant dead-ends offline~~ ✅ RESOLVED (2026-08-08)
+- **Area**: `core:domain` `GetAssistantResponseUseCase`, `core:sdk` `ProviderManager`.
+- **Description**: With no cloud provider configured — or a configured cloud provider unreachable (offline) — the Assistant fell straight to the canned local Copilot replies instead of using the downloaded on-device Gemma model, so users with the ~2.9 GB model installed got no offline intelligence.
+- **Resolved**: `GetAssistantResponseUseCase.stream()` and `generateResponse()` now try the best cloud provider first, then fall back to a **ready on-device model** (`ProviderManager.getOnDeviceProviderFor`, a new SDK helper returning the best Active/Ready `ModelDownloadable` whose model file is downloaded) before the Copilot fallback. Identity-guarded so the same provider instance is never invoked twice; the "No AI provider configured" error surfaces only when neither a cloud provider nor a downloaded model exists. Evidence: 9 new `GetAssistantResponseUseCaseTest` + 4 new `ProviderManagerTest` cases, all green.
 
 ### L-02 — ~~Tautological initial-state tests~~ ✅ RESOLVED
 - **Resolved in 2026-08-04 hardening pass**: `JobDetailsViewModelTest` / `DashboardViewModelTest` loading-state tests now assert the Loading → loaded transition. The Career-OS refactor had also left **stale non-compiling tests** across `feature:dashboard` (DashboardViewModelTest, ComposeScreenTests), `feature:jobs` (JobsViewModelTest), `feature:interview` (InterviewViewModelTest), `feature:tracker` (TrackerViewModelTest), `feature:assistant` (AssistantViewModelTest), `feature:profile` (ProfileViewModelTest, SettingsViewModelTest) and `navigation` (DestinationTest, AivanceNavGraphTest) — all repaired or removed (stale tests for **deleted** ViewModels were deleted, per the Phase-13 pattern). `testDebugUnitTest` for every module is green again.
@@ -172,12 +193,12 @@ This document tracks known limitations and defects at the **v1.0.0** release. Is
 
 ### Remaining security risks (accepted / non-blocking, tracked in TODO.md)
 - **SR-01 — Pin rotation requires a release** — pins live-verified at certification time; cert rotation (esp. CA-pinned hosts) requires a registry update + app release. Runbook in `CertificatePins.kt`; release gate = re-run `security_scan.py` (→ P1-02).
-- **SR-02 — Device-based pen-test pending** — MITM/Frida/root pass (Phase 12–13 of the security brief) not executed; needs emulator/physical device (→ P0-02).
+- **SR-02 — Device-based pen-test pending** — MITM/Frida/root pass (Phase 12–13 of the security brief) not executed; needs emulator/physical device (→ P0-02). See **`DEVICE_VALIDATION.md`** for step-by-step mitmproxy instructions.
 - **SR-03 — KeyStore-bound backup is device-bound** — restoring a backup on a different device requires the export passphrase flow (keyset excluded from cloud restore by design); UI surfacing pending (→ P1-04).
 - **SR-04 — New secret-bearing headers must join the redact list** — future provider headers need `redactHeader` coverage (→ P2-05).
 
 ### Database Certification Sprint (2026-08-03) — Remaining Risks
-- **DR-01 — Instrumented DB tests compiled but not executed on device** (no emulator) — SQL proven by SQLite replay; run `:core:database:connectedDebugAndroidTest` on CI before release (→ P0-01).
+- **~~DR-01 — Instrumented DB tests compiled but not executed on device~~ ✅ RESOLVED** (2026-08-11, AVD `aivance` Android 11/API 30): `:core:database:connectedDebugAndroidTest` — 37 tests, 0 failures/errors, full migration chain 5→25 verified on-device (→ P0-01). Physical-device re-run remains optional for Play certification.
 - **DR-02 — v1–v4 migration paths unverifiable** (no exported schemas for those versions) — pre-release versions; empty no-op migrations retained.
 - **DR-03 — ~~`DatabaseManager` / `DatabaseSeed` possibly dead code~~ ✅ RESOLVED** (2026-08-04): zero consumers confirmed; both classes deleted, DI bindings removed. `DatabaseSeed` fabricated demo data ("Jane Doe"/fake jobs) — removed per the no-fake-data rule. Orphaned `DashboardRepository`/`DashboardRepositoryImpl`/`DashboardModule` (no consumers after the Career-HQ rewrite) also removed.
 
@@ -196,3 +217,13 @@ This document tracks known limitations and defects at the **v1.0.0** release. Is
 - Stale tests referencing deleted use cases across 6 feature modules — fixed in Phase 13.
 - Mock WebServer tests for Arbeitnow/Jobicy/Apify — green.
 - Legacy `FakeDashboardRepository` deleted from `feature:dashboard` main source set — replaced by the real `DashboardRepositoryImpl` aggregation in the Career HQ rewrite.
+
+## Full E2E QA Pass (2026-08-11) — Findings & Fixes
+- **KB-01 — ~~Soft keyboard overlapped bottom content~~ ✅ RESOLVED**: app is edge-to-edge (`enableEdgeToEdge()`) but no screen applied `imePadding()` — keyboard covered the assistant composer, auth Continue, and onboarding actions. Added `imePadding()` to the assistant input bar, auth scroll column, and onboarding columns. Pixel-verified: composer sits above Gboard.
+- **ST-01 — ~~"Quick Practice" dead stub~~ ✅ RESOLVED**: hero card `onClick = {}` — now starts a behavioral mock session immediately (verified live: Q1/5 + answer field + submit).
+- **ST-02 — ~~Pipeline "View Analytics" dead stub~~ ✅ RESOLVED**: empty onClick → now navigates to the Intelligence Center.
+- **ST-03 — ~~Job Details "Start Prep" + Analytics "Boost Score" dead stubs~~ ✅ RESOLVED**: both now navigate (Prep Studio / Intelligence Hub).
+- **ST-04 — ~~Identity Hub "+ Add Skill" / "+ Add" industry / "Export Career Data" dead~~ ✅ RESOLVED**: add-dialogs wired to the draft profile (verified live), export shares the profile payload via the system sheet.
+- **ST-05 — Remaining stubs (accepted, low priority)**: Identity Hub "Upload Document" (Vault tab); legacy per-industry chips in the profile; kanban moves require long-press drag (Compose DnD wired, works for real users, not automatable via `adb swipe`).
+- **QA-01 — LinkedIn (Apify) free-tier quota exhaustion**: provider returns 403 when the daily free quota is spent; the search layer degrades gracefully to cached jobs + other providers (observed live: "Android Engineer" returned Arbeitnow results). Documented in QA_E2E_NOTES §3.4.
+- **QA-02 — System file picker (DocumentsUI) not automatable via adb**: the resume-import wizard's picker opens correctly but won't return a selection via `adb input tap` on this emulator — automation limitation, not an app bug (ATS scan pipeline verified in earlier sessions: report create/open/delete).

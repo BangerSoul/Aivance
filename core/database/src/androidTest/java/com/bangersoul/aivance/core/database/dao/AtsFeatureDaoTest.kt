@@ -6,7 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.cash.turbine.test
 import com.bangersoul.aivance.core.database.AivanceDatabase
 import com.bangersoul.aivance.core.database.buildTestDatabase
-import com.bangersoul.aivance.core.database.model.ResumeAnalysisEntity
+import com.bangersoul.aivance.core.database.model.AtsReportEntity
+import com.bangersoul.aivance.core.database.model.JobDescriptionEntity
 import com.bangersoul.aivance.core.database.model.ResumeEntity
 import com.bangersoul.aivance.core.database.model.ResumeSectionEntity
 import com.bangersoul.aivance.core.database.model.ResumeVersionEntity
@@ -37,9 +38,7 @@ class AtsFeatureDaoTest {
         db.close()
     }
 
-    @Test
-    fun resumeAndAtsResultIntegration() = runTest {
-        // 1. Insert Resume
+    private suspend fun insertResumeWithVersion(): Long {
         val resume = ResumeEntity(
             id = 1,
             name = "John_Doe_Resume.pdf",
@@ -47,8 +46,6 @@ class AtsFeatureDaoTest {
             lastModified = System.currentTimeMillis()
         )
         resumeDao.insertResume(resume)
-
-        // 2. Insert a version and its sections (sections are keyed by versionId)
         resumeDao.insertVersion(
             ResumeVersionEntity(
                 id = 1,
@@ -62,19 +59,36 @@ class AtsFeatureDaoTest {
             ResumeSectionEntity(versionId = 1, title = "Skills", content = "...", sectionOrder = 1, sectionType = "SKILLS")
         )
         resumeDao.insertSections(sections)
+        return 1L
+    }
 
-        // 3. Perform ATS Analysis and save result
-        val analysis = ResumeAnalysisEntity(
+    @Test
+    fun resumeAndAtsReportIntegration() = runTest {
+        insertResumeWithVersion()
+
+        // 2. Save the job description — ats_reports.jobDescriptionId is an
+        //    enforced FK, so the JD row must exist first.
+        val jdId = atsDao.insertJobDescription(
+            JobDescriptionEntity(
+                companyName = null, jobTitle = null, rawText = "Senior Android Engineer",
+                sourceUrl = null, extractedSkills = null
+            )
+        )
+
+        // 3. Perform ATS analysis and save the report
+        val report = AtsReportEntity(
             id = 1,
-            resumeId = 1,
-            jobDescription = "Senior Android Engineer",
-            score = 92,
+            resumeVersionId = 1,
+            jobDescriptionId = jdId,
+            overallScore = 92,
+            matchPercentage = 92,
             matchedKeywords = "Kotlin, Coroutines, Room",
             missingKeywords = "KMP",
-            feedback = "Excellent match for the role.",
-            date = System.currentTimeMillis()
+            sectionScores = "{}",
+            optimizationTips = "[]",
+            dateGenerated = System.currentTimeMillis()
         )
-        atsDao.insertAtsResult(analysis)
+        atsDao.insertReport(report)
 
         // 4. Verify data
         val savedResume = resumeDao.getResumeById(1)
@@ -86,36 +100,50 @@ class AtsFeatureDaoTest {
             assertThat(savedSections[0].title).isEqualTo("Experience")
         }
 
-        atsDao.getLatestAtsResult().test {
-            val savedAnalysis = awaitItem()
-            assertThat(savedAnalysis?.score).isEqualTo(92)
-            assertThat(savedAnalysis?.resumeId).isEqualTo(1)
+        atsDao.getAllReports().test {
+            val savedReports = awaitItem()
+            assertThat(savedReports).hasSize(1)
+            assertThat(savedReports[0].overallScore).isEqualTo(92)
+            assertThat(savedReports[0].resumeVersionId).isEqualTo(1)
+            assertThat(savedReports[0].jobDescriptionId).isEqualTo(jdId)
+        }
+
+        atsDao.getReportsForVersion(1).test {
+            val versionReports = awaitItem()
+            assertThat(versionReports).hasSize(1)
         }
     }
 
     @Test
-    fun deleteResume_cascadesToAnalysis() = runTest {
+    fun deleteResume_cascadesToAtsReports() = runTest {
         val resume = ResumeEntity(id = 1, name = "test.pdf", dateCreated = 0, lastModified = 0)
         resumeDao.insertResume(resume)
+        resumeDao.insertVersion(
+            ResumeVersionEntity(id = 1, resumeId = 1, versionName = "Main", templateId = "modern")
+        )
+        val jdId = atsDao.insertJobDescription(
+            JobDescriptionEntity(companyName = null, jobTitle = null, rawText = "Job", sourceUrl = null, extractedSkills = null)
+        )
 
-        val analysis = ResumeAnalysisEntity(
+        val report = AtsReportEntity(
             id = 1,
-            resumeId = 1,
-            jobDescription = "Job",
-            score = 80,
+            resumeVersionId = 1,
+            jobDescriptionId = jdId,
+            overallScore = 80,
+            matchPercentage = 80,
             matchedKeywords = "",
             missingKeywords = "",
-            feedback = "",
-            date = 1000L
+            sectionScores = "{}",
+            optimizationTips = "[]",
+            dateGenerated = 1000L
         )
-        atsDao.insertAtsResult(analysis)
+        atsDao.insertReport(report)
 
-        // Delete resume
+        // Delete the resume — the version and its reports should cascade away.
         resumeDao.deleteResume(resume)
 
-        // Analysis should be gone due to ForeignKey CASCADE
-        atsDao.getLatestAtsResult().test {
-            assertThat(awaitItem()).isNull()
+        atsDao.getAllReports().test {
+            assertThat(awaitItem()).isEmpty()
         }
     }
 }

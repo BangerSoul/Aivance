@@ -17,6 +17,7 @@ interface ApplicationWorkflowRepository {
     fun getStages(): Flow<CoreResult<List<ApplicationStage>>>
 
     suspend fun addTimelineEvent(event: TimelineEvent): CoreResult<Long>
+    suspend fun deleteTimelineEvent(id: Long): CoreResult<Unit>
     suspend fun addTask(task: ApplicationTask): CoreResult<Long>
     suspend fun updateTask(task: ApplicationTask): CoreResult<Unit>
 }

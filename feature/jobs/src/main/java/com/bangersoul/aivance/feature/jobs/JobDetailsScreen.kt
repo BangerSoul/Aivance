@@ -16,6 +16,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,10 +24,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bangersoul.aivance.core.common.model.AssistantJobContext
 import com.bangersoul.aivance.core.common.model.Company
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.Recruiter
 import com.bangersoul.aivance.core.designsystem.components.*
+import com.bangersoul.aivance.core.designsystem.shell.LocalAppShellState
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,14 +38,18 @@ fun JobDetailsScreen(
     viewModel: JobDetailsViewModel,
     jobId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToApplyBrowser: (String) -> Unit = {},
     onNavigateToRecruiters: (String) -> Unit = {},
     onNavigateToCoverLetter: (Long) -> Unit = {},
     onNavigateToPipeline: () -> Unit = {},
-    onNavigateToAts: (String) -> Unit = {}
+    onNavigateToAts: (String) -> Unit = {},
+    onNavigateToCompany: (String) -> Unit = {},
+    onNavigateToPrepStudio: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val shellState = LocalAppShellState.current
     var selectedTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(jobId) {
@@ -54,6 +61,7 @@ fun JobDetailsScreen(
             when (effect) {
                 is JobDetailsUiEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
                 is JobDetailsUiEffect.OpenExternalUrl -> openExternalUrl(context, effect.url)
+                is JobDetailsUiEffect.NavigateToApplyBrowser -> onNavigateToApplyBrowser(effect.jobId)
                 is JobDetailsUiEffect.NavigateToRecruiters -> onNavigateToRecruiters(effect.jobId)
                 is JobDetailsUiEffect.NavigateToCoverLetter -> onNavigateToCoverLetter(effect.jobId)
                 is JobDetailsUiEffect.NavigateToAts -> onNavigateToAts(effect.jobDescription)
@@ -66,6 +74,22 @@ fun JobDetailsScreen(
         title = stringResource(R.string.job_details_title),
         onBack = onNavigateBack,
         showAssistantAction = true,
+        assistantContentDescription = stringResource(R.string.ai_assistant),
+        onAssistantClick = {
+            // Surface the assistant with this job as context so replies stay
+            // on-target for the role being viewed.
+            (uiState as? JobDetailsUiState.Success)?.let { state ->
+                shellState.setAssistantJobContext(
+                    AssistantJobContext(
+                        jobId = state.job.id,
+                        title = state.job.title,
+                        company = state.job.company,
+                        description = state.job.description
+                    )
+                )
+            }
+            shellState.toggleAssistant(true)
+        },
         topBarActions = {
             val isBookmarked = (uiState as? JobDetailsUiState.Success)?.isBookmarked ?: false
             IconButton(onClick = { viewModel.onEvent(JobDetailsUiEvent.ToggleBookmark) }) {
@@ -91,21 +115,21 @@ fun JobDetailsScreen(
                 ) {
                     Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
                         Text(
-                            "Overview",
+                            stringResource(R.string.job_tab_overview),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
                         Text(
-                            "Readiness",
+                            stringResource(R.string.job_tab_readiness),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
                         Text(
-                            "Intelligence",
+                            stringResource(R.string.job_tab_intelligence),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -121,13 +145,15 @@ fun JobDetailsScreen(
                         when (tab) {
                             0 -> JobOverviewContent(
                                 job = state.job,
-                                onApplyClick = { viewModel.onEvent(JobDetailsUiEvent.OpenUrl) },
-                                onApplyAndTrack = { viewModel.onEvent(JobDetailsUiEvent.ApplyAndTrack) }
+                                onApplyClick = { viewModel.onEvent(JobDetailsUiEvent.ApplyInApp) },
+                                onApplyAndTrack = { viewModel.onEvent(JobDetailsUiEvent.ApplyAndTrack) },
+                                onCompanyClick = { onNavigateToCompany(state.job.company) }
                             )
                             1 -> JobReadinessContent(
                                 score = state.readinessScore,
                                 onOpenAts = { viewModel.onEvent(JobDetailsUiEvent.OpenAts) },
-                                onGenerateCoverLetter = { viewModel.onEvent(JobDetailsUiEvent.GenerateCoverLetter) }
+                                onGenerateCoverLetter = { viewModel.onEvent(JobDetailsUiEvent.GenerateCoverLetter) },
+                                onNavigateToPrepStudio = onNavigateToPrepStudio
                             )
                             2 -> JobIntelligenceContent(
                                 company = state.company,
@@ -153,7 +179,8 @@ private fun openExternalUrl(context: Context, url: String) {
 private fun JobOverviewContent(
     job: JobListing,
     onApplyClick: () -> Unit,
-    onApplyAndTrack: () -> Unit
+    onApplyAndTrack: () -> Unit,
+    onCompanyClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -165,10 +192,16 @@ private fun JobOverviewContent(
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(job.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Tapping the company name opens the company's detail screen.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable(onClick = onCompanyClick)
+            ) {
                 Icon(Icons.Rounded.Business, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(8.dp))
                 Text(job.company, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.width(4.dp))
+                Icon(Icons.Rounded.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.LocationOn, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.secondary)
@@ -179,13 +212,13 @@ private fun JobOverviewContent(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             AivancePrimaryButton(
-                text = "Apply Now",
+                text = stringResource(R.string.job_apply_now),
                 onClick = onApplyClick,
                 modifier = Modifier.weight(1f),
                 icon = Icons.Rounded.Public
             )
             AivanceSecondaryButton(
-                text = "Track",
+                text = stringResource(R.string.job_track),
                 onClick = onApplyAndTrack,
                 modifier = Modifier.weight(0.6f),
                 icon = Icons.Rounded.PlaylistAdd
@@ -203,9 +236,10 @@ private fun JobOverviewContent(
 
 @Composable
 private fun JobReadinessContent(
-    score: Int,
+    score: Int?,
     onOpenAts: () -> Unit,
-    onGenerateCoverLetter: () -> Unit
+    onGenerateCoverLetter: () -> Unit,
+    onNavigateToPrepStudio: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -216,38 +250,52 @@ private fun JobReadinessContent(
     ) {
         AivanceWorkspaceCard {
             Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                ScoreGauge(score = score, size = 80.dp)
-                Column {
-                    Text("Match Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("How prepared you are for this specific role.", style = MaterialTheme.typography.bodySmall)
+                if (score != null) {
+                    ScoreGauge(score = score, size = 80.dp)
+                    Column {
+                        Text(stringResource(R.string.job_match_readiness), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.job_match_readiness_detail), style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    Column {
+                        Text(stringResource(R.string.job_match_readiness), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            stringResource(R.string.job_match_readiness_setup),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
 
-        SectionHeader(title = "Required Steps")
+        SectionHeader(title = stringResource(R.string.job_required_steps))
 
         ReadinessCard(
-            title = "ATS Optimization",
-            description = "Your current resume match is ${score}%. Fix missing keywords to pass filters.",
-            actionLabel = "Run ATS Scan",
+            title = stringResource(R.string.job_readiness_ats),
+            description = if (score != null) {
+                stringResource(R.string.job_readiness_ats_scored, score)
+            } else {
+                stringResource(R.string.job_readiness_ats_unscored)
+            },
+            actionLabel = stringResource(R.string.job_readiness_ats_action),
             icon = Icons.Rounded.Search,
             onClick = onOpenAts
         )
 
         ReadinessCard(
-            title = "Cover Letter",
-            description = "A tailored cover letter increases your interview chance by 40%.",
-            actionLabel = "Generate with AI",
+            title = stringResource(R.string.job_readiness_cover),
+            description = stringResource(R.string.job_readiness_cover_detail),
+            actionLabel = stringResource(R.string.job_readiness_cover_action),
             icon = Icons.Rounded.HistoryEdu,
             onClick = onGenerateCoverLetter
         )
 
         ReadinessCard(
-            title = "Interview Prep",
-            description = "We found 12 specific interview questions for this role.",
-            actionLabel = "Start Prep",
+            title = stringResource(R.string.job_readiness_interview),
+            description = stringResource(R.string.job_readiness_interview_detail),
+            actionLabel = stringResource(R.string.job_readiness_interview_action),
             icon = Icons.Rounded.RecordVoiceOver,
-            onClick = { /* Navigate to Prep Studio */ }
+            onClick = onNavigateToPrepStudio
         )
     }
 }
@@ -290,7 +338,7 @@ private fun JobIntelligenceContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         if (company != null) {
-            SectionHeader(title = "Company Insights")
+            SectionHeader(title = stringResource(R.string.job_company_insights))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp)) {
                     Text(company.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -301,13 +349,13 @@ private fun JobIntelligenceContent(
             }
         }
 
-        SectionHeader(title = "Hiring Team")
+        SectionHeader(title = stringResource(R.string.job_hiring_team))
         if (recruiters.isEmpty()) {
             AivanceEmptyState(
-                title = "No recruiters found",
-                description = "We can try to find hiring managers and contacts for this role.",
+                title = stringResource(R.string.job_no_recruiters),
+                description = stringResource(R.string.job_no_recruiters_detail),
                 icon = Icons.Rounded.PersonSearch,
-                primaryActionText = "Search Recruiters",
+                primaryActionText = stringResource(R.string.job_search_recruiters),
                 onPrimaryAction = onFindRecruiters
             )
         } else {
@@ -327,10 +375,10 @@ private fun RecruiterCard(recruiter: Recruiter) {
             }
             Column(Modifier.weight(1f)) {
                 Text(recruiter.name, fontWeight = FontWeight.Bold)
-                Text(recruiter.title ?: "Recruiter", style = MaterialTheme.typography.bodySmall)
+                Text(recruiter.title ?: stringResource(R.string.job_recruiter_fallback_title), style = MaterialTheme.typography.bodySmall)
             }
             if (recruiter.contacts.any { it.isVerified }) {
-                Icon(Icons.Rounded.Verified, "Verified Contact", tint = AivanceTheme.colors.info, modifier = Modifier.size(16.dp))
+                Icon(Icons.Rounded.Verified, stringResource(R.string.job_verified_contact_cd), tint = AivanceTheme.colors.info, modifier = Modifier.size(16.dp))
             }
         }
     }

@@ -7,22 +7,15 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.bangersoul.aivance.core.database.model.AtsReportEntity
 import com.bangersoul.aivance.core.database.model.JobDescriptionEntity
-import com.bangersoul.aivance.core.database.model.ResumeAnalysisEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AtsDao {
-    // Old legacy methods
-    @Query("SELECT * FROM resume_analyses ORDER BY date DESC")
-    fun getAtsResults(): Flow<List<ResumeAnalysisEntity>>
-
-    @Query("SELECT * FROM resume_analyses ORDER BY date DESC LIMIT 1")
-    fun getLatestAtsResult(): Flow<ResumeAnalysisEntity?>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAtsResult(atsResult: ResumeAnalysisEntity): Long
 
     // Modern ATS methods
+    @Query("SELECT * FROM ats_reports ORDER BY dateGenerated DESC")
+    fun getAllReports(): Flow<List<AtsReportEntity>>
+
     @Query("SELECT * FROM ats_reports WHERE resumeVersionId = :versionId ORDER BY dateGenerated DESC")
     fun getReportsForVersion(versionId: Long): Flow<List<AtsReportEntity>>
 

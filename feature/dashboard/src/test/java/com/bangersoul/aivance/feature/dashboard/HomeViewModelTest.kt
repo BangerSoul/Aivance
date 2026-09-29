@@ -38,9 +38,17 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `initial state is Success with greeting`() {
+    fun `success state carries quick actions and a greeting`() {
+        // Not tautological: the init-transitioned Success state must expose the
+        // full quick-action set and a non-blank time-of-day greeting.
         viewModel = HomeViewModel(mockTrackEvent)
-        assertTrue(viewModel.uiState.value is HomeUiState.Success)
+        val state = viewModel.uiState.value as HomeUiState.Success
+        assertEquals(QuickAction.entries, state.quickActions)
+        assertEquals(6, state.quickActions.size)
+        assertTrue(state.greetingMessage.isNotBlank())
+        assertTrue(state.greetingMessage in listOf("Good morning", "Good afternoon", "Good evening"))
+        // No notifications are surfaced on the home screen without data.
+        assertTrue(!state.hasUnreadNotifications)
     }
 
     @Test

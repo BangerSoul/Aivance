@@ -16,9 +16,9 @@ updates:
       - "dependencies"
       - "gradle"
     reviewers:
-      - "IamAzmathullaShaikh"
+      - "BangerSoul"
     assignees:
-      - "IamAzmathullaShaikh"
+      - "BangerSoul"
     commit-message:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"

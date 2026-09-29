@@ -96,6 +96,53 @@ class ApifyJobProviderTest {
     }
 
     @Test
+    fun `executeSearch sends keywords location country maxItems to the actor`() = runTest {
+        // runActor -> READY with dataset
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(201).setBody(
+                """{"data":{"id":"r1","status":"READY","defaultDatasetId":"ds1"}}"""
+            )
+        )
+        // poll -> SUCCEEDED
+        mockWebServer.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"data":{"id":"r1","status":"SUCCEEDED","defaultDatasetId":"ds1"}}"""
+            )
+        )
+        // dataset -> empty
+        mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("""[]"""))
+
+        val provider = TestApifyProvider(
+            jobCache = mockk(relaxed = true),
+            okHttpClient = OkHttpClient(),
+            baseRetrofit = buildRetrofit(mockWebServer),
+            baseUrl = mockWebServer.url("/v2/").toString()
+        )
+
+        provider.runSearch(
+            filter = com.bangersoul.aivance.core.common.model.JobSearchFilter(
+                query = "Android Engineer",
+                location = "United States"
+            ),
+            sortOrder = com.bangersoul.aivance.core.common.enums.JobSortOrder.RELEVANCE,
+            page = 1
+        )
+
+        val runRequest = mockWebServer.takeRequest()
+        assertEquals("POST", runRequest.method)
+        val body = runRequest.body.readUtf8()
+        // Live-verified input shape (QA E2E 2026-08-11): the actor keys off
+        // `keywords` + `location`/`country`; `positions` alone or the legacy
+        // `search` key either error or return evergreen junk.
+        assertTrue("expected keywords in body: $body", body.contains("\"keywords\":\"Android Engineer\""))
+        assertTrue("expected location in body: $body", body.contains("\"location\":\"United States\""))
+        assertTrue("expected country in body: $body", body.contains("\"country\":\"US\""))
+        assertTrue("expected maxItems in body: $body", body.contains("\"maxItems\":100"))
+        assertTrue("must not send ignored positions/search keys: $body", !body.contains("positions") && !body.contains("\"search\""))
+        assertEquals(3, mockWebServer.requestCount)
+    }
+
+    @Test
     fun `provider metadata and lifecycle are correct`() = runTest {
         val provider = TestApifyProvider(
             jobCache = mockk(relaxed = true),
@@ -130,7 +177,8 @@ class ApifyJobProviderTest {
     private class TestApifyProvider(
         jobCache: JobCache,
         okHttpClient: OkHttpClient,
-        baseRetrofit: Retrofit
+        baseRetrofit: Retrofit,
+        baseUrl: String = "https://api.apify.com/v2/"
     ) : ApifyJobProvider(
         metadata = ProviderMetadata(
             id = "test-actor",
@@ -144,6 +192,15 @@ class ApifyJobProviderTest {
         actorId = "test-actor",
         jobCache = jobCache,
         okHttpClient = okHttpClient,
-        baseRetrofit = baseRetrofit
-    )
+        baseRetrofit = baseRetrofit,
+        baseUrl = baseUrl
+    ) {
+        /** Public bridge so the test can drive the protected executeSearch. */
+        suspend fun runSearch(
+            filter: com.bangersoul.aivance.core.common.model.JobSearchFilter,
+            sortOrder: com.bangersoul.aivance.core.common.enums.JobSortOrder,
+            page: Int
+        ): List<com.bangersoul.aivance.core.common.model.JobListing> =
+            executeSearch(filter, sortOrder, page)
+    }
 }

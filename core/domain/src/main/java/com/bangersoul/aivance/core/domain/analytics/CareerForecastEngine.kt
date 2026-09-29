@@ -13,15 +13,19 @@ class CareerForecastEngine @Inject constructor() {
         hypotheticalAts: Int? = null,
         hypotheticalReadiness: Int? = null
     ): CareerIntelligence {
-        val newAts = hypotheticalAts ?: current.dimensionScores["ATS_READINESS"] ?: 0
-        val newReadiness = hypotheticalReadiness ?: current.dimensionScores["INTERVIEW_READINESS"] ?: 0
+        val newAts = hypotheticalAts ?: current.dimensionScores[CareerScoreEngine.DIM_ATS_READINESS] ?: 0
+        val newReadiness = hypotheticalReadiness ?: current.dimensionScores[CareerScoreEngine.DIM_INTERVIEW_READINESS] ?: 0
 
         // Simple linear simulation
         val intProb = ((newAts * 0.7) + 20).toInt().coerceIn(0, 100)
         val offerProb = ((newReadiness * 0.8) + 10).toInt().coerceIn(0, 100)
 
+        // A *simulated* score: when nothing has been measured yet the projection is built from
+        // the user's own slider inputs on top of the unscored floor, which is legitimate here
+        // because the screen labels the result "Simulated Outcome" — it is never presented as
+        // the user's actual career score.
         return current.copy(
-            careerScore = (current.careerScore + (newAts - (current.dimensionScores["ATS_READINESS"] ?: 0)) / 2).coerceIn(0, 100),
+            careerScore = ((current.careerScore ?: 0) + (newAts - (current.dimensionScores[CareerScoreEngine.DIM_ATS_READINESS] ?: 0)) / 2).coerceIn(0, 100),
             predictions = current.predictions.copy(
                 interviewProbability = intProb,
                 offerProbability = offerProb,

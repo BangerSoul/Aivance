@@ -30,6 +30,10 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.ai)
 
+    // On-device LLM inference (offline Gemma) — model file downloaded at runtime,
+    // no API key required. See GemmaOnDeviceProvider.
+    implementation(libs.tasks.genai)
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
@@ -43,4 +47,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.core)
+    testImplementation(libs.mockwebserver)
 }

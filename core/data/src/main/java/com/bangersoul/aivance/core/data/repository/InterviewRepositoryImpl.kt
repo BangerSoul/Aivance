@@ -17,7 +17,10 @@ import com.bangersoul.aivance.core.database.dao.InterviewDao
 import com.bangersoul.aivance.core.database.dao.JobDao
 import com.bangersoul.aivance.core.database.dao.ResumeDao
 import com.bangersoul.aivance.core.database.model.InterviewSessionWithMessages
+import com.bangersoul.aivance.core.domain.events.CareerEventDispatcher
 import com.bangersoul.aivance.core.domain.repository.InterviewRepository
+import com.bangersoul.aivance.core.domain.usecase.interview.STARAnswerScorer
+import com.bangersoul.aivance.core.domain.usecase.interview.STARCoachingPrompts
 import com.bangersoul.aivance.sdk.api.AIProvider
 import com.bangersoul.aivance.sdk.core.ProviderCapability
 import com.bangersoul.aivance.sdk.infrastructure.ProviderManager
@@ -34,7 +37,8 @@ class InterviewRepositoryImpl @Inject constructor(
     private val interviewDao: InterviewDao,
     private val resumeDao: ResumeDao,
     private val jobDao: JobDao,
-    private val providerManager: ProviderManager
+    private val providerManager: ProviderManager,
+    private val careerEventDispatcher: CareerEventDispatcher
 ) : InterviewRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -94,17 +98,13 @@ class InterviewRepositoryImpl @Inject constructor(
         val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
             ?: throw Exception("No AI provider available")
 
-        val prompt = """
-            Generate $count interview questions for a ${session.difficulty} level interview for the role of ${session.targetRole} at ${session.companyName}.
-            Type of interview: ${session.type}.
-
-            Return ONLY a JSON array of objects with:
-            "text": String,
-            "category": String (e.g. Technical, Behavioral),
-            "difficulty": String (Easy, Medium, Hard),
-            "expectedKeyPoints": [String],
-            "idealAnswer": String
-        """.trimIndent()
+        val prompt = STARCoachingPrompts.buildSessionQuestionPrompt(
+            targetRole = session.targetRole,
+            companyName = session.companyName,
+            type = session.type,
+            difficulty = session.difficulty.toString(),
+            count = count
+        )
 
         val response = provider.generateText(prompt).getOrNull() ?: throw Exception("AI failed to generate questions")
 
@@ -117,6 +117,16 @@ class InterviewRepositoryImpl @Inject constructor(
         val questions = json.decodeFromString<List<InterviewQuestion>>(jsonText)
         questions.forEach { q ->
             interviewDao.insertQuestion(q.toEntity(id))
+        }
+    }
+
+    override suspend fun persistPackQuestions(
+        sessionId: String,
+        questions: List<InterviewQuestion>
+    ): CoreResult<Unit> = runCatchingCore {
+        val id = sessionId.toLongOrNull() ?: throw Exception("Invalid ID")
+        questions.forEach { question ->
+            interviewDao.insertQuestion(question.toEntity(id))
         }
     }
 
@@ -133,18 +143,7 @@ class InterviewRepositoryImpl @Inject constructor(
         val provider = providerManager.getBestProviderFor(ProviderCapability.AI.Chat) as? AIProvider
             ?: throw Exception("No AI provider available")
 
-        val prompt = """
-            Evaluate the following candidate interview answer for the role ${sessionWithData.session.targetRole}.
-            Answer: "${messageEntity.text}"
-
-            Return ONLY a JSON object with:
-            "scoreClarity": Int (0-100),
-            "scoreAccuracy": Int (0-100),
-            "scoreTone": Int (0-100),
-            "starMethodScore": Int (0-100, optional),
-            "feedback": String,
-            "improvementTips": [String]
-        """.trimIndent()
+        val prompt = STARCoachingPrompts.buildEvaluationPrompt(sessionWithData.session.targetRole, messageEntity.text)
 
         val response = provider.generateText(prompt).getOrNull() ?: throw Exception("AI evaluation failed")
 
@@ -154,8 +153,14 @@ class InterviewRepositoryImpl @Inject constructor(
             response.substring(response.indexOf("{"), response.lastIndexOf("}") + 1)
         } else response
 
-        val evaluation = json.decodeFromString<InterviewEvaluation>(jsonText).copy(
-            messageId = messageId
+        val decoded = json.decodeFromString<InterviewEvaluation>(jsonText)
+        val evaluation = decoded.copy(
+            messageId = messageId,
+            // Rubric-gated fallback (Option C): when the AI omits starMethodScore,
+            // fill it deterministically so the review screen always has a grounded
+            // STAR score — mirrors the deterministic reward-verifier discipline.
+            starMethodScore = decoded.starMethodScore
+                ?: STARAnswerScorer.score(messageEntity.text).starMethodScore
         )
 
         interviewDao.insertEvaluation(evaluation.toEntity())
@@ -170,6 +175,18 @@ class InterviewRepositoryImpl @Inject constructor(
         val feedback = generateSessionFeedback(entity)
         val updated = entity.session.copy(isCompleted = true, overallFeedback = feedback)
         interviewDao.insertSession(updated)
+
+        // The session is now persisted as completed (definitive success).
+        // Publish the real domain event onto the shared CareerEventBus that the
+        // V2 CareerStateEngine consumes. Dispatch is fire-and-forget and
+        // non-suspending, so it neither blocks nor folds a bus failure into this
+        // operation's success; it is only reached on the success path (a missing
+        // session throws above and runCatchingCore returns Failure).
+        careerEventDispatcher.onInterviewCompleted(
+            sessionId = sessionId,
+            score = feedback?.overallScore ?: 0,
+            weaknesses = feedback?.improvements ?: emptyList()
+        )
     }
 
     private suspend fun generateSessionFeedback(

@@ -184,7 +184,7 @@ def compare(v, exp, con):
 
 print("Single-step validation (FK ON, schema equality + strict data preservation):")
 total_issues = 0
-for f in range(5, 24):
+for f in range(5, 25):
     t = f + 1
     stmts = blocks.get((f, t))
     if stmts is None:

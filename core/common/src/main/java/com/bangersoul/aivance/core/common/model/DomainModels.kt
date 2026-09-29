@@ -12,6 +12,7 @@ import com.bangersoul.aivance.core.common.enums.MessageRole
 import com.bangersoul.aivance.core.common.enums.MessageSender
 import com.bangersoul.aivance.core.common.enums.ProviderState
 import com.bangersoul.aivance.core.common.enums.ProviderType
+import com.bangersoul.aivance.core.common.enums.RemotePolicy
 import com.bangersoul.aivance.core.common.enums.RemoteType
 import com.bangersoul.aivance.core.common.enums.ResumeStatus
 import kotlinx.serialization.Serializable
@@ -80,28 +81,6 @@ data class JobDescription(
     val dateCreated: Long = System.currentTimeMillis()
 )
 
-@Deprecated("Use AtsReport")
-@Serializable
-data class ResumeAnalysis(
-    val overallScore: Int,
-    val matchingKeywords: List<String> = emptyList(),
-    val missingKeywords: List<String> = emptyList(),
-    val suggestions: List<String> = emptyList(),
-    val matchSummary: String = ""
-)
-
-@Deprecated("Use AtsReport")
-@Serializable
-data class AtsResult(
-    val id: Long = 0,
-    val score: Int,
-    val date: Long = System.currentTimeMillis(),
-    val resumeName: String,
-    val missingKeywords: List<String> = emptyList(),
-    val feedback: String,
-    val matchingKeywords: List<String> = emptyList(),
-    val formattingScore: Int = 100
-)
 
 @Serializable
 data class CoverLetter(
@@ -193,6 +172,19 @@ data class InterviewFeedback(
     val strengths: List<String> = emptyList(),
     val improvements: List<String> = emptyList(),
     val detailedSummary: String = ""
+)
+
+/**
+ * Minimal job context handed to the AI Assistant when it is surfaced from a
+ * job-related screen (saved jobs, job details), so answers can be tailored to
+ * the specific role the user is looking at.
+ */
+@Serializable
+data class AssistantJobContext(
+    val jobId: String,
+    val title: String,
+    val company: String,
+    val description: String? = null
 )
 
 @Serializable
@@ -389,7 +381,28 @@ data class JobSearchFilter(
     val maxExperienceYears: Int? = null,
     val minSalary: Double? = null,
     val maxSalary: Double? = null,
-    val currency: String = "USD"
+    val currency: String = "USD",
+    /**
+     * Company-level remote policy (R-02) — only listings from catalog companies
+     * with a matching policy pass. Null = no catalog policy constraint.
+     */
+    val remotePolicy: RemotePolicy? = null,
+    /**
+     * Company tech-stack terms (R-02, lowercased) — only listings from catalog
+     * companies whose technologies intersect pass. Empty = no constraint.
+     */
+    val technologies: List<String> = emptyList(),
+    /**
+     * Whitelist keywords (R-07) — the listing must contain ALL of these in its
+     * title, company or description. Empty = no constraint.
+     */
+    val includedKeywords: List<String> = emptyList(),
+    /**
+     * Blacklist keywords (R-07) — the listing must contain NONE of these in its
+     * title, company or description (e.g. "unpaid", "commission-only", "senior").
+     * Empty = no constraint.
+     */
+    val excludedKeywords: List<String> = emptyList()
 ) {
     /** Combines the structured location parts into a single human-readable string. */
     val structuredLocation: String

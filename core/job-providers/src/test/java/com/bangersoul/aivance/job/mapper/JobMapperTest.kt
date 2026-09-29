@@ -13,6 +13,8 @@ import com.bangersoul.aivance.job.remoteok.dto.RemoteOKJobDto
 import com.bangersoul.aivance.job.remotive.dto.RemotiveJobDto
 import com.bangersoul.aivance.job.usajobs.dto.USAJobsDescriptorDto
 import com.bangersoul.aivance.job.usajobs.dto.USAJobsLocationDto
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import org.junit.Assert.assertEquals
@@ -60,6 +62,71 @@ class JobMapperTest {
         assertEquals("https://techcorp.com/jobs/1", result.url)
         assertEquals("apify-linkedin", result.sourceProvider)
         assertEquals("USD", result.currency)
+    }
+
+    @Test
+    fun `mapToJobListing from real LinkedIn actor schema uses companyName postedDate contractType`() {
+        val item = ApifyDatasetItem(
+            id = "4059975053",
+            title = "General Apply",
+            companyName = "LJ Inc.",
+            location = "Swartz Creek, MI",
+            salary = "",
+            description = "Evergreen posting.",
+            descriptionHtml = "<p>Evergreen posting.</p>",
+            url = "https://www.linkedin.com/jobs/view/general-apply-at-lj-inc-4059975053",
+            postedDate = "2024-10-26T00:00:00.000Z",
+            contractType = "Full-time",
+            experienceLevel = "Not Applicable"
+        )
+
+        val result = JobMapper.mapToJobListing(item, "linkedin")
+
+        assertEquals("General Apply", result.title)
+        assertEquals("LJ Inc.", result.company)
+        assertEquals("Swartz Creek, MI", result.location)
+        assertEquals(EmploymentType.FULL_TIME, result.employmentType)
+        assertEquals(2024, java.time.Instant.ofEpochMilli(result.postedDate)
+            .atZone(java.time.ZoneOffset.UTC).year)
+        assertEquals("linkedin", result.sourceProvider)
+    }
+
+    @Test
+    fun `real Apify actor JSON parses into ApifyDatasetItem`() {
+        // Captured from a live curious_coder~linkedin-jobs-scraper run (2026-08-11).
+        val raw = """
+        {
+          "id": "4059975053",
+          "url": "https://www.linkedin.com/jobs/view/general-apply-at-lj-inc-4059975053",
+          "title": "General Apply",
+          "location": "Swartz Creek, MI",
+          "postedDate": "2024-10-26T00:00:00.000Z",
+          "companyName": "LJ Inc.",
+          "companyUrl": "https://www.linkedin.com/company/ljincwedothat",
+          "recruiterName": "",
+          "experienceLevel": "Not Applicable",
+          "contractType": "Full-time",
+          "workType": "Other",
+          "sector": "Industrial Machinery Manufacturing",
+          "salary": "",
+          "applyType": "EXTERNAL",
+          "postedTimeAgo": "1 year ago",
+          "applicationsCount": "Be among the first 25 applicants",
+          "description": "LJ Inc. is always interested in hearing from you.",
+          "descriptionHtml": "<p>LJ Inc.</p>",
+          "applyUrl": ""
+        }
+        """.trimIndent()
+
+        val item = Json { ignoreUnknownKeys = true }.decodeFromString<ApifyDatasetItem>(raw)
+
+        assertEquals("General Apply", item.title)
+        assertEquals("LJ Inc.", item.companyName)
+        assertNull(item.company) // legacy key absent in the real schema
+        assertEquals("Full-time", item.contractType)
+        assertNull(item.type)
+        assertEquals("2024-10-26T00:00:00.000Z", item.postedDate)
+        assertNull(item.postedAt)
     }
 
     @Test

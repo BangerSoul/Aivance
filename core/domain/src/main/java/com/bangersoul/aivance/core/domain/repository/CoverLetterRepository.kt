@@ -20,7 +20,7 @@ interface CoverLetterRepository {
     suspend fun generateCoverLetter(
         resumeId: Long,
         resumeVersionId: Long,
-        jobId: Long,
+        jobId: Long?,
         recruiterId: String?,
         writingStyle: String
     ): CoreResult<Long>
@@ -34,7 +34,7 @@ interface CoverLetterRepository {
     fun streamGenerateCoverLetter(
         resumeId: Long,
         resumeVersionId: Long,
-        jobId: Long,
+        jobId: Long?,
         recruiterId: String?,
         writingStyle: String
     ): kotlinx.coroutines.flow.Flow<String>

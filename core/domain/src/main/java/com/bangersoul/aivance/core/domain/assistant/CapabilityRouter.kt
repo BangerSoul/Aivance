@@ -53,14 +53,14 @@ class CapabilityRouter @Inject constructor(
                     ).getOrNull() ?: return@runCatchingCore "Resume analysis failed — check your AI provider."
                     buildString {
                         appendLine("Resume match: ${analysis.overallScore}/100")
-                        if (analysis.matchingKeywords.isNotEmpty()) {
-                            appendLine("Matched keywords: ${analysis.matchingKeywords.take(8).joinToString(", ")}")
+                        if (analysis.matchedKeywords.isNotEmpty()) {
+                            appendLine("Matched keywords: ${analysis.matchedKeywords.take(8).joinToString(", ")}")
                         }
                         if (analysis.missingKeywords.isNotEmpty()) {
                             appendLine("Missing keywords: ${analysis.missingKeywords.take(8).joinToString(", ")}")
                         }
-                        if (analysis.suggestions.isNotEmpty()) {
-                            appendLine("Tips: ${analysis.suggestions.take(3).joinToString(" ")}")
+                        if (analysis.optimizationTips.isNotEmpty()) {
+                            appendLine("Tips: ${analysis.optimizationTips.take(3).joinToString(" ") { it.description }}")
                         }
                     }
                 }

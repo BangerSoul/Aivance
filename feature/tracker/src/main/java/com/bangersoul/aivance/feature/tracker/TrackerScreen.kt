@@ -8,13 +8,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -46,7 +47,9 @@ import java.util.Locale
 @Composable
 fun TrackerScreen(
     viewModel: TrackerViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    initialJobId: String? = null,
+    onNavigateToAnalytics: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -57,11 +60,29 @@ fun TrackerScreen(
         }
     }
 
+    // Cross-feature jump (e.g. saved job's "Track application"): pre-select the
+    // job on first arrival.
+    LaunchedEffect(initialJobId) {
+        if (!initialJobId.isNullOrBlank()) {
+            viewModel.onEvent(TrackerUiEvent.TrackJob(initialJobId))
+        }
+    }
+
+    val pendingTrackJob = (uiState as? TrackerUiState.Success)?.pendingTrackJob
     var showAddDialog by remember { mutableStateOf(false) }
+
+    // When a job arrives from another feature, surface the Add dialog pre-filled
+    // with its company/role so one tap adds it to the pipeline.
+    LaunchedEffect(pendingTrackJob) {
+        if (pendingTrackJob != null) {
+            showAddDialog = true
+        }
+    }
 
     AivanceWorkspaceScaffold(
         title = stringResource(R.string.career_pipeline_title),
-        subtitle = "Manage your execution pipeline",
+        subtitle = stringResource(R.string.tracker_subtitle),
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         isLoading = uiState is TrackerUiState.Loading,
         error = (uiState as? TrackerUiState.Error)?.message,
@@ -90,6 +111,11 @@ fun TrackerScreen(
                         stages = state.stages,
                         applications = state.applications,
                         metrics = state.pipelineMetrics,
+                        todayAppliedCount = state.todayAppliedCount,
+                        dailyCap = state.dailyCap,
+                        onSetDailyCap = { cap ->
+                            viewModel.onEvent(TrackerUiEvent.SetDailyCap(cap))
+                        },
                         selectedApplicationId = state.selectedApplicationId,
                         onMove = { appId, stageId ->
                             viewModel.onEvent(TrackerUiEvent.UpdateStage(appId, stageId))
@@ -103,7 +129,8 @@ fun TrackerScreen(
                         },
                         onNotesChange = { appId, notes ->
                             viewModel.onEvent(TrackerUiEvent.UpdateNotes(appId, notes))
-                        }
+                        },
+                        onNavigateToAnalytics = onNavigateToAnalytics
                     )
                     else -> {}
                 }
@@ -115,9 +142,19 @@ fun TrackerScreen(
         val stages = (uiState as? TrackerUiState.Success)?.stages ?: emptyList()
         AddApplicationDialog(
             stages = stages,
-            onDismiss = { showAddDialog = false },
+            initialCompany = pendingTrackJob?.company.orEmpty(),
+            initialRole = pendingTrackJob?.title.orEmpty(),
+            onDismiss = {
+                showAddDialog = false
+                if (pendingTrackJob != null) {
+                    viewModel.onEvent(TrackerUiEvent.ClearPendingTrackJob)
+                }
+            },
             onAdd = { company, role, stageId ->
                 showAddDialog = false
+                if (pendingTrackJob != null) {
+                    viewModel.onEvent(TrackerUiEvent.ClearPendingTrackJob)
+                }
                 viewModel.onEvent(TrackerUiEvent.AddApplication(company, role, stageId))
             }
         )
@@ -129,24 +166,40 @@ private fun PipelineContent(
     stages: List<ApplicationStage>,
     applications: List<Application>,
     metrics: PipelineMetrics,
+    todayAppliedCount: Int,
+    dailyCap: Int,
+    onSetDailyCap: (Int) -> Unit,
     selectedApplicationId: Long?,
     onMove: (Long, String) -> Unit,
     onSelect: (Long) -> Unit,
     onClose: () -> Unit,
     onDelete: (Long) -> Unit,
-    onNotesChange: (Long, String) -> Unit
+    onNotesChange: (Long, String) -> Unit,
+    onNavigateToAnalytics: () -> Unit
 ) {
+    var showCapDialog by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         // Hero Section
         Column(modifier = Modifier.padding(16.dp)) {
             AivanceHeroCard(
-                title = "Pipeline Performance",
-                description = "You have ${metrics.activeCount} active applications. Your interview conversion is ${metrics.interviewRate}%.",
-                actionLabel = "View Analytics",
-                onClick = { /* Navigate to Analytics */ }
+                title = stringResource(R.string.tracker_hero_title),
+                description = metrics.interviewRate?.let {
+                    stringResource(R.string.tracker_hero_description, metrics.activeCount) + " " +
+                        stringResource(R.string.tracker_hero_conversion_detail, it)
+                } ?: stringResource(R.string.tracker_hero_description, metrics.activeCount) + " " +
+                    stringResource(R.string.tracker_hero_default_detail),
+                actionLabel = stringResource(R.string.tracker_view_analytics),
+                onClick = onNavigateToAnalytics
+            )
+            Spacer(Modifier.height(12.dp))
+            DailyQuotaCard(
+                todayAppliedCount = todayAppliedCount,
+                dailyCap = dailyCap,
+                onEditCap = { showCapDialog = true }
             )
             Spacer(Modifier.height(16.dp))
-            SectionHeader(title = "Kanban Board")
+            SectionHeader(title = stringResource(R.string.tracker_kanban_board))
         }
 
         PipelineBoard(
@@ -160,6 +213,91 @@ private fun PipelineContent(
             onNotesChange = onNotesChange
         )
     }
+
+    if (showCapDialog) {
+        DailyCapDialog(
+            currentCap = dailyCap,
+            onDismiss = { showCapDialog = false },
+            onSelect = { cap ->
+                showCapDialog = false
+                onSetDailyCap(cap)
+            }
+        )
+    }
+}
+
+/**
+ * Daily application quota (R-07): today's count vs. the configurable cap, with
+ * a warning tint when the cap is reached or exceeded.
+ */
+@Composable
+private fun DailyQuotaCard(
+    todayAppliedCount: Int,
+    dailyCap: Int,
+    onEditCap: () -> Unit
+) {
+    val over = todayAppliedCount >= dailyCap
+    val progress = (todayAppliedCount.toFloat() / dailyCap.coerceAtLeast(1)).coerceIn(0f, 1f)
+
+    DashboardCard(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(stringResource(R.string.tracker_daily_quota), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(R.string.tracker_quota_progress, todayAppliedCount, dailyCap),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TextButton(onClick = onEditCap) {
+                    Text(stringResource(R.string.tracker_edit_cap))
+                }
+            }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(6.dp),
+                color = if (over) MaterialTheme.colorScheme.error else AivanceTheme.colors.accent
+            )
+        }
+    }
+}
+
+/** Lets the user pick a daily application cap from presets (R-07). */
+@Composable
+private fun DailyCapDialog(
+    currentCap: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit
+) {
+    val presets = listOf(3, 5, 10, 15, 20)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.tracker_daily_cap)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    stringResource(R.string.tracker_daily_cap_detail),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                presets.forEach { preset ->
+                    val selected = preset == currentCap
+                    FilterChip(
+                        selected = selected,
+                        onClick = { onSelect(preset) },
+                        label = { Text(if (selected) stringResource(R.string.tracker_preset_per_day_selected, preset) else stringResource(R.string.tracker_preset_per_day, preset)) }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        }
+    )
 }
 
 /**
@@ -170,10 +308,12 @@ private fun PipelineContent(
 private fun AddApplicationDialog(
     stages: List<ApplicationStage>,
     onDismiss: () -> Unit,
-    onAdd: (String, String, String) -> Unit
+    onAdd: (String, String, String) -> Unit,
+    initialCompany: String = "",
+    initialRole: String = ""
 ) {
-    var company by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("") }
+    var company by remember { mutableStateOf(initialCompany) }
+    var role by remember { mutableStateOf(initialRole) }
     var selectedStageId by remember { mutableStateOf(stages.firstOrNull()?.id ?: "SAVED") }
     var stageExpanded by remember { mutableStateOf(false) }
 
@@ -269,7 +409,7 @@ private fun PipelineBoard(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(stages) { stage ->
+        items(stages, key = { it.id }) { stage ->
             PipelineColumn(
                 stage = stage,
                 applications = applications.filter { it.currentStageId == stage.id },
@@ -407,7 +547,6 @@ private fun Modifier.dropHighlight(isActive: Boolean): Modifier {
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun KanbanCard(
     app: Application,
@@ -417,20 +556,17 @@ private fun KanbanCard(
     DashboardCard(
         modifier = Modifier
             .fillMaxWidth()
-            .dragAndDropSource {
-                // Long-press to lift the card into a drag payload; a plain tap
-                // opens the application detail sheet.
-                detectTapGestures(
-                    onTap = { currentOnClick() },
-                    onLongPress = {
-                        startTransfer(
-                            DragAndDropTransferData(
-                                ClipData.newPlainText("application", app.id.toString())
-                            )
-                        )
-                    }
-                )
-            }
+            // A plain tap opens the application detail sheet.
+            .clickable { currentOnClick() }
+            // Foundation 1.11's drag-and-drop API: the source is draggable
+            // (long-press to lift) whenever transferData is non-null.
+            .dragAndDropSource(
+                transferData = { _ ->
+                    DragAndDropTransferData(
+                        ClipData.newPlainText("application", app.id.toString())
+                    )
+                }
+            )
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
@@ -508,13 +644,13 @@ private fun ApplicationDetailSheet(
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant) }
             ) {
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                    Text("Overview", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_overview), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
                 }
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                    Text("Tasks", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_tasks), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
                 }
                 Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                    Text("Timeline", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.tracker_timeline), modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.labelLarge)
                 }
             }
 
@@ -556,8 +692,8 @@ private fun ApplicationWorkspaceHeader(application: Application) {
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(application.job?.title ?: "Unknown Role", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(application.job?.company ?: "Unknown Company", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(application.job?.title ?: stringResource(R.string.unknown_role), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(application.job?.company ?: stringResource(R.string.unknown_company), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         StatusChip(text = application.currentStageId, tone = BannerTone.INFO)
     }
@@ -586,19 +722,19 @@ private fun ApplicationOverviewTab(
     ) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard(label = "ATS Match", value = "${application.atsReportId?.let { 85 } ?: 0}%", icon = Icons.Rounded.Analytics, modifier = Modifier.weight(1f))
-                StatCard(label = "Priority", value = "High", icon = Icons.Rounded.Flag, modifier = Modifier.weight(1f))
+                StatCard(label = stringResource(R.string.tracker_stat_ats_match), value = "${application.atsReportId?.let { 85 } ?: 0}%", icon = Icons.Rounded.Analytics, modifier = Modifier.weight(1f))
+                StatCard(label = stringResource(R.string.tracker_stat_priority), value = stringResource(R.string.tracker_stat_high), icon = Icons.Rounded.Flag, modifier = Modifier.weight(1f))
             }
         }
 
         item {
-            Text("Notes", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.tracker_notes), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = notesText,
                 onValueChange = { notesText = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Add private notes about this application...") },
+                placeholder = { Text(stringResource(R.string.tracker_notes_placeholder)) },
                 minLines = 4,
                 shape = AivanceTheme.shapes.medium
             )
@@ -608,7 +744,7 @@ private fun ApplicationOverviewTab(
             val jobUrl = application.job?.url
             if (!jobUrl.isNullOrBlank()) {
                 AivanceSecondaryButton(
-                    text = "Open Job Listing",
+                    text = stringResource(R.string.tracker_open_listing),
                     onClick = { uriHandler.openUri(jobUrl) },
                     modifier = Modifier.fillMaxWidth(),
                     icon = Icons.Rounded.OpenInNew
@@ -624,7 +760,7 @@ private fun ApplicationOverviewTab(
             ) {
                 Icon(Icons.Rounded.DeleteOutline, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Delete Application")
+                Text(stringResource(R.string.tracker_delete_application))
             }
         }
     }
@@ -634,8 +770,8 @@ private fun ApplicationOverviewTab(
 private fun ApplicationTasksTab(application: Application) {
     if (application.tasks.isEmpty()) {
         AivanceEmptyState(
-            title = "No tasks yet",
-            description = "Tasks will be automatically generated as you progress through the pipeline.",
+            title = stringResource(R.string.tracker_no_tasks),
+            description = stringResource(R.string.tracker_no_tasks_detail),
             icon = Icons.Rounded.AssignmentTurnedIn
         )
     } else {
@@ -644,7 +780,7 @@ private fun ApplicationTasksTab(application: Application) {
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(application.tasks) { task ->
+            itemsIndexed(application.tasks, key = { index, _ -> index }) { _, task ->
                 TaskRow(task)
             }
         }
@@ -680,10 +816,10 @@ private fun ApplicationTimelineTab(application: Application) {
     ) {
         if (application.timeline.isEmpty()) {
             item {
-                Text("No activity recorded yet.", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.tracker_no_activity), style = MaterialTheme.typography.bodySmall)
             }
         } else {
-            items(application.timeline) { event ->
+            itemsIndexed(application.timeline, key = { index, _ -> index }) { _, event ->
                 TimelineRow(event)
             }
         }
@@ -694,15 +830,15 @@ private fun ApplicationTimelineTab(application: Application) {
 private fun DeleteConfirmDialog(application: Application, onDelete: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Application") },
-        text = { Text("Are you sure you want to remove ${application.job?.title} at ${application.job?.company} from your pipeline?") },
+        title = { Text(stringResource(R.string.tracker_delete_application)) },
+        text = { Text(stringResource(R.string.tracker_delete_detail, application.job?.title ?: "", application.job?.company ?: "")) },
         confirmButton = {
             TextButton(onClick = onDelete, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                Text("Delete")
+                Text(stringResource(R.string.delete))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

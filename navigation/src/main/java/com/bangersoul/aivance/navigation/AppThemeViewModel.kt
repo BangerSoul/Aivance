@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bangersoul.aivance.core.datastore.ThemeConfig
 import com.bangersoul.aivance.core.datastore.UserPreferencesRepository
 import com.bangersoul.aivance.core.designsystem.theme.AccentSeed
+import com.bangersoul.aivance.core.designsystem.theme.DesignKit
 import com.bangersoul.aivance.core.designsystem.theme.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,7 +30,10 @@ class AppThemeViewModel @Inject constructor(
                 accentSeed = runCatching {
                     AccentSeed.valueOf(prefs.accentSeed)
                 }.getOrDefault(AccentSeed.INDIGO),
-                dynamicColor = prefs.dynamicColor
+                dynamicColor = prefs.dynamicColor,
+                designKit = runCatching {
+                    DesignKit.valueOf(prefs.designKit)
+                }.getOrDefault(DesignKit.AURORA_GLASS)
             )
         }
         .stateIn(
@@ -42,7 +46,8 @@ class AppThemeViewModel @Inject constructor(
 data class AppThemeState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accentSeed: AccentSeed = AccentSeed.INDIGO,
-    val dynamicColor: Boolean = true
+    val dynamicColor: Boolean = true,
+    val designKit: DesignKit = DesignKit.AURORA_GLASS
 )
 
 private fun ThemeConfig.toThemeMode(): ThemeMode = when (this) {

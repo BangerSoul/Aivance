@@ -16,18 +16,6 @@
     <string name="assistant_prompt_ats">अपना एटीएस स्कोर बढ़ाने के लिए मुझे क्या सुधारना चाहिए?</string>
     <string name="assistant_prompt_roadmap">अगले 6 महीनों के लिए करियर रोडमैप तैयार करें</string>
     <string name="assistant_prompt_behavioral">मुझे व्यवहारिक साक्षात्कार प्रश्न के लिए तैयार करें</string>
-    <string name="assistant_your_title">आपका एआई करियर सहायक</string>
-    <string name="assistant_welcome_subtitle">रिज्यूमे ऑप्टिमाइज़ करें, भर्तीकर्ता खोजें, साक्षात्कार की तैयारी करें — सब एक ही कमांड सतह पर।</string>
-    <string name="assistant_quick_actions">त्वरित क्रियाएँ</string>
-    <string name="assistant_action_improve_resume">रिज्यूमे सुधारें</string>
-    <string name="assistant_action_find_jobs">नौकरियां खोजें</string>
-    <string name="assistant_action_interview_prep">साक्षात्कार तैयारी</string>
-    <string name="assistant_action_cover_letter">कवर लेटर</string>
-    <string name="assistant_chip_prompt_resume">मेरे रिज्यूमे का विश्लेषण करें और सुधार सुझाएं</string>
-    <string name="assistant_chip_prompt_jobs">मेरी प्रोफ़ाइल से मेल खाती नौकरियां खोजें</string>
-    <string name="assistant_chip_prompt_interview">मेरी लक्षित भूमिका के लिए मॉक इंटरव्यू शुरू करें</string>
-    <string name="assistant_chip_prompt_letter">मेरी लक्षित भूमिका के लिए कवर लेटर बनाएं</string>
-    <string name="assistant_try_prompt">एक प्रॉम्प्ट आज़माएं</string>
     <string name="assistant_no_provider_configured">कोई एआई प्रदाता कॉन्फ़िगर नहीं है</string>
     <string name="assistant_no_provider_detail">पूर्ण सहायक अनलॉक करने के लिए एआई प्रदाता कनेक्ट करें।</string>
     <string name="assistant_configure">कॉन्फ़िगर करें</string>
@@ -44,4 +32,14 @@
     <string name="assistant_attached_file">[संलग्न: %1$s]\n</string>
     <string name="assistant_photo_attached">[फोटो संलग्न]\n</string>
     <string name="assistant_document_fallback">दस्तावेज़</string>
+    <string name="assistant_snapshot">करियर स्नैपशॉट</string>
+    <string name="assistant_career_score">करियर स्कोर</string>
+    <string name="assistant_ats_match">ATS मैच</string>
+    <string name="assistant_quick_commands">त्वरित आदेश</string>
+    <string name="assistant_chip_optimize">रिज़्यूमे अनुकूलित करें</string>
+    <string name="assistant_chip_find_jobs">नौकरियाँ खोजें</string>
+    <string name="assistant_chip_mock">मॉक इंटरव्यू</string>
+    <string name="assistant_suggested">सुझाए गए प्रॉम्प्ट</string>
+    <string name="assistant_recent_insights">हाल की AI इनसाइट्स</string>
+    <string name="assistant_no_insights">कोई हाल की इनसाइट नहीं। कुछ भी पूछकर शुरुआात करें!</string>
 </resources>

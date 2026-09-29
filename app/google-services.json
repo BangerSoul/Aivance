@@ -1,91 +1,70 @@
 {
   "project_info": {
-    "project_number": "362023371153",
-    "project_id": "test-dea4929b",
-    "storage_bucket": "test-dea4929b.firebasestorage.app"
+    "project_number": "279009477701",
+    "project_id": "aivance-50360",
+    "storage_bucket": "aivance-50360.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:362023371153:android:9ac714aae3c030f7edda30",
-        "android_client_info": {
-          "package_name": "com.bangersoul.aivance.debug"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "433186935073-elau2khhj78koof6puo1mrk2hifa26jt.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDPFuKF_ZO5kH1KeHrAfqO4PeTjAW7OKwU"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "433186935073-elau2khhj78koof6puo1mrk2hifa26jt.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:433186935073:android:0000000000000001",
-        "android_client_info": {
-          "package_name": "com.bangersoul.aivance.debug"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "433186935073-elau2khhj78koof6puo1mrk2hifa26jt.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBC0sqlHYnyQyem47dMNIgFhjhD4p_S8bo"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "433186935073-elau2khhj78koof6puo1mrk2hifa26jt.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:433186935073:android:0000000000000002",
+        "mobilesdk_app_id": "1:279009477701:android:4a0fd14eeb0c2786830f2c",
         "android_client_info": {
           "package_name": "com.bangersoul.aivance"
         }
       },
       "oauth_client": [
         {
-          "client_id": "433186935073-elau2khhj78koof6puo1mrk2hifa26jt.apps.googleusercontent.com",
+          "client_id": "279009477701-788hick9m6a1cdopbp2bm68g68qveqq5.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBC0sqlHYnyQyem47dMNIgFhjhD4p_S8bo"
+          "current_key": "AIzaSyC7vhMdv4mklcsoGEX2vJ3elurXrXYPHHA"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "433186935073-elau2khhj78koof6puo1mrk2hifa26jt.apps.googleusercontent.com",
+              "client_id": "279009477701-788hick9m6a1cdopbp2bm68g68qveqq5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:279009477701:android:19415ad6d0ae8d02830f2c",
+        "android_client_info": {
+          "package_name": "com.bangersoul.aivance.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "279009477701-cldut0l3dn85klmt7drcisjg1qdcg9rq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bangersoul.aivance.debug",
+            "certificate_hash": "7c0839d64775772ec52d76edcb3f5f4264c8b84b"
+          }
+        },
+        {
+          "client_id": "279009477701-788hick9m6a1cdopbp2bm68g68qveqq5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7vhMdv4mklcsoGEX2vJ3elurXrXYPHHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "279009477701-788hick9m6a1cdopbp2bm68g68qveqq5.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Upsert
 import com.bangersoul.aivance.core.database.model.CoverLetterEntity
 import com.bangersoul.aivance.core.database.model.CoverLetterSectionEntity
 import com.bangersoul.aivance.core.database.model.CoverLetterVersionEntity
@@ -19,7 +20,10 @@ interface CoverLetterDao {
     @Query("SELECT * FROM cover_letters WHERE id = :id")
     suspend fun getCoverLetterById(id: Long): CoverLetterEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // @Upsert (not REPLACE): REPLACE deletes the conflicting parent row and
+    // re-inserts it, firing the ON DELETE CASCADE that wipes every child
+    // cover_letter_versions row whenever an existing cover letter is resaved.
+    @Upsert
     suspend fun insertCoverLetter(coverLetter: CoverLetterEntity): Long
 
     @Delete
@@ -32,7 +36,9 @@ interface CoverLetterDao {
     @Query("SELECT * FROM cover_letter_versions WHERE id = :versionId")
     suspend fun getVersionById(versionId: Long): CoverLetterVersionEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // Same rationale as insertCoverLetter — never delete-and-reinsert a row
+    // that has CASCADE children.
+    @Upsert
     suspend fun insertVersion(version: CoverLetterVersionEntity): Long
 
     @Delete

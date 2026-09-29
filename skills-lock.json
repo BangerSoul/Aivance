@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "skills": {
+    "autofix": {
+      "source": "coderabbitai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/autofix/SKILL.md",
+      "computedHash": "421f9102c20fb1c91d87a10ca9bee2e91c7e632e644dfdd3dc013e53865df6c1"
+    },
+    "code-review": {
+      "source": "coderabbitai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/code-review/SKILL.md",
+      "computedHash": "6d117c3f8797e0c770c6b00a646a07028f3440b5d8042e8f841e88ed1116788f"
+    },
+    "component-refactoring": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/component-refactoring/SKILL.md",
+      "computedHash": "dae42b0757dbcc2e5f42aee6de874555c6db5d74432d181c3535abc612734254"
+    },
+    "e2e-tester": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/e2e-tester/SKILL.md",
+      "computedHash": "c66d1b04120709c0338252141e9cb61556cd501993fe6a1c82aacc69c54283f3"
+    },
+    "frontend-code-review": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/frontend-code-review/SKILL.md",
+      "computedHash": "a118b37ca7c8e0da83607e3126ca6880d8943a7a56f13ee8d50962f34b0ea3a5"
+    },
+    "frontend-testing": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/frontend-testing/SKILL.md",
+      "computedHash": "72647597889ca2afb6815f319c33049e1585236ca314878d94c57db54b16cb0e"
+    },
+    "gsd-orchestrator": {
+      "source": "gsd-build/gsd-2",
+      "sourceType": "github",
+      "skillPath": "gsd-orchestrator/SKILL.md",
+      "computedHash": "62cc644751993000502ec80dbd6a26532f3266bbc3e6f6d905d44abce70364a3"
+    },
+    "mysql": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/mysql/SKILL.md",
+      "computedHash": "5bf4e44841b184cda17678d6469274b3c691fd3a48604015d46b1f43cd6a6a09"
+    },
+    "postgres": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/postgres/SKILL.md",
+      "computedHash": "b4f561e91e066eba314e69309e03b9a624bf7467f55a6a3818df4874aeee608e"
+    },
+    "prd-creator": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/prd-creator/SKILL.md",
+      "computedHash": "477ec93dd3a70cc1903eba145f73dbb0d7aef233e73a77660bb1ef38a5be9bc6"
+    },
+    "skill-creator": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/skill-creator/SKILL.md",
+      "computedHash": "27a385ab1bc9f44beb5f4e5c1522dc78a9dff6ae179b83eb82593c4c29f6eb10"
+    },
+    "vercel-react-best-practices": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/vercel-react-best-practices/SKILL.md",
+      "computedHash": "16d55f4ae4f505ec12c427531c847e3b4cf0b22e4e5e01266ca7f8609f043c00"
+    },
+    "vitest-best-practices": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/vitest-best-practices/SKILL.md",
+      "computedHash": "1a2501e2fd0e7560893adbc582a5e93e440a2b9b1f1293d3df1d16ba62b6d4ee"
+    },
+    "web-design-guidelines": {
+      "source": "PageAI-Pro/ralph-loop",
+      "sourceType": "github",
+      "skillPath": ".agent/skills/web-design-guidelines/SKILL.md",
+      "computedHash": "b9e85077d55864274b19e19b16e87ecef72cb1685ac5578fa4f3ae89deb45fd4"
+    }
+  }
+}

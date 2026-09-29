@@ -1,19 +1,10 @@
 <resources>
     <string name="dash_greeting_fallback">सुप्रभात 👋</string>
     <string name="dash_designation_fallback">आपका करियर कमांड सेंटर</string>
-    <string name="dash_notifications_cd">सूचनाएं</string>
-    <string name="dash_profile_cd">प्रोफ़ाइल</string>
     <string name="dash_overview">अवलोकन</string>
     <string name="dash_ats_score">एटीएस स्कोर</string>
     <string name="dash_active_apps">सक्रिय आवेदन</string>
     <string name="dash_saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="dash_career_breakdown">करियर विवरण</string>
-    <string name="dash_next_interview">अगला साक्षात्कार</string>
-    <string name="dash_quick_actions">त्वरित क्रियाएँ</string>
-    <string name="dash_recent_activity">हाल की गतिविधि</string>
-    <string name="dash_view_all">सभी देखें</string>
-    <string name="dash_no_activity">अभी कोई गतिविधि नहीं</string>
-    <string name="dash_no_activity_detail">आवेदन, एटीएस स्कैन और एआई सत्र यहां दिखाई देंगे।</string>
     <string name="dash_career_score">करियर स्कोर</string>
     <string name="dash_score_title_ready">आवेदन के लिए तैयार</string>
     <string name="dash_score_title_strong">मजबूत प्रोफ़ाइल</string>
@@ -27,20 +18,25 @@
     <string name="dash_chip_strong">मजबूत</string>
     <string name="dash_chip_building">निर्माणाधीन</string>
     <string name="dash_chip_not_scored">अभी स्कोर नहीं</string>
-    <string name="dash_pie_career_score">करियर स्कोर</string>
-    <string name="dash_pie_ats_score">एटीएस स्कोर</string>
-    <string name="dash_pie_applied">आवेदित</string>
-    <string name="dash_pie_saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="dash_score_word">स्कोर</string>
-    <string name="dash_breakdown_caption">आपकी करियर गतिविधि कैसे जुड़ती है — एटीएस स्कैन चलाएं, अधिक नौकरियों के लिए आवेदन करें, और अपना स्कोर बढ़ाते रहें।</string>
-    <string name="dash_upcoming_interview">आगामी साक्षात्कार</string>
-    <string name="dash_prepare">तैयारी करें</string>
-    <string name="dash_ai_recommendation">एआई अनुशंसा</string>
-    <string name="dash_open_cd">खोलें</string>
-    <string name="dash_action_resume">रिज्यूमे</string>
-    <string name="dash_action_jobs">नौकरियां</string>
-    <string name="dash_action_interview">साक्षात्कार</string>
-    <string name="dash_action_assistant">सहायक</string>
-    <string name="dash_action_pipeline">पाइपलाइन</string>
-    <string name="dash_action_insights">अंतर्दृष्टि</string>
+    <string name="notifications_cd">सूचनाएँ</string>
+    <string name="profile_cd">प्रोफ़ाइल</string>
+
+    <!-- Career Graph / Skill Match -->
+    <string name="dash_graph_insights">करियर ग्राफ</string>
+    <string name="dash_skill_match">कौशल मेल</string>
+    <string name="dash_skill_match_subtitle">लक्ष्य नौकरी के %2$d में से %1$d कौशल प्रदर्शित</string>
+    <string name="dash_missing_skills">अंतर भरने के लिए प्रमुख कौशल</string>
+    <string name="dash_missing_skills_hint">उस कौशल की मांग वाली नौकरियां देखने के लिए कौशल पर टैप करें, या लर्निंग सुझाव के लिए स्कूल आइकन दबाएं।</string>
+    <string name="dash_learn_skill_cd">%1$s के लिए लर्निंग अनुशंसाएं प्राप्त करें</string>
+    <string name="dash_no_skill_gaps">आपकी लक्ष्य नौकरियों की मांग वाले सभी कौशल आपके पास हैं। 🎯</string>
+    <string name="dash_skill_match_none">अपना कौशल मेल मापने के लिए लक्ष्य नौकरियां सहेजें।</string>
+    <string name="dash_skill_explored">मिलान वाली नौकरियां खोजी जा रही हैं</string>
+    <string name="dash_skill_learning">पढ़ाई चल रही है</string>
+    <string name="dash_gap_progress">%2$d में से %1$d अंतरों पर काम चल रहा है</string>
+    <string name="dash_demanded_by_one_job">1 नौकरी</string>
+    <string name="dash_demanded_by_jobs">%1$d नौकरियां</string>
+
+    <!-- Active applications context -->
+    <string name="dash_active_context">सक्रिय आवेदन</string>
+    <string name="dash_context_with_interviews">%1$s · %2$d इंटरव्यू</string>
 </resources>

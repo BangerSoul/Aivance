@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bangersoul.aivance.core.common.model.AssistantJobContext
 import com.bangersoul.aivance.core.designsystem.components.*
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
 import java.util.Calendar
@@ -53,17 +55,26 @@ import java.util.Calendar
  *
  * v2: personalized greeting header, intent quick-action chips, live provider
  * status bar, and an input bar with voice/document/photo affordances.
+ *
+ * [initialJobContext] carries the job the user was looking at when the
+ * assistant was surfaced (saved jobs / job details), so replies are tailored
+ * to that role.
  */
 @Composable
 fun AssistantScreen(
     viewModel: AssistantViewModel,
-    onSwitchProvider: () -> Unit = {}
+    onSwitchProvider: () -> Unit = {},
+    initialJobContext: AssistantJobContext? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val providerStatus by viewModel.providerStatus.collectAsStateWithLifecycle()
     val careerState by viewModel.careerState.collectAsStateWithLifecycle()
     val userName by viewModel.userName.collectAsStateWithLifecycle()
     var inputText by remember { mutableStateOf("") }
+
+    LaunchedEffect(initialJobContext) {
+        viewModel.setJobContext(initialJobContext)
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AssistantHeader(
@@ -212,26 +223,33 @@ private fun AssistantCopilotWorkspace(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // 1. Career Snapshot
-        item {
-            Text(
-                text = "Career Snapshot",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard(
-                    label = "Career Score",
-                    value = careerState.growth.careerScore.toString(),
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.TrendingUp
+        // Career Snapshot renders only once something has actually been
+        // measured — an unpopulated "— / —" pair told the user nothing and only
+        // padded the workspace (AUDIT 15).
+        val careerScore = careerState.growth.careerScore
+        val atsScore = careerState.intelligence.atsScore
+        if (careerScore != null || atsScore != null) {
+            item {
+                Text(
+                    text = stringResource(R.string.assistant_snapshot),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-                MetricCard(
-                    label = "ATS Match",
-                    value = "${careerState.intelligence.atsScore}%",
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.FactCheck
-                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricCard(
+                        label = stringResource(R.string.assistant_career_score),
+                        value = careerScore?.toString() ?: "—",
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Rounded.TrendingUp
+                    )
+                    MetricCard(
+                        label = stringResource(R.string.assistant_ats_match),
+                        value = atsScore?.let { "$it%" } ?: "—",
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Rounded.FactCheck
+                    )
+                }
             }
         }
 
@@ -249,21 +267,21 @@ private fun AssistantCopilotWorkspace(
 
         // 3. Quick Commands
         item {
-            SectionHeader(title = "Quick Commands")
+            SectionHeader(title = stringResource(R.string.assistant_quick_commands))
             Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
-                    QuickActionChip("Optimize Resume", Icons.Rounded.Description, AivanceTheme.colors.accent) {
+                    QuickActionChip(stringResource(R.string.assistant_chip_optimize), Icons.Rounded.Description, AivanceTheme.colors.accent) {
                         onPromptClick("Help me optimize my resume sections.")
                     }
                 }
                 item {
-                    QuickActionChip("Find Jobs", Icons.Rounded.WorkOutline, AivanceTheme.colors.info) {
+                    QuickActionChip(stringResource(R.string.assistant_chip_find_jobs), Icons.Rounded.WorkOutline, AivanceTheme.colors.info) {
                         onPromptClick("Find the best job matches for my current profile.")
                     }
                 }
                 item {
-                    QuickActionChip("Mock Interview", Icons.Rounded.RecordVoiceOver, AivanceTheme.colors.warning) {
+                    QuickActionChip(stringResource(R.string.assistant_chip_mock), Icons.Rounded.RecordVoiceOver, AivanceTheme.colors.warning) {
                         onPromptClick("Start a mock interview session for my target role.")
                     }
                 }
@@ -279,10 +297,10 @@ private fun AssistantCopilotWorkspace(
 
         // 5. Try a Prompt
         item {
-            SectionHeader(title = "Suggested Advice")
+            SectionHeader(title = stringResource(R.string.assistant_suggested))
         }
 
-        items(prompts.chunked(2)) { pair ->
+        itemsIndexed(prompts.chunked(2), key = { index, _ -> index }) { _, pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 pair.forEach { prompt ->
                     Surface(
@@ -305,20 +323,20 @@ private fun AssistantCopilotWorkspace(
 
         // 6. Recent Intelligence (Timeline)
         item {
-            SectionHeader(title = "Recent AI Insights")
+            SectionHeader(title = stringResource(R.string.assistant_recent_insights))
             Spacer(Modifier.height(8.dp))
         }
 
         if (careerState.recommendations.isEmpty()) {
             item {
                 Text(
-                    "No recent insights. Ask me anything to get started!",
+                    stringResource(R.string.assistant_no_insights),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         } else {
-            items(careerState.recommendations.take(3)) { rec ->
+            itemsIndexed(careerState.recommendations.take(3), key = { index, _ -> index }) { _, rec ->
                 AivanceWorkspaceCard(onClick = { onPromptClick("Tell me more about: ${rec.title}") }) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -448,7 +466,7 @@ private fun ChatContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(messages) { msg ->
+        itemsIndexed(messages, key = { index, _ -> index }) { _, msg ->
             AssistantBubble(msg)
         }
         if (hasStreaming) {
@@ -640,6 +658,15 @@ private fun AssistantInputBar(
     val context = LocalContext.current
     val permissionState = rememberPermissionState(android.Manifest.permission.RECORD_AUDIO)
 
+    // Resolve these with stringResource instead of context.getString so they are
+    // observed as configuration state and re-read when the locale changes. They are
+    // hoisted here because the launchers below capture them inside non-composable
+    // callbacks, where stringResource cannot be called.
+    val documentFallback = stringResource(R.string.assistant_document_fallback)
+    val attachedFileTemplate = stringResource(R.string.assistant_attached_file)
+    val photoAttached = stringResource(R.string.assistant_photo_attached)
+    val speakPrompt = stringResource(R.string.assistant_speak_prompt)
+
     // ── Voice input via SpeechRecognizer ────────────────────────────────────
     val speechLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -664,8 +691,9 @@ private fun AssistantInputBar(
                 uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.getString(0) else null
-            } ?: context.getString(R.string.assistant_document_fallback)
-            val prefix = context.getString(R.string.assistant_attached_file, name)
+            } ?: documentFallback
+            // %1$s is a document filename, so plain formatting is locale-neutral.
+            val prefix = attachedFileTemplate.format(name)
             onValueChange(prefix + value)
         }
     }
@@ -675,7 +703,7 @@ private fun AssistantInputBar(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            val marker = context.getString(R.string.assistant_photo_attached)
+            val marker = photoAttached
             onValueChange(marker + value)
         }
     }
@@ -685,7 +713,9 @@ private fun AssistantInputBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 8.dp)
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                // Lift the composer above the keyboard (edge-to-edge IME insets).
+                .imePadding(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Mic — launches Android SpeechRecognizer
@@ -693,7 +723,7 @@ private fun AssistantInputBar(
                 if (permissionState.status.isGranted) {
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.assistant_speak_prompt))
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, speakPrompt)
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                     }
                     speechLauncher.launch(intent)

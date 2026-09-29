@@ -8,12 +8,13 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Migration regression suite for AivanceDatabase v5 -> v24.
+ * Migration regression suite for AivanceDatabase v5 -> v28.
  *
  * Every migration is exercised individually and as part of the full chain, always with
  * [PRAGMA foreign_keys = ON] (the same constraint Room enforces in production), and rebuild
@@ -58,6 +59,18 @@ class MigrationTest {
         AivanceDatabase.MIGRATION_23_24
     )
 
+    /** Full ordered chain 5 -> 27 (adds the legacy-drop and the v26/v27 foundation steps). */
+    private val ALL_FROM_5_TO_26 = ALL_FROM_5 +
+        AivanceDatabase.MIGRATION_24_25 +
+        AivanceDatabase.MIGRATION_25_26
+
+    private val ALL_FROM_5_TO_27 = ALL_FROM_5_TO_26 +
+        AivanceDatabase.MIGRATION_26_27
+
+    /** Full ordered chain 5 -> 28 (adds the R1 application-consolidation step). */
+    private val ALL_FROM_5_TO_28 = ALL_FROM_5_TO_27 +
+        AivanceDatabase.MIGRATION_27_28
+
     // ---------------------------------------------------------------- helpers
 
     private fun seed(version: Int, vararg statements: String) {
@@ -87,6 +100,11 @@ class MigrationTest {
         }
     }
 
+    private fun columnExists(table: String, column: String): Boolean = raw().use { db ->
+        db.rawQuery("SELECT COUNT(*) FROM pragma_table_info('$table') WHERE name = ?", arrayOf(column))
+            .use { c -> c.moveToFirst(); c.getLong(0) > 0 }
+    }
+
     private fun count(table: String): Long = raw().use { db ->
         db.rawQuery("SELECT COUNT(*) FROM `$table`", null).use { c ->
             c.moveToFirst()
@@ -106,6 +124,26 @@ class MigrationTest {
             ).use { c -> c.moveToFirst(); c.getLong(0) > 0 }
         }
         assertEquals("table $table should have been dropped", false, exists)
+    }
+
+    private fun assertTableExists(table: String) {
+        val exists = raw().use { db ->
+            db.rawQuery(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?",
+                arrayOf(table)
+            ).use { c -> c.moveToFirst(); c.getLong(0) > 0 }
+        }
+        assertEquals("table $table should exist", true, exists)
+    }
+
+    private fun assertIndexExists(index: String) {
+        val exists = raw().use { db ->
+            db.rawQuery(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name = ?",
+                arrayOf(index)
+            ).use { c -> c.moveToFirst(); c.getLong(0) > 0 }
+        }
+        assertEquals("index $index should exist", true, exists)
     }
 
     // ------------------------------------------------------- 5 -> 6 (resume tables)
@@ -480,6 +518,204 @@ class MigrationTest {
         ))
     }
 
+    // ------------------------------------------- 24 -> 25 (drop legacy resume_analyses)
+
+    @Test
+    fun migrate24To25_dropsLegacyResumeAnalyses() {
+        seed(
+            24,
+            "INSERT INTO resumes (id, name, dateCreated, lastModified) VALUES (1, 'R', 1, 2)",
+            "INSERT INTO resume_versions (id, resumeId, versionName, templateId, lastModified) VALUES (1, 1, 'Main', 'modern', 2)",
+            "INSERT INTO job_descriptions (id, rawText, dateCreated) VALUES (1, 'jd', 3)",
+            "INSERT INTO resume_analyses (id, resumeId, jobDescription, score, matchedKeywords, missingKeywords, feedback, date) " +
+                "VALUES (1, 1, 'jd', 85, '[]', '[]', 'fb', 300)",
+            "INSERT INTO ats_reports (id, resumeVersionId, jobDescriptionId, overallScore, matchPercentage, matchedKeywords, missingKeywords, sectionScores, optimizationTips, dateGenerated) " +
+                "VALUES (1, 1, 1, 92, 92, 'Kotlin', 'KMP', '{}', '[]', 400)"
+        )
+        runStep(24, 25, AivanceDatabase.MIGRATION_24_25)
+        // The legacy table is gone while its modern successor keeps its data.
+        assertTableGone("resume_analyses")
+        assertCount("ats_reports", 1)
+        assertEquals("92", scalar("SELECT overallScore FROM ats_reports WHERE id = 1"))
+    }
+
+    // ------------------------------------------- 25 -> 26 (Career Knowledge OS foundation)
+
+    @Test
+    fun migrate25To26_createsFoundationTablesAndPreservesData() {
+        seed(
+            25,
+            // v25 user_profiles carries several NOT NULL columns without defaults
+            // (experienceYears, preferredIndustries, visaRequired, createdDate); the seed must
+            // satisfy them to mirror a real v25 row.
+            "INSERT INTO user_profiles (id, name, email, skills, experienceYears, preferredIndustries, visaRequired, createdDate) " +
+                "VALUES ('u1', 'Alice', 'a@x.com', '[]', 3, '[]', 0, 5)",
+            "INSERT INTO companies (id, name) VALUES (1, 'Acme')",
+            "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) VALUES (1, 1, 'Eng', '', 'X', 100)"
+        )
+        runStep(25, 26, AivanceDatabase.MIGRATION_25_26)
+
+        // 1. The migration is strictly additive: all pre-existing v25 data survives untouched.
+        assertCount("user_profiles", 1)
+        assertCount("companies", 1)
+        assertCount("jobs", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        assertEquals("Eng", scalar("SELECT title FROM jobs WHERE id = 1"))
+
+        // 2. The four new foundation tables exist and are empty.
+        assertTableExists("graph_nodes")
+        assertTableExists("graph_edges")
+        assertTableExists("career_event_log")
+        assertTableExists("career_memory_entries")
+        assertCount("graph_nodes", 0)
+        assertCount("graph_edges", 0)
+        assertCount("career_event_log", 0)
+        assertCount("career_memory_entries", 0)
+
+        // 3. Their indices are present.
+        assertIndexExists("idx_graph_nodes_type")
+        assertIndexExists("idx_graph_edges_source")
+        assertIndexExists("idx_graph_edges_target")
+        assertIndexExists("idx_career_event_log_type_time")
+        assertIndexExists("idx_career_memory_type")
+
+        // 4. The new tables are writable (schema is usable, not just present).
+        raw().use { db ->
+            db.execSQL("INSERT INTO graph_nodes (id, type, label, propertiesJson, createdAt, updatedAt) VALUES ('skill_kotlin', 'SKILL', 'Kotlin', '{}', 1, 1)")
+            db.execSQL("INSERT INTO career_memory_entries (memoryId, type, content, createdAt, updatedAt, confidence, sourceEventIdsJson, evidenceRefsJson, isUserConfirmed) VALUES ('m1', 'FACT', 'c', 1, 1, 1.0, '[]', '[]', 1)")
+        }
+        assertCount("graph_nodes", 1)
+        assertCount("career_memory_entries", 1)
+    }
+
+    // ------------------------------------------- 26 -> 27 (event-contract schemaVersion)
+
+    @Test
+    fun migrate26To27_addsSchemaVersionColumnAndPreservesExistingEvents() {
+        seed(
+            26,
+            "INSERT INTO career_event_log (eventId, timestamp, sourceModule, eventType, payloadJson) " +
+                "VALUES ('evt_1', 100, 'feature:resume', 'ResumeCreated', '{\"name\":\"R\"}')"
+        )
+        runStep(26, 27, AivanceDatabase.MIGRATION_26_27)
+
+        // 1. The pre-existing v26 audit row survives the additive column.
+        assertCount("career_event_log", 1)
+        assertEquals("ResumeCreated", scalar("SELECT eventType FROM career_event_log WHERE eventId = 'evt_1'"))
+
+        // 2. The new schemaVersion column exists and backfills legacy rows to contract v1.
+        assertTrue("schemaVersion column added", columnExists("career_event_log", "schemaVersion"))
+        assertEquals("1", scalar("SELECT schemaVersion FROM career_event_log WHERE eventId = 'evt_1'"))
+
+        // 3. New rows can carry an explicit version.
+        raw().use { db ->
+            db.execSQL(
+                "INSERT INTO career_event_log (eventId, timestamp, sourceModule, eventType, schemaVersion, payloadJson) " +
+                    "VALUES ('evt_2', 200, 'feature:resume', 'ResumeUpdated', 1, '{}')"
+            )
+        }
+        assertCount("career_event_log", 2)
+        assertEquals("1", scalar("SELECT schemaVersion FROM career_event_log WHERE eventId = 'evt_2'"))
+    }
+
+    // ------------------------------------------- 27 -> 28 (R1: application consolidation)
+
+    @Test
+    fun migrate27To28_importsLegacyApplicationsDedupesAndDropsTable() {
+        seed(
+            27,
+            "INSERT INTO companies (id, name) VALUES (1, 'Acme')",
+            "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) " +
+                "VALUES (1, 1, 'Eng', '', 'X', 100)",
+            "INSERT INTO jobs (id, companyId, title, url, sourceProviderId, postedDate) " +
+                "VALUES (2, 1, 'Des', '', 'X', 200)",
+            // A canonical pipeline row already exists for job 1, drifted ahead of the legacy row.
+            "INSERT INTO applications (id, jobId, currentStageId, status, dateApplied, lastModified) " +
+                "VALUES (1, 1, 'INTERVIEWING', 'ACTIVE', 50, 50)",
+            // Legacy rows: job 1 duplicates the canonical row, job 2 has no counterpart.
+            "INSERT INTO job_applications (id, jobId, status, dateApplied, salaryRange, notes, lastModified) " +
+                "VALUES (1, 1, 'APPLIED', 100, '100k', 'dup', 100)",
+            "INSERT INTO job_applications (id, jobId, status, dateApplied, salaryRange, notes, lastModified) " +
+                "VALUES (2, 2, 'APPLIED', 200, '150k', 'new', 200)"
+        )
+        runStep(27, 28, AivanceDatabase.MIGRATION_27_28)
+
+        // 1. The only column the canonical table lacked is added, additively.
+        assertTrue("salaryRange column added", columnExists("applications", "salaryRange"))
+
+        // 2. The duplicate source of truth is retired.
+        assertTableGone("job_applications")
+
+        // 3. Dedupe on jobId: only the legacy row with no canonical counterpart survives.
+        assertCount("applications", 2)
+        assertEquals("one canonical row per job", "1", scalar("SELECT COUNT(*) FROM applications WHERE jobId = 1"))
+        assertEquals("duplicate legacy row not imported", "0", scalar("SELECT COUNT(*) FROM applications WHERE salaryRange = '100k'"))
+
+        // 4. The pre-existing canonical row keeps its own stage untouched.
+        assertEquals("INTERVIEWING", scalar("SELECT currentStageId FROM applications WHERE jobId = 1"))
+
+        // 5. The imported row carries the legacy payload across both axes.
+        assertEquals("APPLIED", scalar("SELECT currentStageId FROM applications WHERE jobId = 2"))
+        assertEquals("ACTIVE", scalar("SELECT status FROM applications WHERE jobId = 2"))
+        assertEquals("150k", scalar("SELECT salaryRange FROM applications WHERE jobId = 2"))
+        assertEquals("new", scalar("SELECT notes FROM applications WHERE jobId = 2"))
+        assertEquals("200", scalar("SELECT dateApplied FROM applications WHERE jobId = 2"))
+    }
+
+    // ------------------------------------------- full chain: 5 -> 28 (with data)
+
+    @Test
+    fun migrate5To28_fullChainConsolidatesApplications() {
+        seed(
+            5,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')"
+        )
+        runStep(5, 28, *ALL_FROM_5_TO_28)
+        assertCount("user_profiles", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        // The canonical table survives the whole chain; the retired one does not.
+        assertTableExists("applications")
+        assertTableGone("job_applications")
+        assertTrue("salaryRange present at end of chain", columnExists("applications", "salaryRange"))
+    }
+
+    // ------------------------------------------- full chain: 5 -> 27 (with data)
+
+    @Test
+    fun migrate5To27_fullChainPreservesUserDataAndHardensEventLog() {
+        seed(
+            5,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')"
+        )
+        runStep(5, 27, *ALL_FROM_5_TO_27)
+        assertCount("user_profiles", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        assertTableExists("career_event_log")
+        assertTrue("schemaVersion present at end of chain", columnExists("career_event_log", "schemaVersion"))
+    }
+
+    // ------------------------------------------- full chain: 5 -> 26 (with data)
+
+    @Test
+    fun migrate5To26_fullChainPreservesUserDataAndAddsFoundation() {
+        seed(
+            5,
+            "INSERT INTO user_profiles (id, name, email, skills) VALUES ('u1', 'Alice', 'a@x.com', '[]')",
+            "INSERT INTO cover_letters (id, company, role, content, dateCreated, tone) " +
+                "VALUES (1, 'Acme', 'Eng', 'body', 100, 'PRO')"
+        )
+        runStep(5, 26, *ALL_FROM_5_TO_26)
+        // Core user data survives the full chain including the additive v26 step.
+        assertCount("user_profiles", 1)
+        assertCount("cover_letters", 1)
+        assertEquals("Alice", scalar("SELECT name FROM user_profiles WHERE id = 'u1'"))
+        // The v26 foundation tables are present at the end of the chain.
+        assertTableExists("graph_nodes")
+        assertTableExists("graph_edges")
+        assertTableExists("career_event_log")
+        assertTableExists("career_memory_entries")
+    }
+
     // ------------------------------------------------ full chain: 5 -> 24 (empty)
 
     @Test
@@ -529,6 +765,25 @@ class MigrationTest {
         assertCount("resume_analyses", 1)
         assertEquals("body text", scalar("SELECT rawText FROM resumes WHERE id = 1"))
         assertEquals("jd", scalar("SELECT jobDescription FROM resume_analyses WHERE id = 1"))
+    }
+
+    // ------------------------------------------------ full chain: 10 -> 25 (legacy ATS dropped)
+
+    @Test
+    fun migrate10To25_legacyResumeAnalysesDropped() {
+        seed(
+            10,
+            "INSERT INTO resumes (id, name, text, dateCreated, lastModified) VALUES (1, 'My Resume', 'body text', 100, 200)",
+            "INSERT INTO resume_analyses (resumeId, jobDescription, score, matchedKeywords, missingKeywords, feedback, date) " +
+                "VALUES (1, 'jd', 85, '[]', '[]', 'fb', 300)"
+        )
+        runStep(10, 25, *(ALL_FROM_5.drop(5).toTypedArray() + AivanceDatabase.MIGRATION_24_25))
+        // Resume lineage survives the full chain; the legacy analyses table is
+        // dropped by 24 -> 25 (T-04) and its data is intentionally discarded.
+        assertCount("resumes", 1)
+        assertCount("resume_versions", 1)
+        assertTableGone("resume_analyses")
+        assertEquals("body text", scalar("SELECT rawText FROM resumes WHERE id = 1"))
     }
 
     // ------------------------------------------------ chain: 16 -> 24 (job lineage)

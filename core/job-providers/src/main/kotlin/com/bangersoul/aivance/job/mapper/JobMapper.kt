@@ -25,26 +25,30 @@ object JobMapper {
     )
 
     fun mapToJobListing(item: ApifyDatasetItem, providerId: String): JobListing {
+        // Real LinkedIn-scraper actors (curious_coder/valig) emit companyName /
+        // postedDate / contractType; generic actors emit company / postedAt / type.
+        // Prefer the real-schema value, falling back to the legacy name (QA E2E 2026-08-11).
+        val type = item.contractType ?: item.type
         return JobListing(
             id = item.id ?: UUID.randomUUID().toString(),
             title = item.title ?: "No Title",
-            company = item.company ?: "Unknown Company",
+            company = item.companyName ?: item.company ?: "Unknown Company",
             companyLogoUrl = item.companyLogo,
             location = item.location ?: "Remote",
             salaryRange = item.salary,
             salaryMin = parseSalary(item.salary, true),
             salaryMax = parseSalary(item.salary, false),
             currency = "USD",
-            employmentType = parseEmploymentType(item.type),
+            employmentType = parseEmploymentType(type),
             experienceLevel = parseExperienceLevel(item.experienceLevel),
             remoteType = if (item.isRemote == true) RemoteType.REMOTE else RemoteType.ON_SITE,
-            jobType = mapToJobType(parseEmploymentType(item.type)),
+            jobType = mapToJobType(parseEmploymentType(type)),
             isRemote = item.isRemote ?: false,
             description = item.description ?: "",
             descriptionHtml = item.descriptionHtml,
             url = item.url ?: "",
             sourceProvider = providerId,
-            postedDate = parseDate(item.postedAt)
+            postedDate = parseDate(item.postedAt ?: item.postedDate)
         )
     }
 

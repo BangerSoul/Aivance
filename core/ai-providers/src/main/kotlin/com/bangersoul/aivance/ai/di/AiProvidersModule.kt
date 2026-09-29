@@ -5,6 +5,7 @@ import com.bangersoul.aivance.ai.anthropic.ClaudeProvider
 import com.bangersoul.aivance.ai.gemini.GeminiAIProvider
 import com.bangersoul.aivance.ai.openai.GroqProvider
 import com.bangersoul.aivance.ai.openai.OllamaProvider
+import com.bangersoul.aivance.ai.offline.GemmaOnDeviceProvider
 import com.bangersoul.aivance.ai.openai.OpenAIProvider
 import com.bangersoul.aivance.ai.openai.OpenRouterProvider
 import com.bangersoul.aivance.sdk.api.AIProvider
@@ -67,6 +68,13 @@ object AiProvidersModule {
     }
 
     @Provides
+    @Singleton
+    @IntoSet
+    fun provideGemmaOnDeviceProvider(@ApplicationContext context: Context): AIProvider {
+        return GemmaOnDeviceProvider(context, ProviderConfiguration("gemma"))
+    }
+
+    @Provides
     @IntoMap
     @StringKey("gemini")
     fun provideGeminiFactory(@ApplicationContext context: Context): ProviderFactory.Factory {
@@ -117,6 +125,15 @@ object AiProvidersModule {
     fun provideClaudeFactory(): ProviderFactory.Factory {
         return ProviderFactory.Factory { config ->
             ClaudeProvider(config.toProviderConfig("anthropic"))
+        }
+    }
+
+    @Provides
+    @IntoMap
+    @StringKey("gemma")
+    fun provideGemmaFactory(@ApplicationContext context: Context): ProviderFactory.Factory {
+        return ProviderFactory.Factory { config ->
+            GemmaOnDeviceProvider(context, config.toProviderConfig("gemma"))
         }
     }
 

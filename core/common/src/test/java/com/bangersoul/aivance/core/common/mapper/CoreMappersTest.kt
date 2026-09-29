@@ -3,12 +3,10 @@ package com.bangersoul.aivance.core.common.mapper
 import com.bangersoul.aivance.core.common.dto.AiMessageDto
 import com.bangersoul.aivance.core.common.dto.AnalyticsEventDto
 import com.bangersoul.aivance.core.common.dto.ApifyJobScraperDto
-import com.bangersoul.aivance.core.common.dto.AtsResultDto
 import com.bangersoul.aivance.core.common.dto.CoverLetterDto
 import com.bangersoul.aivance.core.common.dto.InterviewFeedbackDto
 import com.bangersoul.aivance.core.common.dto.JobListingDto
 import com.bangersoul.aivance.core.common.dto.ProviderInfoDto
-import com.bangersoul.aivance.core.common.dto.ResumeAnalysisDto
 import com.bangersoul.aivance.core.common.dto.SettingsDto
 import com.bangersoul.aivance.core.common.dto.UserProfileDto
 import com.bangersoul.aivance.core.common.enums.AIModel
@@ -19,55 +17,17 @@ import com.bangersoul.aivance.core.common.enums.ProviderType
 import com.bangersoul.aivance.core.common.model.AIMessage
 import com.bangersoul.aivance.core.common.model.AiProviderConfig
 import com.bangersoul.aivance.core.common.model.AnalyticsEvent
-import com.bangersoul.aivance.core.common.model.AtsResult
 import com.bangersoul.aivance.core.common.model.CoverLetter
 import com.bangersoul.aivance.core.common.model.InterviewFeedback
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.ProviderInfo
-import com.bangersoul.aivance.core.common.model.ResumeAnalysis
 import com.bangersoul.aivance.core.common.model.UserProfile
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CoreMappersTest {
 
-    @Test
-    fun resumeAnalysis_dtoAndDomain_mappingIsBidirectional() {
-        val dto = ResumeAnalysisDto(
-            overallScore = 88,
-            matchingKeywords = listOf("Kotlin", "Hilt"),
-            missingKeywords = listOf("RxJava"),
-            suggestions = listOf("Add Compose experience"),
-            matchSummary = "Strong candidate"
-        )
-        val domain = dto.toDomain()
-        assertEquals(88, domain.overallScore)
-        assertEquals(listOf("Kotlin", "Hilt"), domain.matchingKeywords)
 
-        val mappedBack = domain.toDto()
-        assertEquals(dto, mappedBack)
-    }
-
-    @Test
-    fun atsResult_dtoAndDomain_mappingIsBidirectional() {
-        val dto = AtsResultDto(
-            score = 92,
-            resumeName = "Resume_2026.pdf",
-            missingKeywords = listOf("Docker"),
-            feedback = "Excellent formatting",
-            matchingKeywords = listOf("Android", "Room"),
-            formattingScore = 95,
-            dateEpoch = 1700000000L
-        )
-        val domain = dto.toDomain(id = 5)
-        assertEquals(5L, domain.id)
-        assertEquals(92, domain.score)
-
-        val mappedBack = domain.toDto()
-        assertEquals(dto, mappedBack)
-    }
-
-    @Test
     fun coverLetter_dtoAndDomain_mappingIsBidirectional() {
         val dto = CoverLetterDto(
             company = "Google",

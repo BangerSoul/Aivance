@@ -46,10 +46,10 @@ Aivance is a **production-grade Android application** built with multi-module Cl
 ### Repository
 
 ```
-URL:      https://github.com/IamAzmathullaShaikh/Aivance
-Remote:   Development (https://github.com/IamAzmathullaShaikh/Aivance.git)
+URL:      https://github.com/BangerSoul/Aivance
+Remote:   Development (https://github.com/BangerSoul/Aivance.git)
 Default:  master
-License:  MIT
+License:  Proprietary — see LICENSE
 ```
 
 ---
@@ -75,7 +75,7 @@ License:  MIT
 
 ```bash
 # Clone the repository
-git clone https://github.com/IamAzmathullaShaikh/Aivance.git
+git clone https://github.com/BangerSoul/Aivance.git
 cd Aivance
 
 # Build the debug APK (verifies compilation)

@@ -11,4 +11,15 @@
     <string name="analytics_outcome_simulator_detail">अपने करियर पर अनुमानित प्रभाव देखने के लिए मान समायोजित करें।</string>
     <string name="analytics_simulated_outcome">सिम्युलेटेड परिणाम</string>
     <string name="back">वापस</string>
+
+    <string name="analytics_hireability_score">हायरेबिलिटी स्कोर: %1$d</string>
+    <string name="analytics_boost_score">स्कोर बढ़ाएँ</string>
+    <string name="analytics_interview_chance">इंटरव्यू संभावना</string>
+    <string name="analytics_offer_chance">ऑफ़र संभावना</string>
+    <string name="analytics_health_dimensions">हेल्थ आयाम</string>
+    <string name="analytics_target_ats_score">लक्ष्य ATS स्कोर: %1$d%%</string>
+    <string name="analytics_target_prep">लक्ष्य इंटरव्यू तैयारी: %1$d%%</string>
+    <string name="analytics_projected_score">अनुमानित स्कोर</string>
+    <string name="analytics_int_probability">इं. संभावना</string>
+
 </resources>

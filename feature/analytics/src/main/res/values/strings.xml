@@ -11,4 +11,15 @@
     <string name="analytics_outcome_simulator_detail">Adjust values to see projected impacts on your career.</string>
     <string name="analytics_simulated_outcome">Simulated Outcome</string>
     <string name="back">Back</string>
+
+    <string name="analytics_hireability_score">Hireability Score: %1$d</string>
+    <string name="analytics_boost_score">Boost Score</string>
+    <string name="analytics_interview_chance">Interview Chance</string>
+    <string name="analytics_offer_chance">Offer Chance</string>
+    <string name="analytics_health_dimensions">Health Dimensions</string>
+    <string name="analytics_target_ats_score">Target ATS Score: %1$d%%</string>
+    <string name="analytics_target_prep">Target Interview Prep: %1$d%%</string>
+    <string name="analytics_projected_score">Projected Score</string>
+    <string name="analytics_int_probability">Int. Probability</string>
+
 </resources>

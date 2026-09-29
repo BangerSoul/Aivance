@@ -102,9 +102,9 @@ private fun CareerHealthSurface(
         if (careerScore != null) {
             item {
                 AivanceHeroCard(
-                    title = "Hireability Score: $careerScore",
+                    title = stringResource(R.string.analytics_hireability_score, careerScore),
                     description = intelligence.predictions.successExplanation,
-                    actionLabel = "Boost Score",
+                    actionLabel = stringResource(R.string.analytics_boost_score),
                     onClick = onNavigateToIntelligence
                 )
             }
@@ -112,13 +112,13 @@ private fun CareerHealthSurface(
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MetricCard(
-                        label = "Interview Chance",
+                        label = stringResource(R.string.analytics_interview_chance),
                         value = "${intelligence.predictions.interviewProbability}%",
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.AutoAwesome
                     )
                     MetricCard(
-                        label = "Offer Chance",
+                        label = stringResource(R.string.analytics_offer_chance),
                         value = "${intelligence.predictions.offerProbability}%",
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.Celebration
@@ -129,7 +129,7 @@ private fun CareerHealthSurface(
 
         if (intelligence.health.isNotEmpty()) {
             item {
-                SectionHeader(title = "Health Dimensions")
+                SectionHeader(title = stringResource(R.string.analytics_health_dimensions))
             }
 
             items(intelligence.health) { dimension ->
@@ -225,7 +225,7 @@ private fun SimulatorSection(
         AivanceWorkspaceCard {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column {
-                    Text("Target ATS Score: ${atsValue.toInt()}%", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.analytics_target_ats_score, atsValue.toInt()), style = MaterialTheme.typography.labelLarge)
                     Slider(
                         value = atsValue,
                         onValueChange = { atsValue = it; viewModel.runSimulation(it.toInt(), prepValue.toInt()) },
@@ -233,7 +233,7 @@ private fun SimulatorSection(
                     )
                 }
                 Column {
-                    Text("Target Interview Prep: ${prepValue.toInt()}%", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.analytics_target_prep, prepValue.toInt()), style = MaterialTheme.typography.labelLarge)
                     Slider(
                         value = prepValue,
                         onValueChange = { prepValue = it; viewModel.runSimulation(atsValue.toInt(), it.toInt()) },
@@ -253,12 +253,12 @@ private fun SimulatorSection(
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MetricCard(
-                        label = "Projected Score",
+                        label = stringResource(R.string.analytics_projected_score),
                         value = projectedScore?.toString() ?: "—",
                         modifier = Modifier.weight(1f)
                     )
                     MetricCard(
-                        label = "Int. Probability",
+                        label = stringResource(R.string.analytics_int_probability),
                         value = "${projected.predictions.interviewProbability}%",
                         modifier = Modifier.weight(1f)
                     )

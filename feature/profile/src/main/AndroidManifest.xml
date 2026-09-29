@@ -1,13 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       The on-device model download worker promotes itself to a foreground
       service (dataSync) so the multi-GB download survives app backgrounding.
-      The library manifest merges these permissions into the app manifest.
-      POST_NOTIFICATIONS is already declared by the app module.
+      These permissions are declared here so this module stands on its own;
+      they merge into the app manifest.
+
+      ACCESS_NETWORK_STATE is required by ConnectivityManager.getActiveNetwork
+      and getNetworkCapabilities in isOnline(). Without it those calls throw
+      SecurityException instead of reporting the network state.
     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Runtime permission for the worker's completion notification. Also
+         declared by the app module; repeated here so this module stands alone. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <!--
+          WorkManager elevates the worker through its own SystemForegroundService.
+          Android 14+ requires that service to declare a foreground service type
+          whenever setForeground() is used, and the androidx.work lint check
+          reads this module's own manifest rather than the merged app manifest,
+          so the override has to live here.
+
+          The component must be nested inside <application>: AAPT rejects a
+          <service> that sits directly under <manifest>. tools:node="merge"
+          keeps WorkManager's own declaration and only adds the type.
+        -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+    </application>
 
 </manifest>

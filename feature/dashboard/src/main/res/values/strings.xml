@@ -26,7 +26,8 @@
     <string name="dash_learn_skill_cd">Get learning recommendations for %1$s</string>
     <string name="dash_no_skill_gaps">You demonstrate every skill your target jobs ask for. 🎯</string>
     <string name="dash_skill_match_none">Save target jobs to measure your skill match.</string>
-    <string name="dash_no_data">—</string>
+    <!-- Placeholder glyph for a missing numeric value, not translatable text. -->
+    <string name="dash_no_data" translatable="false">—</string>
     <string name="dash_skill_explored">Exploring matching jobs</string>
     <string name="dash_skill_learning">Learning in progress</string>
     <string name="dash_gap_progress">%1$d of %2$d gaps in progress</string>

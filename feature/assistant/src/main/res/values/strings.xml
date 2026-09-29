@@ -32,4 +32,14 @@
     <string name="assistant_attached_file">[Attached: %1$s]\n</string>
     <string name="assistant_photo_attached">[Photo attached]\n</string>
     <string name="assistant_document_fallback">document</string>
+    <string name="assistant_snapshot">Career Snapshot</string>
+    <string name="assistant_career_score">Career Score</string>
+    <string name="assistant_ats_match">ATS Match</string>
+    <string name="assistant_quick_commands">Quick Commands</string>
+    <string name="assistant_chip_optimize">Optimize Resume</string>
+    <string name="assistant_chip_find_jobs">Find Jobs</string>
+    <string name="assistant_chip_mock">Mock Interview</string>
+    <string name="assistant_suggested">Suggested Advice</string>
+    <string name="assistant_recent_insights">Recent AI Insights</string>
+    <string name="assistant_no_insights">No recent insights. Ask me anything to get started!</string>
 </resources>

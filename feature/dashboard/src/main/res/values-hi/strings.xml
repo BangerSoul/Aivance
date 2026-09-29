@@ -18,4 +18,6 @@
     <string name="dash_chip_strong">मजबूत</string>
     <string name="dash_chip_building">निर्माणाधीन</string>
     <string name="dash_chip_not_scored">अभी स्कोर नहीं</string>
+    <string name="notifications_cd">सूचनाएँ</string>
+    <string name="profile_cd">प्रोफ़ाइल</string>
 </resources>

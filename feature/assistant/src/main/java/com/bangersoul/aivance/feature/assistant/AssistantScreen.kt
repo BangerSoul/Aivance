@@ -230,20 +230,20 @@ private fun AssistantCopilotWorkspace(
         if (careerScore != null || atsScore != null) {
             item {
                 Text(
-                    text = "Career Snapshot",
+                    text = stringResource(R.string.assistant_snapshot),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     MetricCard(
-                        label = "Career Score",
+                        label = stringResource(R.string.assistant_career_score),
                         value = careerScore?.toString() ?: "—",
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.TrendingUp
                     )
                     MetricCard(
-                        label = "ATS Match",
+                        label = stringResource(R.string.assistant_ats_match),
                         value = atsScore?.let { "$it%" } ?: "—",
                         modifier = Modifier.weight(1f),
                         icon = Icons.Rounded.FactCheck
@@ -266,21 +266,21 @@ private fun AssistantCopilotWorkspace(
 
         // 3. Quick Commands
         item {
-            SectionHeader(title = "Quick Commands")
+            SectionHeader(title = stringResource(R.string.assistant_quick_commands))
             Spacer(Modifier.height(8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
-                    QuickActionChip("Optimize Resume", Icons.Rounded.Description, AivanceTheme.colors.accent) {
+                    QuickActionChip(stringResource(R.string.assistant_chip_optimize), Icons.Rounded.Description, AivanceTheme.colors.accent) {
                         onPromptClick("Help me optimize my resume sections.")
                     }
                 }
                 item {
-                    QuickActionChip("Find Jobs", Icons.Rounded.WorkOutline, AivanceTheme.colors.info) {
+                    QuickActionChip(stringResource(R.string.assistant_chip_find_jobs), Icons.Rounded.WorkOutline, AivanceTheme.colors.info) {
                         onPromptClick("Find the best job matches for my current profile.")
                     }
                 }
                 item {
-                    QuickActionChip("Mock Interview", Icons.Rounded.RecordVoiceOver, AivanceTheme.colors.warning) {
+                    QuickActionChip(stringResource(R.string.assistant_chip_mock), Icons.Rounded.RecordVoiceOver, AivanceTheme.colors.warning) {
                         onPromptClick("Start a mock interview session for my target role.")
                     }
                 }
@@ -296,7 +296,7 @@ private fun AssistantCopilotWorkspace(
 
         // 5. Try a Prompt
         item {
-            SectionHeader(title = "Suggested Advice")
+            SectionHeader(title = stringResource(R.string.assistant_suggested))
         }
 
         items(prompts.chunked(2)) { pair ->
@@ -322,14 +322,14 @@ private fun AssistantCopilotWorkspace(
 
         // 6. Recent Intelligence (Timeline)
         item {
-            SectionHeader(title = "Recent AI Insights")
+            SectionHeader(title = stringResource(R.string.assistant_recent_insights))
             Spacer(Modifier.height(8.dp))
         }
 
         if (careerState.recommendations.isEmpty()) {
             item {
                 Text(
-                    "No recent insights. Ask me anything to get started!",
+                    stringResource(R.string.assistant_no_insights),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

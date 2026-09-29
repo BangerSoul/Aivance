@@ -32,4 +32,14 @@
     <string name="assistant_attached_file">[संलग्न: %1$s]\n</string>
     <string name="assistant_photo_attached">[फोटो संलग्न]\n</string>
     <string name="assistant_document_fallback">दस्तावेज़</string>
+    <string name="assistant_snapshot">करियर स्नैपशॉट</string>
+    <string name="assistant_career_score">करियर स्कोर</string>
+    <string name="assistant_ats_match">ATS मैच</string>
+    <string name="assistant_quick_commands">त्वरित आदेश</string>
+    <string name="assistant_chip_optimize">रिज़्यूमे अनुकूलित करें</string>
+    <string name="assistant_chip_find_jobs">नौकरियाँ खोजें</string>
+    <string name="assistant_chip_mock">मॉक इंटरव्यू</string>
+    <string name="assistant_suggested">सुझाए गए प्रॉम्प्ट</string>
+    <string name="assistant_recent_insights">हाल की AI इनसाइट्स</string>
+    <string name="assistant_no_insights">कोई हाल की इनसाइट नहीं। कुछ भी पूछकर शुरुआात करें!</string>
 </resources>

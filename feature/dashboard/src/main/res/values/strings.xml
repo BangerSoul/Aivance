@@ -34,4 +34,6 @@
     <string name="dash_demanded_by_jobs">%1$d jobs</string>
     <string name="dash_active_context">Active Applications</string>
     <string name="dash_context_with_interviews">%1$s · %2$d interview(s)</string>
+    <string name="notifications_cd">Notifications</string>
+    <string name="profile_cd">Profile</string>
 </resources>

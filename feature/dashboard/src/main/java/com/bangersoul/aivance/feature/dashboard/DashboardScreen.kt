@@ -56,10 +56,10 @@ fun DashboardScreen(
         // destination 50 dp below it (AUDIT 4/32).
         topBarActions = {
             IconButton(onClick = onNavigateToNotifications) {
-                Icon(Icons.Rounded.Notifications, contentDescription = "Notifications")
+                Icon(Icons.Rounded.Notifications, contentDescription = stringResource(R.string.notifications_cd))
             }
             IconButton(onClick = onNavigateToProfile) {
-                Icon(Icons.Rounded.AccountCircle, contentDescription = "Profile")
+                Icon(Icons.Rounded.AccountCircle, contentDescription = stringResource(R.string.profile_cd))
             }
         }
     ) {

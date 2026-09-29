@@ -82,17 +82,16 @@ class NetworkRetryTest {
     fun `permanent 4xx is not retried`() = runTest {
         for (status in listOf(400, 401, 403, 404)) {
             var calls = 0
-            var thrown: ProviderHttpException? = null
-            try {
+            val outcome = runCatching {
                 NetworkRetry.execute(maxRetries = 3, initialDelayMs = 1) {
                     calls++
                     throw httpError(status)
                 }
-            } catch (e: ProviderHttpException) {
-                thrown = e
             }
 
-            assertEquals(status, thrown?.statusCode ?: -1)
+            val error = outcome.exceptionOrNull()
+            assertTrue("expected ProviderHttpException, got $error", error is ProviderHttpException)
+            assertEquals(status, (error as ProviderHttpException).statusCode)
             assertEquals("status $status must not be retried", 1, calls)
         }
     }
@@ -100,17 +99,16 @@ class NetworkRetryTest {
     @Test
     fun `rethrows the last error once retries are exhausted`() = runTest {
         var calls = 0
-        var thrown: ProviderHttpException? = null
-        try {
+        val outcome = runCatching {
             NetworkRetry.execute(maxRetries = 2, initialDelayMs = 1) {
                 calls++
                 throw httpError(502)
             }
-        } catch (e: ProviderHttpException) {
-            thrown = e
         }
 
-        assertEquals(502, thrown?.statusCode ?: -1)
+        val error = outcome.exceptionOrNull()
+        assertTrue("expected ProviderHttpException, got $error", error is ProviderHttpException)
+        assertEquals(502, (error as ProviderHttpException).statusCode)
         assertEquals(3, calls) // initial attempt + 2 retries
     }
 

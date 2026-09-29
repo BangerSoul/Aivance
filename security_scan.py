@@ -128,7 +128,7 @@ def main():
                 for pos, (subj, issuer) in sorted(live_subjects.get(host, {}).items()):
                     detail += (f"\n        [{pos}] subject={subj}"
                                f"\n            issuer={issuer}"
-                               f"\n            pin={live_pins.get(pos, '')[:16]}...")
+                               f"\n            pin={live_pins.get(pos, '')}")
             check(f"Pins match live chain {host}", bool(overlap), detail)
 
     # ── [2] No placeholders / fabricated pins ─────────────────────────────

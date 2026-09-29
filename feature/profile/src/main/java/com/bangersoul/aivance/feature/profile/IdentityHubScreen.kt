@@ -18,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,7 +61,7 @@ fun IdentityHubScreen(
     // surface is a single hub (AUDIT 22), and the document vault folded into
     // Studio ▸ Resumes (AUDIT 23) — which already owns the same resume list from
     // ResumeRepository, so the hub no longer carries a second document surface.
-    val tabs = listOf("Identity", "Providers", "System")
+    val tabs = listOf(stringResource(R.string.profile_tab_identity), stringResource(R.string.providers_title), stringResource(R.string.profile_tab_system))
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -70,8 +72,8 @@ fun IdentityHubScreen(
     }
 
     AivanceWorkspaceScaffold(
-        title = "Identity Hub",
-        subtitle = "Control your career operating system",
+        title = stringResource(R.string.profile_hub_title),
+        subtitle = stringResource(R.string.profile_hub_subtitle),
         backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         isLoading = uiState.isLoading,
@@ -156,9 +158,9 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SectionHeader(title = "Personal Information")
+                    SectionHeader(title = stringResource(R.string.profile_section_personal))
                     TextButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.ToggleEdit) }) {
-                        Text(if (isEditing) "Cancel" else "Edit")
+                        Text(if (isEditing) stringResource(R.string.cancel) else stringResource(R.string.edit))
                     }
                 }
 
@@ -166,61 +168,61 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                     OutlinedTextField(
                         value = profile.fullName,
                         onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(fullName = it))) },
-                        label = { Text("Full Name") },
+                        label = { Text(stringResource(R.string.profile_full_name)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = profile.phone,
                         onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(phone = it))) },
-                        label = { Text("Phone") },
+                        label = { Text(stringResource(R.string.profile_phone)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    IdentityField(label = "Full Name", value = profile.fullName)
-                    IdentityField(label = "Email", value = profile.email, isReadOnly = true)
-                    IdentityField(label = "Phone", value = profile.phone)
+                    IdentityField(label = stringResource(R.string.profile_full_name), value = profile.fullName)
+                    IdentityField(label = stringResource(R.string.profile_email), value = profile.email, isReadOnly = true)
+                    IdentityField(label = stringResource(R.string.profile_phone), value = profile.phone)
                 }
             }
 
             item {
-                SectionHeader(title = "Professional Experience")
+                SectionHeader(title = stringResource(R.string.profile_section_experience))
                 if (isEditing) {
                     OutlinedTextField(
                         value = profile.currentRole,
                         onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(currentRole = it))) },
-                        label = { Text("Current Role") },
+                        label = { Text(stringResource(R.string.profile_current_role)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = profile.company,
                         onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(company = it))) },
-                        label = { Text("Company") },
+                        label = { Text(stringResource(R.string.company)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    IdentityField(label = "Current Role", value = profile.currentRole)
-                    IdentityField(label = "Company", value = profile.company)
-                    IdentityField(label = "Experience", value = "${profile.experienceYears} years")
+                    IdentityField(label = stringResource(R.string.profile_current_role), value = profile.currentRole)
+                    IdentityField(label = stringResource(R.string.company), value = profile.company)
+                    IdentityField(label = stringResource(R.string.profile_experience), value = pluralStringResource(R.plurals.profile_experience_years, profile.experienceYears, profile.experienceYears))
                 }
             }
 
             item {
-                SectionHeader(title = "Career Preferences")
-                Text("These settings influence your recommendations.", style = MaterialTheme.typography.bodySmall)
+                SectionHeader(title = stringResource(R.string.profile_section_preferences))
+                Text(stringResource(R.string.profile_preferences_hint), style = MaterialTheme.typography.bodySmall)
 
                 if (isEditing) {
                     Spacer(Modifier.height(8.dp))
                     AivanceWorkspaceCard {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             PreferenceToggle(
-                                label = "Remote Work",
+                                label = stringResource(R.string.profile_remote_work),
                                 checked = profile.workPreference == "REMOTE",
                                 onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(workPreference = if (it) "REMOTE" else "ONSITE"))) }
                             )
                             PreferenceToggle(
-                                label = "Visa Sponsorship Required",
+                                label = stringResource(R.string.profile_visa_required),
                                 checked = profile.visaRequired,
                                 onCheckedChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(visaRequired = it))) }
                             )
@@ -228,33 +230,33 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                     }
                 } else {
                     IdentityField(
-                        label = "Remote Work",
-                        value = if (profile.workPreference == "REMOTE") "Yes" else "No"
+                        label = stringResource(R.string.profile_remote_work),
+                        value = if (profile.workPreference == "REMOTE") stringResource(R.string.profile_yes) else stringResource(R.string.profile_no)
                     )
                     IdentityField(
-                        label = "Visa Sponsorship",
-                        value = if (profile.visaRequired) "Required" else "Not required"
+                        label = stringResource(R.string.profile_visa),
+                        value = if (profile.visaRequired) stringResource(R.string.profile_required) else stringResource(R.string.profile_not_required)
                     )
                 }
             }
 
             item {
-                SectionHeader(title = "Target Career Goal")
+                SectionHeader(title = stringResource(R.string.profile_section_goal))
                 if (isEditing) {
                     OutlinedTextField(
                         value = profile.targetRole,
                         onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(targetRole = it))) },
-                        label = { Text("Target Role") },
+                        label = { Text(stringResource(R.string.target_role)) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("e.g. Principal Software Engineer") }
+                        placeholder = { Text(stringResource(R.string.profile_target_role_hint)) }
                     )
                 } else {
-                    IdentityField(label = "Target Role", value = profile.targetRole)
+                    IdentityField(label = stringResource(R.string.target_role), value = profile.targetRole)
                 }
             }
 
             item {
-                SectionHeader(title = "Skills of Interest")
+                SectionHeader(title = stringResource(R.string.profile_section_skills))
                 if (isEditing) {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -269,30 +271,30 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                                 trailingIcon = { Icon(Icons.Rounded.Close, null, Modifier.size(16.dp)) }
                             )
                         }
-                        SuggestionChip(onClick = { showAddSkillDialog = true }, label = { Text("+ Add Skill") })
+                        SuggestionChip(onClick = { showAddSkillDialog = true }, label = { Text(stringResource(R.string.profile_add_skill)) })
                     }
                 } else {
-                    IdentityField(label = "Skills", value = profile.skills.joinToString(", "))
+                    IdentityField(label = stringResource(R.string.profile_skills_label), value = profile.skills.joinToString(", "))
                 }
             }
 
             item {
-                SectionHeader(title = "Salary Expectation")
+                SectionHeader(title = stringResource(R.string.profile_section_salary))
                 if (isEditing) {
                     OutlinedTextField(
                         value = profile.salaryExpectation,
                         onValueChange = { viewModel.onEvent(IdentityHubUiEvent.UpdateDraftProfile(profile.copy(salaryExpectation = it))) },
-                        label = { Text("Annual Salary") },
+                        label = { Text(stringResource(R.string.profile_salary_label)) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("e.g. $150,000") }
+                        placeholder = { Text(stringResource(R.string.profile_salary_hint)) }
                     )
                 } else {
-                    IdentityField(label = "Annual Salary", value = profile.salaryExpectation)
+                    IdentityField(label = stringResource(R.string.profile_salary_label), value = profile.salaryExpectation)
                 }
             }
 
             item {
-                SectionHeader(title = "Preferred Industries")
+                SectionHeader(title = stringResource(R.string.profile_section_industries))
                 if (isEditing) {
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -301,17 +303,17 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                         profile.preferredIndustries.forEach { industry ->
                             SuggestionChip(onClick = {}, label = { Text(industry) })
                         }
-                        SuggestionChip(onClick = { showAddIndustryDialog = true }, label = { Text("+ Add") })
+                        SuggestionChip(onClick = { showAddIndustryDialog = true }, label = { Text(stringResource(R.string.profile_add_industry_chip)) })
                     }
                 } else {
-                    IdentityField(label = "Industries", value = profile.preferredIndustries.joinToString(", "))
+                    IdentityField(label = stringResource(R.string.profile_industries_label), value = profile.preferredIndustries.joinToString(", "))
                 }
             }
 
             if (isEditing) {
                 item {
                     AivancePrimaryButton(
-                        text = if (uiState.isSaving) "Saving..." else "Save Changes",
+                        text = if (uiState.isSaving) stringResource(R.string.profile_saving) else stringResource(R.string.profile_save_changes),
                         onClick = { viewModel.onEvent(IdentityHubUiEvent.SaveDraftProfile) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isSaving
@@ -324,13 +326,13 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
         if (showAddSkillDialog) {
             AlertDialog(
                 onDismissRequest = { showAddSkillDialog = false },
-                title = { Text("Add Skill") },
+                title = { Text(stringResource(R.string.profile_add_skill_title)) },
                 text = {
                     OutlinedTextField(
                         value = newSkill,
                         onValueChange = { newSkill = it },
-                        label = { Text("Skill") },
-                        placeholder = { Text("e.g. Jetpack Compose") },
+                        label = { Text(stringResource(R.string.profile_skill_label)) },
+                        placeholder = { Text(stringResource(R.string.profile_skill_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -349,10 +351,10 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                             newSkill = ""
                             showAddSkillDialog = false
                         }
-                    ) { Text("Add") }
+                    ) { Text(stringResource(R.string.profile_add)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddSkillDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showAddSkillDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             )
         }
@@ -360,13 +362,13 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
         if (showAddIndustryDialog) {
             AlertDialog(
                 onDismissRequest = { showAddIndustryDialog = false },
-                title = { Text("Add Preferred Industry") },
+                title = { Text(stringResource(R.string.profile_add_industry_title)) },
                 text = {
                     OutlinedTextField(
                         value = newIndustry,
                         onValueChange = { newIndustry = it },
-                        label = { Text("Industry") },
-                        placeholder = { Text("e.g. Fintech") },
+                        label = { Text(stringResource(R.string.profile_industry_label)) },
+                        placeholder = { Text(stringResource(R.string.profile_industry_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -385,10 +387,10 @@ private fun IdentityTab(viewModel: IdentityHubViewModel) {
                             newIndustry = ""
                             showAddIndustryDialog = false
                         }
-                    ) { Text("Add") }
+                    ) { Text(stringResource(R.string.profile_add)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showAddIndustryDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showAddIndustryDialog = false }) { Text(stringResource(R.string.cancel)) }
                 }
             )
         }
@@ -428,7 +430,7 @@ private fun IdentityField(label: String, value: String, isReadOnly: Boolean = fa
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         Text(
-            text = value.ifBlank { "Not provided" },
+            text = value.ifBlank { stringResource(R.string.profile_not_provided) },
             style = MaterialTheme.typography.bodyLarge,
             color = if (value.isBlank()) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
         )
@@ -491,7 +493,7 @@ private fun ProvidersTab(
             ) {
                 CircularProgressIndicator()
                 Spacer(Modifier.height(12.dp))
-                Text("Loading providers…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.providers_loading), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         is ProviderManagementUiState.Error -> {
@@ -503,7 +505,7 @@ private fun ProvidersTab(
                 Text(state.message, color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(16.dp))
                 AivancePrimaryButton(
-                    text = "Retry",
+                    text = stringResource(R.string.providers_retry),
                     onClick = { viewModel.onEvent(ProviderManagementUiEvent.Refresh) }
                 )
             }
@@ -547,19 +549,19 @@ private fun ProvidersList(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("Providers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Manage your AI and Job connectivity.", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.providers_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.providers_subtitle), style = MaterialTheme.typography.bodySmall)
         }
 
         if (aiProviders.isNotEmpty()) {
-            item { ProviderSectionLabel("AI") }
+            item { ProviderSectionLabel(stringResource(R.string.providers_section_ai)) }
             items(aiProviders, key = { it.id }) { provider ->
                 ProviderCard(provider, state, onEvent)
             }
         }
 
         if (jobProviders.isNotEmpty()) {
-            item { ProviderSectionLabel("Job Boards") }
+            item { ProviderSectionLabel(stringResource(R.string.providers_section_job_boards)) }
             items(jobProviders, key = { it.id }) { provider ->
                 ProviderCard(provider, state, onEvent)
             }
@@ -651,7 +653,7 @@ private fun ProviderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    if (provider.isEnabled) "Enabled" else "Disabled",
+                    if (provider.isEnabled) stringResource(R.string.providers_enabled) else stringResource(R.string.providers_disabled),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (provider.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -685,7 +687,7 @@ private fun ProviderCard(
                                     tint = AivanceTheme.colors.onSuccessContainer
                                 )
                                 Text(
-                                    "Downloaded",
+                                    stringResource(R.string.model_downloaded_status),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = AivanceTheme.colors.onSuccessContainer
                                 )
@@ -693,7 +695,7 @@ private fun ProviderCard(
                         }
                         Spacer(Modifier.weight(1f))
                         AivanceSecondaryButton(
-                            text = "Delete model",
+                            text = stringResource(R.string.providers_delete_model),
                             onClick = { onEvent(ProviderManagementUiEvent.DeleteModel(provider.id)) },
                             modifier = Modifier.weight(1f)
                         )
@@ -704,7 +706,7 @@ private fun ProviderCard(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "Downloading model… ${((state.modelDownloadProgress ?: 0f) * 100).toInt()}%",
+                            stringResource(R.string.model_downloading_percent, ((state.modelDownloadProgress ?: 0f) * 100).toInt()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -719,12 +721,12 @@ private fun ProviderCard(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "Model not downloaded — download once to use this provider fully offline.",
+                            stringResource(R.string.providers_not_downloaded),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         AivancePrimaryButton(
-                            text = "Download model",
+                            text = stringResource(R.string.download_model),
                             onClick = { onEvent(ProviderManagementUiEvent.DownloadModel(provider.id)) },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -751,13 +753,13 @@ private fun ProviderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Model", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.3f))
+                    Text(stringResource(R.string.providers_model_label), style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(0.3f))
                     OutlinedButton(
                         onClick = { modelMenuOpen = true },
                         modifier = Modifier.weight(0.7f)
                     ) {
                         Text(
-                            provider.selectedModel.ifBlank { "Select…" },
+                            provider.selectedModel.ifBlank { stringResource(R.string.providers_select_model) },
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             modifier = Modifier.weight(1f)
@@ -788,12 +790,12 @@ private fun ProviderCard(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     AivanceSecondaryButton(
-                        text = "Save",
+                        text = stringResource(R.string.providers_save),
                         onClick = { onEvent(ProviderManagementUiEvent.SaveProvider(provider.id)) },
                         modifier = Modifier.weight(1f)
                     )
                     AivancePrimaryButton(
-                        text = if (state.testingProviderId == provider.id) "Testing…" else "Test",
+                        text = if (state.testingProviderId == provider.id) stringResource(R.string.providers_testing) else stringResource(R.string.providers_test),
                         onClick = { onEvent(ProviderManagementUiEvent.TestConnection(provider.id)) },
                         modifier = Modifier.weight(1f),
                         enabled = state.testingProviderId != provider.id
@@ -830,10 +832,10 @@ private fun ProviderCredentialField(
 @Composable
 private fun ProviderHealthChip(status: ProviderHealthStatus) {
     val (tone, label) = when (status) {
-        ProviderHealthStatus.HEALTHY -> BannerTone.SUCCESS to "Healthy"
-        ProviderHealthStatus.DEGRADED -> BannerTone.WARNING to "Degraded"
-        ProviderHealthStatus.UNHEALTHY -> BannerTone.ERROR to "Unhealthy"
-        ProviderHealthStatus.UNKNOWN -> BannerTone.INFO to "Unknown"
+        ProviderHealthStatus.HEALTHY -> BannerTone.SUCCESS to stringResource(R.string.providers_health_healthy)
+        ProviderHealthStatus.DEGRADED -> BannerTone.WARNING to stringResource(R.string.providers_health_degraded)
+        ProviderHealthStatus.UNHEALTHY -> BannerTone.ERROR to stringResource(R.string.providers_health_unhealthy)
+        ProviderHealthStatus.UNKNOWN -> BannerTone.INFO to stringResource(R.string.providers_health_unknown)
     }
     StatusChip(text = label, tone = tone)
 }
@@ -857,28 +859,28 @@ private fun ModelDownloadConfirmationDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Download on-device model", fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.providers_download_dialog_title), fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Model size: ${formatBytes(dialog.modelSizeBytes)} (${dialog.modelSizeBytes} bytes)",
+                    stringResource(R.string.providers_model_size, formatBytes(dialog.modelSizeBytes), dialog.modelSizeBytes),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "Free storage: ${formatBytes(dialog.freeStorageBytes)}",
+                    stringResource(R.string.providers_free_storage, formatBytes(dialog.freeStorageBytes)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (dialog.ramWarning) {
                     Text(
-                        "This device has less than 4 GB of RAM. The full model may run slowly.",
+                        stringResource(R.string.providers_ram_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )
                 }
                 if (dialog.storageBlocked) {
                     Text(
-                        "Not enough free storage for the full model. The smaller model fits — use it instead.",
+                        stringResource(R.string.providers_storage_blocked),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -893,12 +895,12 @@ private fun ModelDownloadConfirmationDialog(
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Text(
-                                text = "Download smaller model (${formatBytes(dialog.compactSizeBytes)})",
+                                text = stringResource(R.string.providers_download_compact, formatBytes(dialog.compactSizeBytes)),
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Text(
-                                text = "Uses far less storage and RAM.",
+                                text = stringResource(R.string.providers_compact_note),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
@@ -911,19 +913,19 @@ private fun ModelDownloadConfirmationDialog(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!dialog.storageBlocked) {
                     TextButton(onClick = { onConfirm(false) }) {
-                        Text("Download")
+                        Text(stringResource(R.string.providers_download))
                     }
                 }
                 if (dialog.offersCompact) {
                     TextButton(onClick = { onConfirm(true) }) {
-                        Text("Download smaller model (${formatBytes(dialog.compactSizeBytes)})")
+                        Text(stringResource(R.string.providers_download_compact, formatBytes(dialog.compactSizeBytes)))
                     }
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -944,55 +946,55 @@ private fun SystemTab(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text("System Controls", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.system_controls_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
 
         item {
-            SectionHeader(title = "Appearance")
+            SectionHeader(title = stringResource(R.string.appearance_title))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onNavigateToAppearance, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.Palette, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Appearance & Theme")
+                        Text(stringResource(R.string.system_appearance_item))
                     }
                 }
             }
         }
 
         item {
-            SectionHeader(title = "Security & Privacy")
+            SectionHeader(title = stringResource(R.string.system_security_section))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onNavigateToPrivacy, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.PrivacyTip, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Privacy & Security")
+                        Text(stringResource(R.string.privacy_title))
                     }
                     TextButton(onClick = onNavigateToResources, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.MenuBook, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Remote Work Resources")
+                        Text(stringResource(R.string.resources_title))
                     }
                 }
             }
         }
 
         item {
-            SectionHeader(title = "About")
+            SectionHeader(title = stringResource(R.string.system_about_section))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onNavigateToAbout, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.Info, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("About AiVance")
+                        Text(stringResource(R.string.about_title))
                     }
                 }
             }
         }
 
         item {
-            SectionHeader(title = "Data Management")
+            SectionHeader(title = stringResource(R.string.system_data_section))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Encrypted backup/restore lives in Privacy Center (AUDIT 24) —
@@ -1002,12 +1004,12 @@ private fun SystemTab(
                     TextButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.ResetAll) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                         Icon(Icons.Rounded.DeleteForever, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Reset All Settings")
+                        Text(stringResource(R.string.system_reset))
                     }
                     TextButton(onClick = { viewModel.onEvent(IdentityHubUiEvent.SignOut) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                         Icon(Icons.AutoMirrored.Rounded.Logout, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Sign Out")
+                        Text(stringResource(R.string.system_sign_out))
                     }
                 }
             }
@@ -1018,8 +1020,8 @@ private fun SystemTab(
                 modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("AiVance v2.0.0 (BETA)", style = MaterialTheme.typography.labelSmall)
-                Text("Your Career Operating System", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Text(stringResource(R.string.system_version_banner, "2.0.0"), style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.system_tagline), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
         }
     }

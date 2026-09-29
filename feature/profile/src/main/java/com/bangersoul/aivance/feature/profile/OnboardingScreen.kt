@@ -70,7 +70,7 @@ fun OnboardingScreen(
             )
 
             is OnboardingUiState.ConfigureAiProvider -> ProviderConfigStep(
-                title = "Configure ${state.provider.name}",
+                title = stringResource(R.string.profile_configure_provider, state.provider.name),
                 provider = state.provider,
                 config = state.config,
                 isValidating = state.isValidating,
@@ -95,7 +95,7 @@ fun OnboardingScreen(
             )
 
             is OnboardingUiState.ConfigureJobProvider -> ProviderConfigStep(
-                title = "Configure ${state.provider.name}",
+                title = stringResource(R.string.profile_configure_provider, state.provider.name),
                 provider = state.provider,
                 config = state.config,
                 isValidating = state.isValidating,
@@ -114,7 +114,7 @@ fun OnboardingScreen(
             )
 
             is OnboardingUiState.ConfigureEnrichmentProvider -> ProviderConfigStep(
-                title = "Configure ${state.provider.name}",
+                title = stringResource(R.string.profile_configure_provider, state.provider.name),
                 provider = state.provider,
                 config = state.config,
                 isValidating = state.isValidating,

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Accessibility descriptions for the shared ATS keyword chip and score gauge. -->
+    <string name="ds_keyword_a11y_matched">Keyword: %1$s, Matched</string>
+    <string name="ds_keyword_a11y_missing">Keyword: %1$s, Missing</string>
+    <string name="ds_score_gauge_a11y">Score gauge: %1$d out of %2$d</string>
+</resources>

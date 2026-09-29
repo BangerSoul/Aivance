@@ -45,6 +45,7 @@ def fetch_live_pins(hosts):
     from cryptography import x509
 
     out = {}
+    subs = {}
     for h in hosts:
         try:
             r = subprocess.run(
@@ -62,6 +63,7 @@ def fetch_live_pins(hosts):
                         pems.append("\n".join(cur))
                         in_cert = False
             pins = {}
+            subjects = {}
             for i, pem in enumerate(pems):
                 der = ssl.PEM_cert_to_DER_cert(pem)
                 cert = x509.load_der_x509_certificate(der)
@@ -70,10 +72,14 @@ def fetch_live_pins(hosts):
                     serialization.PublicFormat.SubjectPublicKeyInfo,
                 )
                 pins[i] = hashlib.sha256(spki).hexdigest()
+                subjects[i] = (cert.subject.rfc4514_string(),
+                               cert.issuer.rfc4514_string())
             out[h] = pins
+            subs[h] = subjects
         except Exception as e:  # noqa: BLE001
             out[h] = {"error": str(e)}
-    return out
+            subs[h] = {}
+    return out, subs
 
 
 def parse_pin_registry():
@@ -101,7 +107,7 @@ def main():
     check("Pin registry parsed (CertificatePins.kt)", bool(registry),
           f"{len(registry)} hosts: {', '.join(sorted(registry))}")
     if registry:
-        live = fetch_live_pins(sorted(registry))
+        live, live_subjects = fetch_live_pins(sorted(registry))
         for host, pins in registry.items():
             live_pins = live.get(host, {})
             if "error" in live_pins:
@@ -111,10 +117,19 @@ def main():
             # any registered pin (leaf + CA) must appear somewhere in the live chain
             chain_all = set(live_pins.values())
             overlap = set(pins) & chain_all
-            check(f"Pins match live chain {host}",
-                  bool(overlap),
-                  f"{len(overlap)}/{len(pins)} registered pins present in chain"
-                  + (f" (leaf={leaf[:16]}...)" if leaf else ""))
+            detail = (f"{len(overlap)}/{len(pins)} registered pins present in chain"
+                      + (f" (leaf={leaf[:16]}...)" if leaf else ""))
+            if not overlap:
+                # A fleet-served host (Google Frontend) can drop the runner on an
+                # edge whose CA path none of our pins cover, and that is not
+                # always a pinning bug. Print the whole presented chain: the fix
+                # is to add the CA that edge issues under, and there is no way
+                # to know which one that is without seeing it.
+                for pos, (subj, issuer) in sorted(live_subjects.get(host, {}).items()):
+                    detail += (f"\n        [{pos}] subject={subj}"
+                               f"\n            issuer={issuer}"
+                               f"\n            pin={live_pins.get(pos, '')[:16]}...")
+            check(f"Pins match live chain {host}", bool(overlap), detail)
 
     # ── [2] No placeholders / fabricated pins ─────────────────────────────
     src = (ROOT / "core/common/src/main/java/com/bangersoul/aivance/core/common/security/CertificatePins.kt").read_text(encoding="utf-8")

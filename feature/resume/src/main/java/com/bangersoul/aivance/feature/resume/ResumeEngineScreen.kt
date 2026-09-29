@@ -141,11 +141,15 @@ fun ResumeEngineScreen(
             EngineStepper(currentStep = state.stepIndex())
 
             AnimatedContent(
-                targetState = state.stepIndex(),
+                targetState = state,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
+                // The step is the animation key, not the state: Optimizing is a
+                // data class whose streamingContent changes on every token, so
+                // targeting the state itself would restart the fade mid-stream.
+                contentKey = { it.stepIndex() },
                 label = "ResumeEngineTransition"
-            ) {
-                when (val current = state) {
+            ) { target ->
+                when (val current = target) {
                     is ResumeEngineState.Import -> ImportStep(
                         onFileImported = { viewModel.onEvent(ResumeEngineEvent.ImportFile(it)) },
                         onOcrTextExtracted = { viewModel.onEvent(ResumeEngineEvent.ImportOcrText(it)) },

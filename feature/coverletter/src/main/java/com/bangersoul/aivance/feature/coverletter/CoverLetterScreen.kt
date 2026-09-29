@@ -43,7 +43,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -70,7 +70,7 @@ fun CoverLetterScreen(
     jobId: Long? = null,
     onFindJobs: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -266,7 +266,7 @@ private fun CoverLetterEditorContent(
 
         val sections = version?.sections.orEmpty()
         LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            itemsIndexed(sections) { index, section ->
+            itemsIndexed(sections, key = { index, section -> "${section.sectionType}_$index" }) { index, section ->
                 SectionCard(
                     title = section.title,
                     content = if (isEditing) {

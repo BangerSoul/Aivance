@@ -63,7 +63,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -98,7 +98,7 @@ fun ResumeEngineScreen(
     onBack: () -> Unit,
     initialJobDescription: String? = null
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -622,7 +622,7 @@ private fun PreviewStep(
             Spacer(Modifier.height(8.dp))
         }
 
-        items(version.sections) { section ->
+        itemsIndexed(version.sections, key = { index, section -> "${section.sectionType}_${section.sectionOrder}_$index" }) { _, section ->
             val isExpanded = section.title in expanded
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -789,7 +789,7 @@ private fun AtsResultStep(
                 Text(stringResource(R.string.improvement_suggestions), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
             }
-            items(analysis.optimizationTips) { tip ->
+            itemsIndexed(analysis.optimizationTips, key = { index, _ -> index }) { _, tip ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -849,7 +849,7 @@ private fun OptimizingStep(
             Spacer(Modifier.height(8.dp))
         }
 
-        itemsIndexed(version.sections) { _, section ->
+        itemsIndexed(version.sections, key = { index, section -> "${section.sectionType}_${section.sectionOrder}_$index" }) { _, section ->
             val suggestion = suggestions[section.title]
             val isImproving = sectionInProgress == section.title
 

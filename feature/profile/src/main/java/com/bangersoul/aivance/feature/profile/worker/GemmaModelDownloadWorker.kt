@@ -81,18 +81,34 @@ class GemmaModelDownloadWorker @AssistedInject constructor(
             // WorkManager stops this worker. Each launch isolates its own failures.
             val updateScope = CoroutineScope(coroutineContext)
             var lastForegroundUpdateMs = 0L
+            var lastProgressUpdateMs = 0L
+            var lastPublishedPercent = -1
 
             val result = downloadable.downloadModel(modelUrl) { progress ->
                 val now = SystemClock.elapsedRealtime()
+                val percent = (progress * 100f).toInt()
                 val updateForeground =
                     progress > 0f && now - lastForegroundUpdateMs >= FOREGROUND_UPDATE_INTERVAL_MS
-                if (updateForeground) lastForegroundUpdateMs = now
-                updateScope.launch {
-                    try {
-                        setProgress(workDataOf(KEY_PROGRESS to progress, KEY_PROVIDER_ID to providerId))
-                        if (updateForeground) setForeground(foregroundInfo(progress))
-                    } catch (t: Throwable) {
-                        Timber.w(t, "GemmaModelDownloadWorker — progress update failed")
+
+                // setProgress persists a row to the WorkManager database, and the
+                // downloader invokes this callback once per 64 KiB chunk — roughly
+                // 49k times for a 3 GB model. Only publish when the whole-percent
+                // value actually changed AND the minimum interval has elapsed,
+                // which bounds the writes to ~100 across a full download.
+                val percentChanged = percent != lastPublishedPercent
+                val intervalElapsed = now - lastProgressUpdateMs >= PROGRESS_UPDATE_INTERVAL_MS
+                if (percentChanged && intervalElapsed) {
+                    lastPublishedPercent = percent
+                    lastProgressUpdateMs = now
+                    if (updateForeground) lastForegroundUpdateMs = now
+
+                    updateScope.launch {
+                        try {
+                            setProgress(workDataOf(KEY_PROGRESS to progress, KEY_PROVIDER_ID to providerId))
+                            if (updateForeground) setForeground(foregroundInfo(progress))
+                        } catch (t: Throwable) {
+                            Timber.w(t, "GemmaModelDownloadWorker — progress update failed")
+                        }
                     }
                 }
             }
@@ -184,5 +200,6 @@ class GemmaModelDownloadWorker @AssistedInject constructor(
 
         /** Foreground notification is refreshed at most this often (throttle). */
         private const val FOREGROUND_UPDATE_INTERVAL_MS = 1_000L
+        private const val PROGRESS_UPDATE_INTERVAL_MS = 250L
     }
 }

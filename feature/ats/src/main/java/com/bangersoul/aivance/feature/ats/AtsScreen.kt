@@ -44,7 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,9 +72,9 @@ fun AtsScreen(
     initialJobDescription: String? = null,
     initialReportId: Long? = null
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val resumes by viewModel.resumes.collectAsState()
-    val jdText by viewModel.jdText.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val resumes by viewModel.resumes.collectAsStateWithLifecycle()
+    val jdText by viewModel.jdText.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -111,12 +111,17 @@ fun AtsScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) {
         Box(Modifier.fillMaxSize()) {
+            // Key the transition on the *step* (the state class), not the state
+            // object: AtsUiState.Analyzing.streamingText grows as tokens arrive,
+            // so keying on the object made AnimatedContent tear down and re-fade
+            // the whole subtree on every single token. The content below still
+            // reads `uiState` directly, so streaming text keeps updating.
             AnimatedContent(
-                targetState = uiState,
+                targetState = uiState::class,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "AtsStateTransition"
-            ) { state ->
-                when (state) {
+            ) {
+                when (val state = uiState) {
                     AtsUiState.SelectingResume -> ResumeSelectionStep(
                         resumes = resumes,
                         onSelect = { r, v -> viewModel.onEvent(AtsUiEvent.SelectResumeVersion(r, v)) }
@@ -206,7 +211,7 @@ private fun ResumeSelectionStep(
             )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(resumes) { resume ->
+                items(resumes, key = { it.id }) { resume ->
                     resume.versions.forEach { version ->
                         Card(
                             onClick = { onSelect(resume, version) },

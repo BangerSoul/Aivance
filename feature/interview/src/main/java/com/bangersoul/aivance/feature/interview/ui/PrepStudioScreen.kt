@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -719,7 +720,7 @@ private fun QuestionBankTab(viewModel: QuestionBankViewModel) {
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(state.questions) { question ->
+                        itemsIndexed(state.questions, key = { index, _ -> index }) { _, question ->
                             QuestionBankCard(
                                 question = question,
                                 isFavorite = question.isFavorite,
@@ -873,7 +874,7 @@ private fun LearnTab(viewModel: LearningHubViewModel, initialSkill: String? = nu
                     item {
                         Text(stringResource(R.string.recommended_skills), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
-                    items(state.recommendedSkills) { skill ->
+                    itemsIndexed(state.recommendedSkills, key = { index, _ -> index }) { _, skill ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
@@ -899,7 +900,7 @@ private fun LearnTab(viewModel: LearningHubViewModel, initialSkill: String? = nu
                         )
                     }
                 } else {
-                    items(state.suggestedResources) { resource ->
+                    itemsIndexed(state.suggestedResources, key = { index, _ -> index }) { _, resource ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

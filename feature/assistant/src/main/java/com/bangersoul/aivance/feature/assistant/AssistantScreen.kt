@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -299,7 +300,7 @@ private fun AssistantCopilotWorkspace(
             SectionHeader(title = stringResource(R.string.assistant_suggested))
         }
 
-        items(prompts.chunked(2)) { pair ->
+        itemsIndexed(prompts.chunked(2), key = { index, _ -> index }) { _, pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 pair.forEach { prompt ->
                     Surface(
@@ -335,7 +336,7 @@ private fun AssistantCopilotWorkspace(
                 )
             }
         } else {
-            items(careerState.recommendations.take(3)) { rec ->
+            itemsIndexed(careerState.recommendations.take(3), key = { index, _ -> index }) { _, rec ->
                 AivanceWorkspaceCard(onClick = { onPromptClick("Tell me more about: ${rec.title}") }) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -465,7 +466,7 @@ private fun ChatContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(messages) { msg ->
+        itemsIndexed(messages, key = { index, _ -> index }) { _, msg ->
             AssistantBubble(msg)
         }
         if (hasStreaming) {

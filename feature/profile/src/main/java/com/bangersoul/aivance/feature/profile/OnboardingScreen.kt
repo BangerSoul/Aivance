@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,7 +49,7 @@ fun OnboardingScreen(
     viewModel: OnboardingViewModel,
     onComplete: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     AnimatedContent(
         targetState = uiState,
@@ -93,7 +94,7 @@ fun OnboardingScreen(
                 providers = state.providers,
                 onSelect = { viewModel.onEvent(OnboardingUiEvent.SelectJobProvider(it)) },                onSkipAll = { viewModel.onEvent(OnboardingUiEvent.ContinueWithoutProviders) }
             )
-
+
             is OnboardingUiState.ConfigureJobProvider -> ProviderConfigStep(
                 title = stringResource(R.string.profile_configure_provider, state.provider.name),
                 provider = state.provider,
@@ -154,7 +155,7 @@ private fun ProviderSelectionStep(
         Text(description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(24.dp))
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(providers) { provider ->
+            items(providers, key = { it.id }) { provider ->
                 Card(
                     onClick = { onSelect(provider.id) },
                     modifier = Modifier.fillMaxWidth(),

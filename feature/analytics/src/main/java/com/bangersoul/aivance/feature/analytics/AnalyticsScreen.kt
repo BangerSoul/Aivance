@@ -132,7 +132,7 @@ private fun CareerHealthSurface(
                 SectionHeader(title = stringResource(R.string.analytics_health_dimensions))
             }
 
-            items(intelligence.health) { dimension ->
+            items(intelligence.health, key = { it.category }) { dimension ->
                 AivanceWorkspaceCard {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -185,7 +185,11 @@ private fun CareerHealthSurface(
  */
 @Composable
 private fun ProgressionSection(snapshots: List<AnalyticsSnapshot>) {
-    val ordered = snapshots.sortedBy { it.timestamp }
+    // Remembered: LineChart keys its LaunchedEffect on the `values` list, so an
+    // unremembered sortedBy/map produced a new List instance on every
+    // recomposition and restarted the entry animation from zero continuously.
+    val ordered = remember(snapshots) { snapshots.sortedBy { it.timestamp } }
+    val scoreSeries = remember(ordered) { ordered.map { it.careerScore.toFloat() } }
 
     Column {
         SectionHeader(title = stringResource(R.string.analytics_score_progression))
@@ -193,7 +197,7 @@ private fun ProgressionSection(snapshots: List<AnalyticsSnapshot>) {
         AivanceWorkspaceCard {
             Column(Modifier.padding(16.dp)) {
                 LineChart(
-                    values = ordered.map { it.careerScore.toFloat() },
+                    values = scoreSeries,
                     contentDescription = stringResource(R.string.analytics_score_progression_chart),
                     modifier = Modifier.fillMaxWidth()
                 )

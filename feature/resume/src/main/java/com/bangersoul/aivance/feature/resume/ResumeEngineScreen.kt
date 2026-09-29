@@ -71,6 +71,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -143,7 +144,7 @@ fun ResumeEngineScreen(
                 targetState = state.stepIndex(),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "ResumeEngineTransition"
-            ) { _ ->
+            ) {
                 when (val current = state) {
                     is ResumeEngineState.Import -> ImportStep(
                         onFileImported = { viewModel.onEvent(ResumeEngineEvent.ImportFile(it)) },
@@ -285,6 +286,16 @@ private fun ImportStep(
     onExit: () -> Unit
 ) {
     val context = LocalContext.current
+    // Resolved via stringResource rather than context.getString so locale changes
+    // invalidate these; they are hoisted because the launchers below capture them
+    // in non-composable callbacks, where stringResource cannot be called.
+    val fileTooLarge = stringResource(R.string.file_too_large)
+    val jsonImportEmpty = stringResource(R.string.json_import_empty)
+    val noTextFound = stringResource(R.string.no_text_found)
+    val unknownError = stringResource(R.string.unknown_error)
+    val ocrFailedTemplate = stringResource(R.string.ocr_failed)
+    val ocrLoadFailedTemplate = stringResource(R.string.ocr_load_failed)
+
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var selectedName by remember { mutableStateOf<String?>(null) }
     var selectedSize by remember { mutableStateOf<Long?>(null) }
@@ -298,7 +309,7 @@ private fun ImportStep(
             if (uri != null) {
                 val (name, size) = resolveFileMeta(context, uri)
                 if (size != null && size > MAX_FILE_SIZE_BYTES) {
-                    sizeError = context.getString(R.string.file_too_large)
+                    sizeError = fileTooLarge
                 } else {
                     sizeError = null
                     cameraNote = null
@@ -315,7 +326,7 @@ private fun ImportStep(
             if (uri != null) {
                 val (name, size) = resolveFileMeta(context, uri)
                 if (size != null && size > MAX_FILE_SIZE_BYTES) {
-                    sizeError = context.getString(R.string.file_too_large)
+                    sizeError = fileTooLarge
                 } else {
                     sizeError = null
                     cameraNote = null
@@ -334,7 +345,7 @@ private fun ImportStep(
                     ?.bufferedReader()
                     ?.use { it.readText() }
                 if (text.isNullOrBlank()) {
-                    cameraNote = context.getString(R.string.json_import_empty)
+                    cameraNote = jsonImportEmpty
                 } else {
                     onJsonImported(text)
                 }
@@ -355,14 +366,14 @@ private fun ImportStep(
                             if (extracted.isNotBlank()) {
                                 onOcrTextExtracted(extracted)
                             } else {
-                                cameraNote = context.getString(R.string.no_text_found)
+                                cameraNote = noTextFound
                             }
                         }
                         .addOnFailureListener {
-                            cameraNote = context.getString(R.string.ocr_failed, it.message ?: context.getString(R.string.unknown_error))
+                            cameraNote = ocrFailedTemplate.format(it.message ?: unknownError)
                         }
                 } catch (e: Exception) {
-                    cameraNote = context.getString(R.string.ocr_load_failed, e.message ?: context.getString(R.string.unknown_error))
+                    cameraNote = ocrLoadFailedTemplate.format(e.message ?: unknownError)
                 }
             }
         }
@@ -829,10 +840,14 @@ private fun OptimizingStep(
     onDiscard: (String) -> Unit,
     onSave: (String) -> Unit
 ) {
+    // Read the locale from composition state so a locale change re-formats the
+    // placeholder date instead of leaving it stale.
+    val locale = LocalConfiguration.current.locales[0]
+
     // Pre-fill with a date-stamped version name per spec: "v{n} — {date}".
     // v1 is the original import, so the first optimized save is v2.
     var versionName by remember {
-        mutableStateOf("v2 — ${SimpleDateFormat("MMM d", Locale.getDefault()).format(Date())}")
+        mutableStateOf("v2 — ${SimpleDateFormat("MMM d", locale).format(Date())}")
     }
 
     LazyColumn(
@@ -941,7 +956,7 @@ private fun OptimizingStep(
                 onValueChange = { versionName = it },
                 label = { Text(stringResource(R.string.version_name_optional)) },
                 placeholder = {
-                    Text(stringResource(R.string.version_name_placeholder, SimpleDateFormat("MMM d", Locale.getDefault()).format(Date())))
+                    Text(stringResource(R.string.version_name_placeholder, SimpleDateFormat("MMM d", locale).format(Date())))
                 },
                 modifier = Modifier.fillMaxWidth()
             )

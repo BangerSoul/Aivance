@@ -26,26 +26,36 @@ present in the presented chain, so each host carries its leaf pin plus the
 issuing intermediate and root CA pins. That way an ordinary leaf rotation still
 matches through the stable CA pin, and only a CA rotation requires a release.
 
-### Google-fronted hosts need CA pins, not leaf pins
+### Google-fronted hosts serve more than one CA path
 
 `generativelanguage.googleapis.com` is served by Google Frontend, which draws
-from a **rotating pool of leaf certificates** across its edge fleet. Which leaf
-you receive depends on routing, not on the host name. Three distinct leaves were
-observed across two CI runs and a manual harvest of every reachable IPv4 edge;
-one of them is a shared certificate whose subject is `upload.video.google.com`.
+from a rotating pool of leaf certificates **and from more than one issuing CA**.
+Which combination you get depends on routing, not on the hostname. Two paths
+were observed directly:
+
+| Path | Leaf | Intermediate | Root |
+|---|---|---|---|
+| A | `upload.video.google.com` | WE2 | GTS Root R4 |
+| B | `upload.video.google.com` | **WR2** | **GTS Root R1** |
 
 Consequences, and the reason this is written down:
 
-- A leaf pin for this host is **best-effort only**. It will match some requests
-  and miss others.
-- The **WE2 and GTS Root R4 CA pins are the layer that actually matters** here.
-  They are what has survived every rotation observed so far, and they are the
-  reason a leaf rotation is not an outage.
-- `security_scan.py` connects once, from one runner, and reports whichever edge
-  it landed on. A `0/3` result for this host usually means that particular edge
-  served a chain without WE2 or GTS R4 — **not** that the pins were tampered
-  with. Re-run before concluding anything, and harvest across several edges if
-  you intend to change the data.
+- Pinning only one path is an **outage for everyone routed to the other**. That
+  is not a theoretical risk: the registry carried only path A, the CI runner
+  landed on path B, and the check failed at `0/3` — no registered pin matched
+  anything in the chain. The Gemini call would have failed for those users too.
+- **Both** CAs are pinned for this host, so either path validates. Do not prune
+  back to one "because that is the one you keep seeing."
+- Leaf pins remain **best-effort** — the pool rotates constantly, and both
+  observed leaves carry the same subject. The CA pins are what hold the line.
+- The trade-off is real and worth stating plainly: pinning the roots means any
+  certificate those CAs issue satisfies the check for this host, so trust is
+  placed in the issuing CA rather than in this one certificate. For a
+  fleet-served host that is the cheaper side of the trade — the alternative is
+  an AI feature that fails by region.
+- `security_scan.py` connects once, from one runner, and validates whichever
+  edge it landed on. A pass therefore only proves the *sampled* path works, and
+  a single green run is not evidence the whole fleet is covered.
 
 ---
 
@@ -67,10 +77,24 @@ on a weekly schedule. A failure is pin drift until proven otherwise.
    `hexlify(sha256(spki))` for the hex form. That is exactly what
    `fetch_live_pins()` in `security_scan.py` does.
 
+   When a host fails, the check prints the full presented chain — subject,
+   issuer and complete pin for every certificate — so read that output before
+   harvesting by hand. It is the chain the failing vantage point actually saw,
+   which is precisely the one you cannot reproduce locally.
+
    For a Google-fronted host, repeat the harvest against several resolved edge
-   IPs so you see the whole pool, not one edge.
+   IPs **and** from more than one network, so you see every CA path rather than
+   whichever one you happen to sit behind.
 3. **Update both maps** for the affected hosts only, and keep the two encodings
    of the same certificate in the same slot.
+
+   ⚠️ `parse_pin_registry()` in `security_scan.py` finds each host's list with
+   a regex that ends the list at the first `)` at end-of-line. A trailing
+   comment like `// leaf (WE2 path)` therefore **silently truncates the pin
+   list**, and the check then "passes" against a fraction of the real pins.
+   Keep end-of-line comments free of closing parentheses, and confirm with
+   `python3 -c "import security_scan; print(len(security_scan.parse_pin_registry()['generativelanguage.googleapis.com']))"`
+   that the expected number of pins is being read.
 4. **Verify locally:** `python3 security_scan.py` must print
    `RESULT: ALL SECURITY CHECKS PASS` and exit 0.
 5. **Ship** the registry update as a v1.0.x hotfix. Do not "fix" a failure by

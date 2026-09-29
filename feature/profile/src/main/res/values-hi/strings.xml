@@ -67,6 +67,9 @@
     <string name="theme_amoled">AMOLED (शुद्ध काला)</string>
     <string name="accent_color">एक्सेंट रंग</string>
     <string name="material_you">Material You</string>
+    <string name="app_language">ऐप की भाषा</string>
+    <string name="app_language_english">English</string>
+    <string name="app_language_hindi">हिन्दी</string>
     <string name="dynamic_color">डायनामिक रंग</string>
     <string name="dynamic_color_sub">सिस्टम वॉलपेपर रंगों का उपयोग करें (Android 12+)</string>
 

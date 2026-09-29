@@ -132,16 +132,6 @@ enum class ThemeMode {
 }
 
 @Serializable
-enum class Language {
-    ENGLISH,
-    SPANISH,
-    FRENCH,
-    GERMAN,
-    CHINESE,
-    JAPANESE
-}
-
-@Serializable
 enum class ApplicationStatus {
     SAVED,
     APPLIED,

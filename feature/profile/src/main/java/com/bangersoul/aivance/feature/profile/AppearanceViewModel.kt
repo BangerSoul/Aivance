@@ -15,7 +15,8 @@ import javax.inject.Inject
 data class AppearanceUiState(
     val themeConfig: ThemeConfig = ThemeConfig.FOLLOW_SYSTEM,
     val accentSeed: String = "INDIGO",
-    val dynamicColor: Boolean = true
+    val dynamicColor: Boolean = true,
+    val language: String = "en"
 )
 
 @HiltViewModel
@@ -28,7 +29,8 @@ class AppearanceViewModel @Inject constructor(
             AppearanceUiState(
                 themeConfig = it.themeConfig,
                 accentSeed = it.accentSeed,
-                dynamicColor = it.dynamicColor
+                dynamicColor = it.dynamicColor,
+                language = it.language
             )
         }
         .stateIn(
@@ -52,6 +54,17 @@ class AppearanceViewModel @Inject constructor(
     fun setDynamicColor(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.updateDynamicColor(enabled)
+        }
+    }
+
+    /**
+     * Persists the ISO-639 code. MainActivity observes the same preference and
+     * recreates the activity, so the new locale is applied straight away rather
+     * than on the next cold start.
+     */
+    fun setLanguage(code: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateLanguage(code)
         }
     }
 }

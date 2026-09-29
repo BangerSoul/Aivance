@@ -75,7 +75,10 @@ jobs:
 
   # ── Category 3: Categorized Unit Test Suite ──────────────
   unit-tests:
-    name: 🧪 3. Unit Tests (${{ matrix.category }}: ${{ matrix.module }})
+    # Quoted: an unquoted scalar containing ": " is parsed as a nested mapping,
+    # which made this workflow file invalid YAML and stopped the entire
+    # workflow from scheduling a single job.
+    name: "🧪 3. Unit Tests (${{ matrix.category }}: ${{ matrix.module }})"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

@@ -18,7 +18,7 @@ package com.bangersoul.aivance.core.common.security
  *   api.openai.com                   leaf 244339974d38f7dd...
  *   openrouter.ai                    leaf 455476f15affcffc...
  *   api.anthropic.com                leaf cb37cd6f56d170d1...
- *   generativelanguage.googleapis.com leaf 1f981a301a267222...
+ *   generativelanguage.googleapis.com leaf 5eed75fc00d05822... and c4ae899f07caa489...
  *   remoteok.com                     leaf 91d9db38e20b4fdd...
  *   remotive.com                     leaf e9d4ef2aaaad56ec...
  *   api.apify.com                    leaf 42a6b51960194444...
@@ -82,9 +82,26 @@ object CertificatePins {
             "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c="  // GTS Root R4
         ),
         "generativelanguage.googleapis.com" to listOf(
-            "sha256/H5gaMBomciJwleO778pZ4grLUMhP8FX4JYe7pnaSbAs=", // leaf (shared Google edge cert)
+            // Google Frontend serves this host from more than one CA path, and
+            // which one you get depends on routing rather than on the hostname.
+            // Two were observed directly — WE2/GTS R4 from a dev host, and
+            // WR2/GTS R1 from the CI runner — and pinning only one of them
+            // made the Gemini call fail for roughly half of all routes. Both
+            // CAs are carried below, which is what actually holds the line;
+            // the leaves are best-effort because the pool rotates constantly
+            // and they cost nothing under ANY-match semantics.
+            //
+            // Note the trade-off: pinning the roots means any certificate these
+            // CAs issue will satisfy the check for this host, so it trusts the
+            // issuing CA rather than this one certificate. That is the price of
+            // pinning a fleet-served host, and it is far cheaper than the
+            // alternative — an app whose AI providers fail by region.
+            "sha256/Xu11/ADQWCJtaUcXnsvbDVzbErue5bBdoDCKzdttCjc=", // leaf — WE2 path, seen from a dev host
+            "sha256/xK6JnwfKpIlWU2Hxl1z23Geo3aiOenuX90sRu1lxGVU=", // leaf — WR2 path, seen from the CI runner
             "sha256/vh78KSg1Ry4NaqGDV10w/cTb9VH3BQUZoCWNa93W/EY=", // WE2
-            "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c="  // GTS Root R4
+            "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=", // GTS Root R4
+            "sha256/YPtHaftLw6/0vnc2BnNKGF54xiCA28WFcccjkA4ypCM=", // WR2
+            "sha256/hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc="  // GTS Root R1
         ),
         "remoteok.com" to listOf(
             "sha256/kdnbOOILT91kqq6doJavJSAYk+KTEtu4Wl4UFHEXKcw=", // leaf
@@ -134,9 +151,12 @@ object CertificatePins {
             "9847e5653e5e9e847516e5cb818606aa7544a19be67fd7366d506988e8d84347"  // GTS Root R4
         ),
         "generativelanguage.googleapis.com" to listOf(
-            "1f981a301a2672227095e3bbefca59e20acb50c84ff055f82587bba676926c0b", // leaf
+            "5eed75fc00d058226d6947179ecbdb0d5cdb12bb9ee5b05da0308acddb6d0a37", // leaf — WE2 path
+            "c4ae899f07caa489565361f1975cf6dc67a8dda88e7a7b97f74b11bb59711955", // leaf — WR2 path
             "be1efc292835472e0d6aa183575d30fdc4dbf551f7050519a0258d6bddd6fc46", // WE2
-            "9847e5653e5e9e847516e5cb818606aa7544a19be67fd7366d506988e8d84347"  // GTS Root R4
+            "9847e5653e5e9e847516e5cb818606aa7544a19be67fd7366d506988e8d84347", // GTS Root R4
+            "60fb4769fb4bc3aff4be773606734a185e78c62080dbc58571c723900e32a423", // WR2
+            "871a9194f4eed5b312ff40c84c1d524aed2f778bbff25f138cf81f680a7adc67"  // GTS Root R1
         ),
         "remoteok.com" to listOf(
             "91d9db38e20b4fdd64aaae9da096af25201893e29312dbb85a5e1414711729cc", // leaf

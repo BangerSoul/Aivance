@@ -115,4 +115,25 @@
     <string name="track_application">Track Application</string>
     <string name="ask_ai">Ask AI</string>
     <string name="ai_assistant">AI Assistant</string>
+    <string name="job_apply_now">Apply Now</string>
+    <string name="job_track">Track</string>
+    <string name="job_match_readiness">Match Readiness</string>
+    <string name="job_match_readiness_detail">How prepared you are for this specific role.</string>
+    <string name="job_match_readiness_setup">Add your target role and skills to your profile to see how well you match this role.</string>
+    <string name="job_required_steps">Required Steps</string>
+    <string name="job_readiness_ats">ATS Optimization</string>
+    <string name="job_readiness_ats_scored">Your current resume match is %1$d%%. Fix missing keywords to pass filters.</string>
+    <string name="job_readiness_ats_unscored">Run an ATS scan to see how well your resume matches this role.</string>
+    <string name="job_readiness_ats_action">Run ATS Scan</string>
+    <string name="job_readiness_cover">Cover Letter</string>
+    <string name="job_readiness_cover_detail">A tailored cover letter increases your interview chance by 40%%.</string>
+    <string name="job_readiness_cover_action">Generate with AI</string>
+    <string name="job_readiness_interview">Interview Prep</string>
+    <string name="job_readiness_interview_detail">We found 12 specific interview questions for this role.</string>
+    <string name="job_readiness_interview_action">Start Prep</string>
+    <string name="job_company_insights">Company Insights</string>
+    <string name="job_hiring_team">Hiring Team</string>
+    <string name="job_no_recruiters">No recruiters found</string>
+    <string name="job_no_recruiters_detail">We can try to find hiring managers and contacts for this role.</string>
+    <string name="job_search_recruiters">Search Recruiters</string>
 </resources>

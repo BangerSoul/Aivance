@@ -59,4 +59,25 @@
     <string name="track_application">आवेदन ट्रैक करें</string>
     <string name="ask_ai">AI से पूछें</string>
     <string name="ai_assistant">एआई सहायक</string>
+    <string name="job_apply_now">अभी आवेदन करें</string>
+    <string name="job_track">ट्रैक करें</string>
+    <string name="job_match_readiness">मैच तैयारी</string>
+    <string name="job_match_readiness_detail">आप इस विशेष भूमिका के लिए कितने तैयार हैं।</string>
+    <string name="job_match_readiness_setup">यह देखने के लिए कि आप इस भूमिका से कितनी अच्छी तरह मेल खाते हैं, अपनी प्रोफ़ाइल में लक्ष्य भूमिका और कौशल जोड़ें।</string>
+    <string name="job_required_steps">आवश्यक चरण</string>
+    <string name="job_readiness_ats">ATS अनुकूलन</string>
+    <string name="job_readiness_ats_scored">आपका वर्तमान रिज़्यूमे मैच %1$d%% है। फ़िल्टर पास करने के लिए गुम कीवर्ड ठीक करें।</string>
+    <string name="job_readiness_ats_unscored">देखने के लिए एक ATS स्कैन चलाएँ कि आपका रिज़्यूमे इस भूमिका से कितना मेल खाता है।</string>
+    <string name="job_readiness_ats_action">ATS स्कैन चलाएँ</string>
+    <string name="job_readiness_cover">कवर लेटर</string>
+    <string name="job_readiness_cover_detail">एक अनुरूप कवर लेटर आपकी इंटरव्यू की संभावना 40%% बढ़ाता है।</string>
+    <string name="job_readiness_cover_action">AI से बनाएँ</string>
+    <string name="job_readiness_interview">इंटरव्यू तैयारी</string>
+    <string name="job_readiness_interview_detail">हमें इस भूमिका के लिए 12 विशिष्ट इंटरव्यू प्रश्न मिले।</string>
+    <string name="job_readiness_interview_action">तैयारी शुरू करें</string>
+    <string name="job_company_insights">कंपनी इनसाइट्स</string>
+    <string name="job_hiring_team">हायरिंग टीम</string>
+    <string name="job_no_recruiters">कोई रिक्रूटर नहीं मिला</string>
+    <string name="job_no_recruiters_detail">हम इस भूमिका के लिए हायरिंग मैनेजर और संपर्क खोजने की कोशिश कर सकते हैं।</string>
+    <string name="job_search_recruiters">रिक्रूटर खोजें</string>
 </resources>

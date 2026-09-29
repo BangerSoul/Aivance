@@ -1,5 +1,6 @@
 package com.bangersoul.aivance.feature.ats
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bangersoul.aivance.core.common.model.AtsReport
@@ -69,6 +70,19 @@ class AtsViewModel @Inject constructor(
 
     private var currentResume: Resume? = null
 
+    // ── Stream buffering ──────────────────────────────────────────────
+    // Tokens arrive one chunk at a time. Appending every chunk straight onto
+    // the UI state is O(n^2) over a long analysis and emits a fresh state
+    // object (and a recomposition) for each one. Buffer into a StringBuilder
+    // and publish at most every STREAM_FLUSH_INTERVAL_MS.
+    private val streamBuffer = StringBuilder()
+    private var lastStreamFlushMs = 0L
+
+    private fun resetStreamBuffer() {
+        streamBuffer.setLength(0)
+        lastStreamFlushMs = 0L
+    }
+
     /**
      * Live-reactive ATS scoring. The score recalculates automatically whenever
      * either the selected resume version OR the job description changes:
@@ -85,6 +99,7 @@ class AtsViewModel @Inject constructor(
             .debounce(800)
             .flatMapLatest { (versionId, jd) ->
                 flow {
+                    resetStreamBuffer()
                     _uiState.value = AtsUiState.Analyzing("")
                     trackEventUseCase(TrackEventRequest("ats_analyze_start"))
 
@@ -114,14 +129,22 @@ class AtsViewModel @Inject constructor(
                     is AtsStreamEvent.Chunk -> {
                         val current = _uiState.value
                         if (current is AtsUiState.Analyzing) {
-                            _uiState.value = current.copy(streamingText = current.streamingText + event.text)
+                            streamBuffer.append(event.text)
+                            val now = SystemClock.elapsedRealtime()
+                            if (now - lastStreamFlushMs >= STREAM_FLUSH_INTERVAL_MS) {
+                                lastStreamFlushMs = now
+                                _uiState.value =
+                                    current.copy(streamingText = streamBuffer.toString())
+                            }
                         }
                     }
                     is AtsStreamEvent.Completed -> {
+                        resetStreamBuffer()
                         _uiState.value = AtsUiState.DisplayReport(event.report)
                         trackEventUseCase(TrackEventRequest("ats_analyze_success"))
                     }
                     is AtsStreamEvent.Failed -> {
+                        resetStreamBuffer()
                         _uiState.value = AtsUiState.Error("Analysis failed: ${event.message}")
                     }
                 }
@@ -173,6 +196,7 @@ class AtsViewModel @Inject constructor(
         currentResume = null
         _selectedVersionId.value = null
         _jdText.value = ""
+        resetStreamBuffer()
         _uiState.value = AtsUiState.SelectingResume
     }
 
@@ -227,5 +251,10 @@ class AtsViewModel @Inject constructor(
         }
         appendLine()
         appendLine("Generated: ${java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(report.dateGenerated))}")
+    }
+
+    private companion object {
+        /** Upper bound on how often streamed ATS tokens are published to the UI. */
+        const val STREAM_FLUSH_INTERVAL_MS = 50L
     }
 }

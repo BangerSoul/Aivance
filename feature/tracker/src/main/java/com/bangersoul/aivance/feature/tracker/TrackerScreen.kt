@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -405,7 +406,7 @@ private fun PipelineBoard(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        items(stages) { stage ->
+        items(stages, key = { it.id }) { stage ->
             PipelineColumn(
                 stage = stage,
                 applications = applications.filter { it.currentStageId == stage.id },
@@ -776,7 +777,7 @@ private fun ApplicationTasksTab(application: Application) {
             contentPadding = PaddingValues(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(application.tasks) { task ->
+            itemsIndexed(application.tasks, key = { index, _ -> index }) { _, task ->
                 TaskRow(task)
             }
         }
@@ -815,7 +816,7 @@ private fun ApplicationTimelineTab(application: Application) {
                 Text("No activity recorded yet.", style = MaterialTheme.typography.bodySmall)
             }
         } else {
-            items(application.timeline) { event ->
+            itemsIndexed(application.timeline, key = { index, _ -> index }) { _, event ->
                 TimelineRow(event)
             }
         }

@@ -129,7 +129,7 @@ private fun CareerHealthTab(
             SectionHeader(title = "Health Dimensions")
         }
 
-        items(intelligence.health) { dimension ->
+        items(intelligence.health, key = { it.category }) { dimension ->
             AivanceWorkspaceCard {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -154,7 +154,17 @@ private fun CareerHealthTab(
 
 @Composable
 private fun CareerTrendsTab(snapshots: List<AnalyticsSnapshot>) {
-    val sorted = snapshots.sortedBy { it.timestamp }
+    // Derived series are remembered: LineChart/BarChart key their
+    // LaunchedEffect on the `values` list, so an unremembered .map{} produced a
+    // new List instance on every recomposition and restarted the entry animation
+    // from zero continuously. Keep the list identities stable unless the
+    // underlying snapshot data actually changes.
+    val sorted = remember(snapshots) { snapshots.sortedBy { it.timestamp } }
+    val scoreSeries = remember(sorted) { sorted.map { it.careerScore.toFloat() } }
+    val latest = sorted.lastOrNull()
+    val dimensionSeries = remember(latest) {
+        latest?.dimensionScores?.map { it.key to it.value / 100f }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -166,7 +176,7 @@ private fun CareerTrendsTab(snapshots: List<AnalyticsSnapshot>) {
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp)) {
                     LineChart(
-                        values = sorted.map { it.careerScore.toFloat() },
+                        values = scoreSeries,
                         modifier = Modifier.fillMaxWidth().height(200.dp)
                     )
                 }
@@ -178,10 +188,9 @@ private fun CareerTrendsTab(snapshots: List<AnalyticsSnapshot>) {
             Spacer(Modifier.height(8.dp))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp)) {
-                    val latest = sorted.lastOrNull()
-                    latest?.dimensionScores?.let { dims ->
+                    dimensionSeries?.let { data ->
                         BarChart(
-                            data = dims.map { it.key to it.value / 100f },
+                            data = data,
                             modifier = Modifier.fillMaxWidth().height(200.dp)
                         )
                     }

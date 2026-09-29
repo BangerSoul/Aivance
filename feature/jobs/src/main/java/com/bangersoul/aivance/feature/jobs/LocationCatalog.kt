@@ -741,18 +741,22 @@ object LocationCatalog {
     /** All country names plus Remote. */
     val countryOptions: List<String> = listOf(REMOTE) + countries.map { it.name }
 
+    // Precomputed lookups. statesFor/citiesFor are called straight from composable
+    // bodies, so the old linear scan over ~200 countries plus a fresh list
+    // allocation on every recomposition both cost time and handed the caller a
+    // new instance each pass (breaking its skip check). These return a stable
+    // list instance per key, so repeated calls are O(1) and referentially stable.
+    private val statesByCountry: Map<String, List<String>> =
+        countries.associate { it.name to it.states.map { s -> s.name } }
+
+    private val citiesByCountryState: Map<String, List<String>> =
+        countries.flatMap { c -> c.states.map { s -> "${c.name}|${s.name}" to s.cities } }.toMap()
+
     /** States for a given country (or Remote only). */
     fun statesFor(country: String): List<String> =
-        if (country == REMOTE) emptyList()
-        else countries.firstOrNull { it.name == country }?.states?.map { it.name } ?: emptyList()
+        statesByCountry[country] ?: emptyList()
 
     /** Cities for a given country + state (or Remote only). */
     fun citiesFor(country: String, state: String): List<String> =
-        if (country == REMOTE) emptyList()
-        else countries
-            .firstOrNull { it.name == country }
-            ?.states
-            ?.firstOrNull { it.name == state }
-            ?.cities
-            ?: emptyList()
+        citiesByCountryState["$country|$state"] ?: emptyList()
 }

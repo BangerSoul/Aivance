@@ -447,7 +447,7 @@ private fun ProvidersTab(
             Text("Manage your AI and Data connectivity.", style = MaterialTheme.typography.bodySmall)
         }
 
-        items(uiState.providers) { provider ->
+        items(uiState.providers, key = { it.id }) { provider ->
             AivanceWorkspaceCard {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -522,7 +522,7 @@ private fun DocumentVaultTab(viewModel: IdentityHubViewModel) {
                 )
             }
         } else {
-            items(uiState.documents) { resume ->
+            items(uiState.documents, key = { it.id }) { resume ->
                 AivanceWorkspaceCard {
                     Row(
                         modifier = Modifier.padding(16.dp),

@@ -109,7 +109,7 @@ fun RemoteResourcesScreen(
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
-                    items(items) { item ->
+                    items(items, key = { it.url }) { item ->
                         DashboardCard(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = {

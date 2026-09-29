@@ -11,7 +11,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -21,11 +24,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bangersoul.aivance.core.designsystem.theme.AivanceTheme
@@ -115,6 +121,26 @@ fun BarChart(
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val resolvedColor = barColor ?: accent
 
+    val labelStyle = remember(labelColor) { TextStyle(fontSize = 11.sp, color = labelColor) }
+    val valueStyle = remember(resolvedColor) { TextStyle(fontSize = 11.sp, color = resolvedColor) }
+
+    val density = LocalDensity.current
+    val labelWidthPx = with(density) { 110.dp.toPx() }
+    val rightPadPx = with(density) { 60.dp.toPx() }
+    val cornerPx = with(density) { 6.dp.toPx() }
+    val valueTextPadPx = with(density) { 8.dp.toPx() }
+
+    // Text measurement is by far the most expensive work this chart does, and it
+    // does not vary with the animation frame — measuring inside the draw scope
+    // re-laid out every label and value on all ~60 frames of the entry animation.
+    // Measure once per data change and reuse the layouts.
+    val measuredLabels = remember(data, textMeasurer, labelStyle) {
+        data.map { textMeasurer.measure(it.first, labelStyle) }
+    }
+    val measuredValues = remember(data, textMeasurer, valueStyle) {
+        data.map { textMeasurer.measure(valueFormatter(it.second), valueStyle) }
+    }
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -122,18 +148,15 @@ fun BarChart(
             .semantics { contentDescription = "Bar chart" }
     ) {
         val rowHeight = size.height / data.size.coerceAtLeast(1)
-        val labelStyle = TextStyle(fontSize = 11.sp, color = labelColor)
-        val valueStyle = TextStyle(fontSize = 11.sp, color = resolvedColor)
 
-        data.forEachIndexed { index, (label, value) ->
+        data.forEachIndexed { index, (_, value) ->
             val y = index * rowHeight
-            val labelLayout = textMeasurer.measure(label, labelStyle)
-            val labelWidth = 110.dp.toPx()
+            val labelLayout = measuredLabels[index]
             drawText(labelLayout, topLeft = Offset(0f, y + rowHeight / 2 - labelLayout.size.height / 2))
 
-            val maxBarWidth = size.width - labelWidth - 60.dp.toPx()
+            val maxBarWidth = size.width - labelWidthPx - rightPadPx
             val barWidth = maxBarWidth * value.coerceIn(0f, 1f) * animated.value
-            val barStartX = labelWidth
+            val barStartX = labelWidthPx
             val barY = y + rowHeight * 0.22f
             val barHeight = rowHeight * 0.56f
 
@@ -141,20 +164,20 @@ fun BarChart(
                 color = trackColor,
                 topLeft = Offset(barStartX, barY),
                 size = Size(maxBarWidth, barHeight),
-                cornerRadius = CornerRadius(6.dp.toPx())
+                cornerRadius = CornerRadius(cornerPx)
             )
             if (barWidth > 0) {
                 drawRoundRect(
                     color = resolvedColor,
                     topLeft = Offset(barStartX, barY),
                     size = Size(barWidth, barHeight),
-                    cornerRadius = CornerRadius(6.dp.toPx())
+                    cornerRadius = CornerRadius(cornerPx)
                 )
             }
-            val valueText = textMeasurer.measure(valueFormatter(value), valueStyle)
+            val valueText = measuredValues[index]
             drawText(
                 valueText,
-                topLeft = Offset(barStartX + maxBarWidth + 8.dp.toPx(), y + rowHeight / 2 - valueText.size.height / 2)
+                topLeft = Offset(barStartX + maxBarWidth + valueTextPadPx, y + rowHeight / 2 - valueText.size.height / 2)
             )
         }
     }
@@ -287,26 +310,46 @@ fun LineChart(
     }
     val resolvedColor = lineColor ?: accent
 
+    // Scale bounds do not depend on the canvas size, so derive them once per data
+    // change rather than re-scanning the list on every animation frame.
+    val minV = remember(values, minValue) { minOf(minValue, values.minOrNull() ?: 0f) }
+    val span = remember(values, minValue) {
+        ((values.maxOrNull() ?: 1f).coerceAtLeast(1f) - minV).coerceAtLeast(1f)
+    }
+
+    // Point geometry needs the canvas size, which the draw scope only learns
+    // during layout. Track it via onSizeChanged and build the Offsets in
+    // remember() so the draw pass reuses one list instead of allocating a fresh
+    // List<Offset> on every frame of the entry animation.
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
+    val points = remember(values, minV, span, canvasSize, density) {
+        if (values.isEmpty() || canvasSize == IntSize.Zero) {
+            emptyList()
+        } else {
+            val topPad = with(density) { 16.dp.toPx() }
+            val bottomPad = with(density) { 8.dp.toPx() }
+            val step = canvasSize.width.toFloat() / (values.size - 1).coerceAtLeast(1)
+            val usable = canvasSize.height - topPad - bottomPad
+            values.mapIndexed { i, v ->
+                Offset(
+                    x = i * step,
+                    y = topPad + (1f - (v - minV) / span) * usable
+                )
+            }
+        }
+    }
+
     Canvas(
         modifier = modifier
             .fillMaxWidth()
             .height(160.dp)
+            .onSizeChanged { canvasSize = it }
             .semantics { contentDescription = "Line chart" }
     ) {
-        if (values.isEmpty()) return@Canvas
-        val maxV = (values.maxOrNull() ?: 1f).coerceAtLeast(1f)
-        val minV = minOf(minValue, values.minOrNull() ?: 0f)
-        val span = (maxV - minV).coerceAtLeast(1f)
-        val step = size.width / (values.size - 1).coerceAtLeast(1)
-        val topPad = 16.dp.toPx()
+        if (points.isEmpty()) return@Canvas
         val bottomPad = 8.dp.toPx()
 
-        val points = values.mapIndexed { i, v ->
-            Offset(
-                x = i * step,
-                y = topPad + (1f - (v - minV) / span) * (size.height - topPad - bottomPad)
-            )
-        }
         val drawCount = (animated.value * (values.size - 1)).toInt().coerceIn(0, values.size - 1) + 1
         val visible = points.take(drawCount)
 

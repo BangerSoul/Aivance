@@ -18,7 +18,7 @@ package com.bangersoul.aivance.core.common.security
  *   api.openai.com                   leaf 244339974d38f7dd...
  *   openrouter.ai                    leaf 455476f15affcffc...
  *   api.anthropic.com                leaf cb37cd6f56d170d1...
- *   generativelanguage.googleapis.com leaf 1f981a301a267222...
+ *   generativelanguage.googleapis.com leaf 5eed75fc00d05822...
  *   remoteok.com                     leaf 91d9db38e20b4fdd...
  *   remotive.com                     leaf e9d4ef2aaaad56ec...
  *   api.apify.com                    leaf 42a6b51960194444...
@@ -82,7 +82,14 @@ object CertificatePins {
             "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c="  // GTS Root R4
         ),
         "generativelanguage.googleapis.com" to listOf(
-            "sha256/H5gaMBomciJwleO778pZ4grLUMhP8FX4JYe7pnaSbAs=", // leaf (shared Google edge cert)
+            // Google Frontend serves a rotating pool of leaf certs across its
+            // edge fleet, and which one you get depends on routing: three
+            // distinct leaves turned up across two CI runs and a manual
+            // harvest of all eight reachable IPv4 edges. A leaf pin here is
+            // best-effort only; the WE2 and GTS Root R4 CA pins below are the
+            // layer that actually keeps this host matching, and they are what
+            // survived every rotation observed so far.
+            "sha256/Xu11/ADQWCJtaUcXnsvbDVzbErue5bBdoDCKzdttCjc=", // leaf (CN=upload.video.google.com)
             "sha256/vh78KSg1Ry4NaqGDV10w/cTb9VH3BQUZoCWNa93W/EY=", // WE2
             "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c="  // GTS Root R4
         ),
@@ -134,7 +141,7 @@ object CertificatePins {
             "9847e5653e5e9e847516e5cb818606aa7544a19be67fd7366d506988e8d84347"  // GTS Root R4
         ),
         "generativelanguage.googleapis.com" to listOf(
-            "1f981a301a2672227095e3bbefca59e20acb50c84ff055f82587bba676926c0b", // leaf
+            "5eed75fc00d058226d6947179ecbdb0d5cdb12bb9ee5b05da0308acddb6d0a37", // leaf — see OKHTTP_PINS note
             "be1efc292835472e0d6aa183575d30fdc4dbf551f7050519a0258d6bddd6fc46", // WE2
             "9847e5653e5e9e847516e5cb818606aa7544a19be67fd7366d506988e8d84347"  // GTS Root R4
         ),

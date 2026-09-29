@@ -16,7 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 
 /**
  * The standard top bar used across the app. Handles back navigation,
- * title/subtitle, and trailing actions consistently.
+ * title/subtitle, and trailing actions consistently. Both accessible names are
+ * caller-supplied: this module ships no string resources, so a hardcoded label
+ * here could never be translated.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,6 +26,7 @@ fun AivanceTopBar(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    backContentDescription: String? = null,
     onBack: (() -> Unit)? = null,
     actions: @Composable () -> Unit = {}
 ) {
@@ -48,7 +51,7 @@ fun AivanceTopBar(
                 IconButton(onClick = onBack) {
                     Icon(
                         Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = "Back"
+                        contentDescription = backContentDescription
                     )
                 }
             }

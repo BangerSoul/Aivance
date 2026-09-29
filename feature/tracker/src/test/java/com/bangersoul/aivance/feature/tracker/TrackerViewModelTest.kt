@@ -53,6 +53,10 @@ class TrackerViewModelTest {
             mockRepository,
             mockAnalyticsRepository,
             mockTaskGenerator,
+            mockk(relaxed = true),
+            // NotificationRepository — added to WorkflowEngine when pipeline
+            // events started recording into the inbox; this fixture was never
+            // updated, so the module's unit tests did not compile.
             mockk(relaxed = true)
         )
         return TrackerViewModel(

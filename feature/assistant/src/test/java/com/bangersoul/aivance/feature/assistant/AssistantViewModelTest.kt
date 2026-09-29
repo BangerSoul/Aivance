@@ -12,7 +12,9 @@ import com.bangersoul.aivance.core.domain.engine.PromptOrchestrator
 import com.bangersoul.aivance.core.domain.repository.AssistantRepository
 import com.bangersoul.aivance.core.domain.usecase.assistant.AssistantRequest
 import com.bangersoul.aivance.core.domain.usecase.assistant.GetAssistantResponseUseCase
+import com.bangersoul.aivance.core.domain.repository.ProviderRepository
 import com.bangersoul.aivance.sdk.api.AIProvider
+import com.bangersoul.aivance.sdk.config.ProviderConfiguration
 import com.bangersoul.aivance.sdk.core.ProviderCapability
 import com.bangersoul.aivance.sdk.core.ProviderMetadata
 import com.bangersoul.aivance.sdk.core.ProviderStatus
@@ -49,6 +51,7 @@ class AssistantViewModelTest {
     private val mockResponseUseCase: GetAssistantResponseUseCase = mockk()
     private val mockProviderManager: ProviderManager = mockk()
     private val mockProviderRegistry: ProviderRegistry = mockk()
+    private val mockProviderRepository: ProviderRepository = mockk()
     private val mockStateEngine: CareerStateEngine = mockk()
     private val mockContextEngine: ContextEngine = mockk()
     private val mockIntentEngine: IntentEngine = mockk()
@@ -64,6 +67,10 @@ class AssistantViewModelTest {
         )
         every { mockProviderRegistry.getProvidersByCapability(ProviderCapability.AI.Chat) } returns
             listOf(fakeAiProvider("groq"))
+        // A persisted configuration is what makes the badge honest: the SDK
+        // marks every registered provider Ready on init, key or no key.
+        every { mockProviderRepository.getProviderConfigs() } returns
+            flowOf(listOf(ProviderConfiguration(providerId = "groq")))
         // The Copilot workspace drives the assistant off the CareerState engine
         // rather than a one-shot LoadProfile use case.
         every { mockStateEngine.state } returns MutableStateFlow(
@@ -83,6 +90,7 @@ class AssistantViewModelTest {
         mockResponseUseCase,
         mockProviderManager,
         mockProviderRegistry,
+        mockProviderRepository,
         mockStateEngine,
         mockContextEngine,
         mockIntentEngine,
@@ -137,6 +145,26 @@ class AssistantViewModelTest {
         every { mockProviderManager.providerStatuses } returns MutableStateFlow(
             mapOf("naukri" to ProviderStatus.Ready)
         )
+
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.providerStatus.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(false, viewModel.providerStatus.value.isReady)
+        assertEquals(null, viewModel.providerStatus.value.providerName)
+    }
+
+    @Test
+    fun `provider status does not trust a ready status with no saved configuration`() = runTest(testDispatcher) {
+        // The provider-optional path: the SDK registers Gemini and marks it Ready
+        // on initializeAll(), but nothing was ever configured. The badge must not
+        // claim "Gemini · Ready" (AUDIT 15/41).
+        every { mockProviderRegistry.getProvidersByCapability(ProviderCapability.AI.Chat) } returns
+            listOf(fakeAiProvider("gemini"))
+        every { mockProviderManager.providerStatuses } returns MutableStateFlow(
+            mapOf("gemini" to ProviderStatus.Ready)
+        )
+        every { mockProviderRepository.getProviderConfigs() } returns flowOf(emptyList())
 
         val viewModel = createViewModel()
         backgroundScope.launch { viewModel.providerStatus.collect {} }

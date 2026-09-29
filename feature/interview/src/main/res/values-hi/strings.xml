@@ -1,22 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="prep_studio">प्रेप स्टूडियो</string>
     <string name="practice">अभ्यास</string>
     <string name="history">इतिहास</string>
     <string name="question_bank">प्रश्न बैंक</string>
-    <string name="learn">सीखें</string>
-    <string name="starting_session">आपका सत्र शुरू हो रहा है…</string>
-    <string name="session_failed">सत्र विफल रहा</string>
-    <string name="new_practice_session">नया अभ्यास सत्र</string>
-    <string name="practice_subtitle">आपके लक्ष्य पद के अनुरूप AI-संचालित सिमुलेशन।</string>
-    <string name="session_type">सत्र का प्रकार</string>
     <string name="technical">तकनीकी</string>
     <string name="behavioral">व्यवहारिक</string>
-    <string name="hr_culture">HR और संस्कृति</string>
     <string name="target_role">लक्ष्य पद</string>
     <string name="target_role_hint">जैसे सीनियर एंड्रॉइड इंजीनियर</string>
-    <string name="company_optional">कंपनी (वैकल्पिक)</string>
-    <string name="start_mock_interview">मॉक इंटरव्यू शुरू करें</string>
     <string name="question_progress">प्रश्न %1$d/%2$d</string>
     <string name="preparing">तैयारी हो रही है</string>
     <string name="question">प्रश्न</string>
@@ -26,13 +16,6 @@
     <string name="submit_answer">उत्तर जमा करें</string>
     <string name="next_question">अगला प्रश्न</string>
     <string name="end_session">सत्र समाप्त करें</string>
-    <string name="session_review">सत्र समीक्षा</string>
-    <string name="overall_performance">समग्र प्रदर्शन</string>
-    <string name="ai_evaluation">आपके उत्तरों का AI मूल्यांकन</string>
-    <string name="key_strengths">प्रमुख ताकतें</string>
-    <string name="analysis_in_progress">विश्लेषण जारी है</string>
-    <string name="analysis_pending">मूल्यांकन पूरा होने पर विस्तृत AI फीडबैक दिखाई देगा।</string>
-    <string name="start_new_session">नया सत्र शुरू करें</string>
     <string name="no_sessions">अभी कोई सत्र नहीं</string>
     <string name="no_sessions_desc">एक अभ्यास सत्र पूरा करें और आपकी प्रगति यहां दिखाई देगी।</string>
     <string name="all">सभी</string>
@@ -55,8 +38,40 @@
     <string name="load_resources_failed">संसाधन लोड नहीं हो सके</string>
     <string name="no_resources">अभी कोई संसाधन नहीं</string>
     <string name="no_resources_desc">अनलॉक व्यक्तिगत लर्निंग पथ के लिए अपनी प्रोफ़ाइल को और पूरा करें।</string>
-    <string name="loading_ellipsis">लोड हो रहा है…</string>
     <string name="back">वापस</string>
     <string name="recommended_skills">अनुशंसित कौशल:</string>
     <string name="resources">संसाधन:</string>
+    <string name="interview_title">प्रेप स्टूडियो</string>
+    <string name="interview_subtitle">अपने अगले इंटरव्यू में महारत हासिल करें</string>
+    <string name="interview_config_failed">सेशन कॉन्फ़िगरेशन विफल</string>
+    <string name="interview_readiness">तैयारी</string>
+    <string name="interview_stat_practice">अभ्यास</string>
+    <string name="interview_scheduled">निर्धारित इंटरव्यू</string>
+    <string name="interview_prep">तैयारी</string>
+    <string name="interview_custom_mock">कस्टम मॉक सेशन</string>
+    <string name="interview_configure">सेशन कॉन्फ़िगर करें</string>
+    <string name="interview_company_optional">कंपनी (वैकल्पिक)</string>
+    <string name="interview_start_mock">मॉक इंटरव्यू शुरू करें</string>
+    <string name="interview_star_packs">STAR प्रेप पैक</string>
+    <string name="interview_star_packs_detail">भूमिका-विशिष्ट STAR-प्रारूप प्रश्न पैक काम किए गए उत्तरों के साथ — एक बनाएं, फिर इसे मॉक सेशन के रूप में अभ्यास करें।</string>
+    <string name="interview_practice_pack">इस पैक का अभ्यास करें</string>
+    <string name="interview_type_system_design">सिस्टम डिज़ाइन</string>
+    <string name="interview_generating_pack">पैक बन रहा है…</string>
+    <string name="interview_generate_star_pack">STAR पैक बनाएं</string>
+    <string name="interview_evaluation_hub">मूल्यांकन केंद्र</string>
+    <string name="interview_overall_readiness">समग्र तैयारी</string>
+    <string name="interview_overall_readiness_detail">तकनीकी और व्यवहारिक प्रदर्शन के आधार पर।</string>
+    <string name="interview_stat_communication">संचार</string>
+    <string name="interview_stat_star">STAR विधि</string>
+    <string name="interview_improvement_plan">सुधार योजना</string>
+    <string name="interview_analysis_progress">विश्लेषण जारी है</string>
+    <string name="interview_analysis_progress_detail">AI आपका सेशन मूल्यांकन कर आपकी सुधार योजना बना रहा है।</string>
+    <string name="interview_new_session">नया सेशन शुरू करें</string>
+
+    <string name="interview_hero_readiness_title">इंटरव्यू की तैयारी</string>
+    <string name="interview_hero_prep_title">%1$s के लिए तैयारी</string>
+    <string name="interview_hero_prep_description">आपका %1$s के लिए इंटरव्यू %2$s पर निर्धारित है।</string>
+    <string name="interview_hero_default_description">अपना स्कोर और आत्मविश्वास बढ़ाने के लिए मॉक सेशन पूरे करें।</string>
+    <string name="interview_star_key_points">STAR: %1$s</string>
+
 </resources>

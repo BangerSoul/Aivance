@@ -74,6 +74,7 @@ fun JobDetailsScreen(
         title = stringResource(R.string.job_details_title),
         onBack = onNavigateBack,
         showAssistantAction = true,
+        assistantContentDescription = stringResource(R.string.ai_assistant),
         onAssistantClick = {
             // Surface the assistant with this job as context so replies stay
             // on-target for the role being viewed.
@@ -114,21 +115,21 @@ fun JobDetailsScreen(
                 ) {
                     Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
                         Text(
-                            "Overview",
+                            stringResource(R.string.job_tab_overview),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
                         Text(
-                            "Readiness",
+                            stringResource(R.string.job_tab_readiness),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
                     }
                     Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
                         Text(
-                            "Intelligence",
+                            stringResource(R.string.job_tab_intelligence),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -211,13 +212,13 @@ private fun JobOverviewContent(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             AivancePrimaryButton(
-                text = "Apply Now",
+                text = stringResource(R.string.job_apply_now),
                 onClick = onApplyClick,
                 modifier = Modifier.weight(1f),
                 icon = Icons.Rounded.Public
             )
             AivanceSecondaryButton(
-                text = "Track",
+                text = stringResource(R.string.job_track),
                 onClick = onApplyAndTrack,
                 modifier = Modifier.weight(0.6f),
                 icon = Icons.Rounded.PlaylistAdd
@@ -252,14 +253,14 @@ private fun JobReadinessContent(
                 if (score != null) {
                     ScoreGauge(score = score, size = 80.dp)
                     Column {
-                        Text("Match Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("How prepared you are for this specific role.", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.job_match_readiness), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.job_match_readiness_detail), style = MaterialTheme.typography.bodySmall)
                     }
                 } else {
                     Column {
-                        Text("Match Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.job_match_readiness), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
-                            "Add your target role and skills to your profile to see how well you match this role.",
+                            stringResource(R.string.job_match_readiness_setup),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -267,32 +268,32 @@ private fun JobReadinessContent(
             }
         }
 
-        SectionHeader(title = "Required Steps")
+        SectionHeader(title = stringResource(R.string.job_required_steps))
 
         ReadinessCard(
-            title = "ATS Optimization",
+            title = stringResource(R.string.job_readiness_ats),
             description = if (score != null) {
-                "Your current resume match is ${score}%. Fix missing keywords to pass filters."
+                stringResource(R.string.job_readiness_ats_scored, score)
             } else {
-                "Run an ATS scan to see how well your resume matches this role."
+                stringResource(R.string.job_readiness_ats_unscored)
             },
-            actionLabel = "Run ATS Scan",
+            actionLabel = stringResource(R.string.job_readiness_ats_action),
             icon = Icons.Rounded.Search,
             onClick = onOpenAts
         )
 
         ReadinessCard(
-            title = "Cover Letter",
-            description = "A tailored cover letter increases your interview chance by 40%.",
-            actionLabel = "Generate with AI",
+            title = stringResource(R.string.job_readiness_cover),
+            description = stringResource(R.string.job_readiness_cover_detail),
+            actionLabel = stringResource(R.string.job_readiness_cover_action),
             icon = Icons.Rounded.HistoryEdu,
             onClick = onGenerateCoverLetter
         )
 
         ReadinessCard(
-            title = "Interview Prep",
-            description = "We found 12 specific interview questions for this role.",
-            actionLabel = "Start Prep",
+            title = stringResource(R.string.job_readiness_interview),
+            description = stringResource(R.string.job_readiness_interview_detail),
+            actionLabel = stringResource(R.string.job_readiness_interview_action),
             icon = Icons.Rounded.RecordVoiceOver,
             onClick = onNavigateToPrepStudio
         )
@@ -337,7 +338,7 @@ private fun JobIntelligenceContent(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         if (company != null) {
-            SectionHeader(title = "Company Insights")
+            SectionHeader(title = stringResource(R.string.job_company_insights))
             AivanceWorkspaceCard {
                 Column(Modifier.padding(16.dp)) {
                     Text(company.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -348,13 +349,13 @@ private fun JobIntelligenceContent(
             }
         }
 
-        SectionHeader(title = "Hiring Team")
+        SectionHeader(title = stringResource(R.string.job_hiring_team))
         if (recruiters.isEmpty()) {
             AivanceEmptyState(
-                title = "No recruiters found",
-                description = "We can try to find hiring managers and contacts for this role.",
+                title = stringResource(R.string.job_no_recruiters),
+                description = stringResource(R.string.job_no_recruiters_detail),
                 icon = Icons.Rounded.PersonSearch,
-                primaryActionText = "Search Recruiters",
+                primaryActionText = stringResource(R.string.job_search_recruiters),
                 onPrimaryAction = onFindRecruiters
             )
         } else {
@@ -374,10 +375,10 @@ private fun RecruiterCard(recruiter: Recruiter) {
             }
             Column(Modifier.weight(1f)) {
                 Text(recruiter.name, fontWeight = FontWeight.Bold)
-                Text(recruiter.title ?: "Recruiter", style = MaterialTheme.typography.bodySmall)
+                Text(recruiter.title ?: stringResource(R.string.job_recruiter_fallback_title), style = MaterialTheme.typography.bodySmall)
             }
             if (recruiter.contacts.any { it.isVerified }) {
-                Icon(Icons.Rounded.Verified, "Verified Contact", tint = AivanceTheme.colors.info, modifier = Modifier.size(16.dp))
+                Icon(Icons.Rounded.Verified, stringResource(R.string.job_verified_contact_cd), tint = AivanceTheme.colors.info, modifier = Modifier.size(16.dp))
             }
         }
     }

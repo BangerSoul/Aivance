@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,10 +40,10 @@ fun IntelligenceHubScreen(
     pendingDelete?.let { scan ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete ATS report?") },
+            title = { Text(stringResource(R.string.resume_delete_ats_report)) },
             text = {
                 Text(
-                    "\"${scan.title}\" (${scan.report.overallScore}% Match) will be removed permanently."
+                    stringResource(R.string.resume_delete_ats_report_detail, scan.title, scan.report.overallScore)
                 )
             },
             confirmButton = {
@@ -50,20 +51,21 @@ fun IntelligenceHubScreen(
                     viewModel.deleteReport(scan.report.id)
                     pendingDelete = null
                 }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
     }
 
     AivanceWorkspaceScaffold(
-        title = "Intelligence Hub",
-        subtitle = "Manage your career product",
+        title = stringResource(R.string.resume_intelligence_hub),
+        subtitle = stringResource(R.string.resume_intelligence_hub_subtitle),
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         floatingActionButton = {
             FloatingActionButton(
@@ -71,7 +73,7 @@ fun IntelligenceHubScreen(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add Resume")
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.resume_add_resume))
             }
         }
     ) {
@@ -81,14 +83,14 @@ fun IntelligenceHubScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                SectionHeader(title = "Your Resumes")
+                SectionHeader(title = stringResource(R.string.resume_your_resumes))
                 Spacer(Modifier.height(8.dp))
             }
             if (uiState.resumes.isEmpty()) {
                 item {
                     AivanceEmptyState(
-                        title = "No resumes yet",
-                        description = "Tap + to import a PDF or DOCX and build your first resume.",
+            title = stringResource(R.string.resume_no_resumes),
+            description = stringResource(R.string.resume_no_resumes_desc),
                         icon = Icons.Rounded.Description
                     )
                 }
@@ -101,14 +103,14 @@ fun IntelligenceHubScreen(
             }
 
             item {
-                SectionHeader(title = "Recent ATS Scans")
+                SectionHeader(title = stringResource(R.string.resume_recent_ats))
                 Spacer(Modifier.height(8.dp))
             }
             if (uiState.atsScans.isEmpty()) {
                 item {
                     AivanceEmptyState(
-                        title = "No ATS scans yet",
-                        description = "Run an ATS scan from the Resume Engine to see your match history.",
+            title = stringResource(R.string.resume_no_ats),
+            description = stringResource(R.string.resume_no_ats_desc),
                         icon = Icons.Rounded.History
                     )
                 }
@@ -136,7 +138,7 @@ private fun ResumeCard(resume: Resume, onClick: () -> Unit) {
             Column {
                 Text(resume.name, fontWeight = FontWeight.Bold)
                 Text(
-                    "Last updated ${formatRelativeTime(resume.lastModified)}",
+                    stringResource(R.string.resume_last_updated, formatRelativeTime(resume.lastModified)),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -156,14 +158,14 @@ private fun AtsScanCard(scan: AtsScanItem, onClick: () -> Unit, onDelete: () -> 
             Column(Modifier.weight(1f)) {
                 Text(scan.title, fontWeight = FontWeight.Bold)
                 Text(
-                    "${scan.report.overallScore}% Match · ${formatReportDate(scan.report.dateGenerated)}",
+                    stringResource(R.string.resume_ats_match_line, scan.report.overallScore, formatReportDate(scan.report.dateGenerated)),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Rounded.DeleteOutline,
-                    contentDescription = "Delete ATS report",
+                    contentDescription = stringResource(R.string.resume_delete_ats_report_cd),
                     tint = MaterialTheme.colorScheme.outline
                 )
             }

@@ -117,17 +117,17 @@ fun PrivacyCenterScreen(
         var passphraseInput by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { /* Modal */ },
-            title = { Text("Backup Passphrase Required") },
+            title = { Text(stringResource(R.string.privacy_passphrase_required)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        if (req.isRetry) "Invalid passphrase. Please re-enter the export passphrase for this backup file."
-                        else "This backup was created on another device or with a custom passphrase. Enter your backup export passphrase to decrypt and restore data."
+                        if (req.isRetry) stringResource(R.string.privacy_passphrase_invalid)
+                        else stringResource(R.string.privacy_passphrase_body)
                     )
                     OutlinedTextField(
                         value = passphraseInput,
                         onValueChange = { passphraseInput = it },
-                        label = { Text("Export Passphrase") },
+                        label = { Text(stringResource(R.string.privacy_passphrase_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -138,7 +138,7 @@ fun PrivacyCenterScreen(
                     enabled = passphraseInput.isNotBlank(),
                     onClick = { viewModel.importData(req.uri, passphraseInput) }
                 ) {
-                    Text("Decrypt & Restore")
+                    Text(stringResource(R.string.privacy_decrypt_restore))
                 }
             },
             dismissButton = {

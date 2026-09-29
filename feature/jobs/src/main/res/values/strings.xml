@@ -10,15 +10,22 @@
     <string name="search_placeholder">Search roles, skills, or companies</string>
     <string name="clear_search">Clear search</string>
     <string name="search">Search</string>
-    <string name="jobs_unavailable">Jobs unavailable</string>
-    <string name="country">Country</string>
-    <string name="state">State</string>
-    <string name="city">City</string>
     <string name="type">Type</string>
     <string name="workplace">Workplace</string>
     <string name="experience">Experience</string>
     <string name="all">All</string>
     <string name="clear_all_filters">Clear all filters</string>
+    <!-- Selection-first Discovery controls (AUDIT 46/48): four high-signal
+         controls stay visible, everything else lives behind one Filters sheet. -->
+    <string name="filters">Filters</string>
+    <string name="filters_active_count">Filters (%1$d)</string>
+    <string name="filters_active_hint">Filters are narrowing your results.</string>
+    <string name="location">Location</string>
+    <string name="location_placeholder">City, region, or Remote</string>
+    <string name="remote_only">Remote only</string>
+    <string name="quick_match">Quick Match</string>
+    <string name="set_target_role">Set target role</string>
+    <string name="best_match">Best match</string>
     <string name="exp_0_2">0–2 years</string>
     <string name="exp_3_5">3–5 years</string>
     <string name="exp_6_10">6–10 years</string>
@@ -43,24 +50,15 @@
     <string name="must_include_placeholder">e.g. Kotlin, remote</string>
     <string name="exclude">Exclude</string>
     <string name="exclude_placeholder">e.g. unpaid, senior</string>
-    <string name="no_matches_found">No matches found</string>
     <string name="no_jobs_yet">No jobs yet</string>
-    <string name="no_matches_desc">Try a different keyword or filter — or refresh to pull the latest roles.</string>
     <string name="no_jobs_desc">Configure a job provider to start discovering roles matched to your profile.</string>
     <string name="saved_jobs">Saved Jobs</string>
-    <string name="ats_match">ATS Match %1$d%%</string>
     <string name="save_job">Save job</string>
 
     <!-- Job details -->
     <string name="job_details_title">Job Details</string>
     <string name="bookmark">Bookmark</string>
-    <string name="apply_on_provider_site">Apply on Provider Site</string>
-    <string name="apply_and_track">Apply &amp; Track in Pipeline</string>
     <string name="find_recruiters">Find Recruiters</string>
-    <string name="cover_letter">Cover Letter</string>
-    <string name="ai_compatibility_check">AI Compatibility Check</string>
-    <string name="ai_compatibility_sub">Check how well your resume matches this job.</string>
-    <string name="check">Check</string>
     <string name="job_description">Job Description</string>
 
     <!-- In-app Apply (WebView + AI suggestions) -->
@@ -81,12 +79,10 @@
     <string name="apply_cover_generate">Generate cover letter</string>
     <string name="apply_cover_generating">Writing your cover letter…</string>
     <string name="apply_cover_copy">Copy</string>
-    <string name="apply_cover_copied">Cover letter copied</string>
     <string name="apply_recruiters_find">Find recruiter emails</string>
     <string name="apply_recruiters_finding">Searching for hiring contacts…</string>
     <string name="apply_recruiters_none">No verified recruiter emails found for this company.</string>
     <string name="apply_recruiters_copy_email">Copy email</string>
-    <string name="apply_email_copied">Email copied</string>
     <string name="apply_no_resume">Import a resume first to use AI assistance.</string>
     <string name="apply_no_company_domain">No company domain available to search recruiters.</string>
     <string name="apply_tracked">Tracked in Pipeline</string>
@@ -99,7 +95,6 @@
     <string name="open_roles_count">Open Roles (%1$d)</string>
     <string name="no_open_roles">No open roles found</string>
     <string name="no_open_roles_desc">This company currently has no indexed roles in your job feed.</string>
-    <string name="company_remote_policy">Remote policy</string>
     <string name="company_company_size">Company size</string>
     <string name="company_region">Region</string>
     <string name="company_technologies">Tech stack</string>
@@ -119,4 +114,37 @@
     <string name="create_tailored_resume">Create Tailored Resume</string>
     <string name="track_application">Track Application</string>
     <string name="ask_ai">Ask AI</string>
+    <string name="ai_assistant">AI Assistant</string>
+    <string name="job_apply_now">Apply Now</string>
+    <string name="job_track">Track</string>
+    <string name="job_match_readiness">Match Readiness</string>
+    <string name="job_match_readiness_detail">How prepared you are for this specific role.</string>
+    <string name="job_match_readiness_setup">Add your target role and skills to your profile to see how well you match this role.</string>
+    <string name="job_required_steps">Required Steps</string>
+    <string name="job_readiness_ats">ATS Optimization</string>
+    <string name="job_readiness_ats_scored">Your current resume match is %1$d%%. Fix missing keywords to pass filters.</string>
+    <string name="job_readiness_ats_unscored">Run an ATS scan to see how well your resume matches this role.</string>
+    <string name="job_readiness_ats_action">Run ATS Scan</string>
+    <string name="job_readiness_cover">Cover Letter</string>
+    <string name="job_readiness_cover_detail">A tailored cover letter increases your interview chance by 40%%.</string>
+    <string name="job_readiness_cover_action">Generate with AI</string>
+    <string name="job_readiness_interview">Interview Prep</string>
+    <string name="job_readiness_interview_detail">We found 12 specific interview questions for this role.</string>
+    <string name="job_readiness_interview_action">Start Prep</string>
+    <string name="job_company_insights">Company Insights</string>
+    <string name="job_hiring_team">Hiring Team</string>
+    <string name="job_no_recruiters">No recruiters found</string>
+    <string name="job_no_recruiters_detail">We can try to find hiring managers and contacts for this role.</string>
+    <string name="job_search_recruiters">Search Recruiters</string>
+
+    <string name="job_tab_overview">Overview</string>
+    <string name="job_tab_readiness">Readiness</string>
+    <string name="job_tab_intelligence">Intelligence</string>
+    <string name="job_recruiter_fallback_title">Recruiter</string>
+    <string name="job_verified_contact_cd">Verified contact</string>
+    <string name="job_match_high">High Match</string>
+    <string name="job_match_good">Good Match</string>
+    <string name="job_match_potential">Potential Match</string>
+    <string name="job_experience_level_match">Matches your %1$s experience.</string>
+
 </resources>

@@ -11,6 +11,7 @@ import com.bangersoul.aivance.core.common.result.Result
 import com.bangersoul.aivance.core.domain.engine.CareerStateEngine
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventRequest
 import com.bangersoul.aivance.core.domain.usecase.analytics.TrackEventUseCase
+import com.bangersoul.aivance.core.domain.usecase.job.GetCachedJobsUseCase
 import com.bangersoul.aivance.core.domain.usecase.job.ScoreJobFitRequest
 import com.bangersoul.aivance.core.domain.usecase.job.ScoreJobFitUseCase
 import com.bangersoul.aivance.core.domain.usecase.job.SearchJobsRequest
@@ -22,6 +23,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -32,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -48,6 +51,7 @@ class JobsViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val mockSearchJobs: SearchJobsUseCase = mockk()
+    private val mockGetCachedJobs: GetCachedJobsUseCase = mockk()
     private val mockToggleBookmark: ToggleJobBookmarkUseCase = mockk()
     private val mockCareerStateEngine: CareerStateEngine = mockk()
     private val mockScoreJobFit: ScoreJobFitUseCase = mockk()
@@ -73,7 +77,8 @@ class JobsViewModelTest {
     )
 
     private fun createViewModel() = JobsViewModel(
-        mockSearchJobs, mockToggleBookmark, mockCareerStateEngine, mockScoreJobFit, mockTrackEvent,
+        mockSearchJobs, mockGetCachedJobs, mockToggleBookmark, mockCareerStateEngine, mockScoreJobFit,
+        mockTrackEvent,
         savedStateHandle = SavedStateHandle()
     )
 
@@ -96,6 +101,9 @@ class JobsViewModelTest {
         Dispatchers.setMain(testDispatcher)
         coEvery { mockTrackEvent(any()) } returns Result.Success(Unit)
         coEvery { mockScoreJobFit.invoke(any()) } returns emptyMap()
+        // Cold-start cache hydration (B3/B4) must not interfere with the search
+        // assertions below: an empty corpus leaves the initial state untouched.
+        coEvery { mockGetCachedJobs(Unit) } returns Result.Success(emptyList())
         every { mockCareerStateEngine.state } returns MutableStateFlow(CareerState())
     }
 
@@ -125,6 +133,56 @@ class JobsViewModelTest {
     }
 
     @Test
+    fun `a search in flight reports progress instead of a settled zero state`() = runTest {
+        // The Discovery screen renders a skeleton while `isSearching` is true and
+        // no results are on screen, so a cold query must never resolve to a
+        // settled zero-state frame first (AUDIT 49).
+        // A search that has not answered yet — exactly the window the screen
+        // must cover with a skeleton.
+        coEvery { mockSearchJobs.invoke(any()) } coAnswers {
+            delay(500)
+            Result.Success(emptyList<JobListing>())
+        }
+
+        val viewModel = createViewModel()
+        collectStates(viewModel, backgroundScope)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val idle = viewModel.uiState.value as JobsUiState.Success
+        assertFalse("nothing is in flight on a settled screen", idle.isSearching)
+
+        viewModel.onEvent(JobsUiEvent.Search("android"))
+        testDispatcher.scheduler.advanceTimeBy(50)
+
+        val inFlight = viewModel.uiState.value as JobsUiState.Success
+        assertTrue("the pending search must report progress", inFlight.isSearching)
+        assertTrue("and must still be empty on screen", inFlight.jobs.isEmpty())
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val settled = viewModel.uiState.value as JobsUiState.Success
+        assertTrue("no matches were configured", settled.jobs.isEmpty())
+        assertFalse("the search has resolved", settled.isSearching)
+    }
+
+    @Test
+    fun `opens on the locally cached corpus when no search has run`() = runTest {
+        // B3/B4: the background harvesters keep the jobs table populated, so a
+        // cold start must render those listings instead of "Found 0 active
+        // opportunities" while the inbox advertises new matches.
+        coEvery { mockGetCachedJobs(Unit) } returns Result.Success(jobs)
+
+        val viewModel = createViewModel()
+        val states = collectStates(viewModel, backgroundScope)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state is JobsUiState.Success)
+        assertEquals(2, (state as JobsUiState.Success).jobs.size)
+        assertEquals("1", state.jobs.first().id)
+    }
+
+    @Test
     fun `restores typed search query from saved state`() = runTest {
         coEvery { mockSearchJobs.invoke(any()) } returns Result.Success(emptyList())
 
@@ -132,7 +190,8 @@ class JobsViewModelTest {
         // SavedStateHandle and is picked up by the recreated ViewModel.
         val handle = SavedStateHandle().apply { set("jobs_search_query", "android") }
         val viewModel = JobsViewModel(
-            mockSearchJobs, mockToggleBookmark, mockCareerStateEngine, mockScoreJobFit, mockTrackEvent,
+            mockSearchJobs, mockGetCachedJobs, mockToggleBookmark, mockCareerStateEngine, mockScoreJobFit,
+            mockTrackEvent,
             savedStateHandle = handle
         )
         val states = collectStates(viewModel, backgroundScope)

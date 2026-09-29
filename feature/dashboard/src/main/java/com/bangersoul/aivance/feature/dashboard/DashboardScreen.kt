@@ -39,7 +39,6 @@ fun DashboardScreen(
     onNavigateToInterview: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onNavigateToJobs: () -> Unit = {},
-    onNavigateToAssistant: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToProviderSetup: () -> Unit = {},
     onDiscoverBySkill: (String) -> Unit = {},
@@ -53,13 +52,14 @@ fun DashboardScreen(
         isLoading = uiState.isLoading,
         error = uiState.error,
         onRetry = { viewModel.onEvent(DashboardUiEvent.Retry) },
-        onAssistantClick = onNavigateToAssistant,
+        // No assistant action in this header: the nav bar's orb is the same
+        // destination 50 dp below it (AUDIT 4/32).
         topBarActions = {
             IconButton(onClick = onNavigateToNotifications) {
-                Icon(Icons.Rounded.Notifications, contentDescription = "Notifications")
+                Icon(Icons.Rounded.Notifications, contentDescription = stringResource(R.string.notifications_cd))
             }
             IconButton(onClick = onNavigateToProfile) {
-                Icon(Icons.Rounded.AccountCircle, contentDescription = "Profile")
+                Icon(Icons.Rounded.AccountCircle, contentDescription = stringResource(R.string.profile_cd))
             }
         }
     ) {
@@ -68,7 +68,6 @@ fun DashboardScreen(
             onNavigateToResume = onNavigateToResume,
             onNavigateToJobs = onNavigateToJobs,
             onNavigateToInterview = onNavigateToInterview,
-            onNavigateToAssistant = onNavigateToAssistant,
             onNavigateToTracker = onNavigateToTracker,
             onNavigateToProfile = onNavigateToProfile,
             onNavigateToAnalytics = onNavigateToAnalytics,
@@ -104,7 +103,6 @@ internal fun DashboardContent(
     onNavigateToResume: () -> Unit,
     onNavigateToJobs: () -> Unit,
     onNavigateToInterview: () -> Unit,
-    onNavigateToAssistant: () -> Unit,
     onNavigateToTracker: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToAnalytics: () -> Unit = {},
@@ -131,58 +129,58 @@ internal fun DashboardContent(
             }
         }
 
-        // 2. Career Score hero
-        item {
-            CareerScoreCard(
-                score = state.careerScore,
-                onNavigateToAnalytics = onNavigateToAnalytics
-            )
-        }
-
-        // 3. Quick stats row: ATS | Active Apps | Saved Jobs
-        item {
-            SectionHeader(title = stringResource(R.string.dash_overview))
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    label = stringResource(R.string.dash_ats_score),
-                    // Unmeasured renders as an em dash, never as a confident "0" (R3-1).
-                    value = state.atsScore?.toString() ?: stringResource(R.string.dash_no_data),
-                    icon = Icons.Rounded.FactCheck,
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    label = stringResource(R.string.dash_active_apps),
-                    value = "${state.activeApplications}",
-                    icon = Icons.Rounded.Send,
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    label = stringResource(R.string.dash_saved_jobs),
-                    value = "${state.savedJobs}",
-                    icon = Icons.Rounded.Bookmark,
-                    modifier = Modifier.weight(1f)
+        // 2. Career Score hero — only once a score has actually been measured.
+        // A fresh account used to open on a placeholder ring that also offered a
+        // third route into a career surface; unmeasured metrics now render
+        // nothing at all (AUDIT 06/34).
+        state.careerScore?.let { score ->
+            item {
+                CareerScoreCard(
+                    score = score,
+                    onNavigateToAnalytics = onNavigateToAnalytics
                 )
             }
         }
 
-        // 4. Quick Actions 2x2 grid
-        item {
-            SectionHeader(title = stringResource(R.string.dash_quick_actions))
-            Spacer(Modifier.height(10.dp))
-            QuickActionsGrid(
-                onResume = onNavigateToResume,
-                onJobs = onNavigateToJobs,
-                onInterview = onNavigateToInterview,
-                onTracker = onNavigateToTracker,
-                onAnalytics = onNavigateToAnalytics
-            )
+        // 3. Quick stats row: ATS | Active Apps | Saved Jobs. Shown only when at
+        // least one number is real — the "— / 0 / 0" wall told a new user
+        // nothing and was not actionable (AUDIT 06b).
+        val hasRealMetric = state.atsScore != null || state.activeApplications > 0 || state.savedJobs > 0
+        if (hasRealMetric) {
+            item {
+                SectionHeader(title = stringResource(R.string.dash_overview))
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    StatCard(
+                        label = stringResource(R.string.dash_ats_score),
+                        // Unmeasured renders as an em dash, never as a confident "0" (R3-1).
+                        value = state.atsScore?.toString() ?: stringResource(R.string.dash_no_data),
+                        icon = Icons.Rounded.FactCheck,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(R.string.dash_active_apps),
+                        value = "${state.activeApplications}",
+                        icon = Icons.Rounded.Send,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        label = stringResource(R.string.dash_saved_jobs),
+                        value = "${state.savedJobs}",
+                        icon = Icons.Rounded.Bookmark,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
 
-        // 5. Career Knowledge Graph insights (skill gaps + application context)
+        // The 5-tile Quick Actions grid is gone: every tile re-routed to the tab
+        // 50 dp below it (AUDIT 16b, 17–20).
+
+        // 4. Career Knowledge Graph insights (skill gaps + application context)
         if (state.graphInsights.available) {
             item {
                 SectionHeader(title = stringResource(R.string.dash_graph_insights))
@@ -210,9 +208,9 @@ internal fun DashboardContent(
 }
 
 @Composable
-private fun CareerScoreCard(score: Int?, onNavigateToAnalytics: () -> Unit) {
+private fun CareerScoreCard(score: Int, onNavigateToAnalytics: () -> Unit) {
     val animated by animateFloatAsState(
-        targetValue = (score ?: 0).coerceIn(0, 100) / 100f,
+        targetValue = score.coerceIn(0, 100) / 100f,
         animationSpec = tween(durationMillis = 1000),
         label = "CareerScore"
     )
@@ -564,92 +562,6 @@ private fun StatCard(
 }
 
 @Composable
-private fun QuickActionsGrid(
-    onResume: () -> Unit,
-    onJobs: () -> Unit,
-    onInterview: () -> Unit,
-    onTracker: () -> Unit,
-    onAnalytics: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            QuickActionTile(
-                label = stringResource(R.string.dash_action_resume),
-                icon = Icons.Rounded.Description,
-                tint = AivanceTheme.colors.accent,
-                onClick = onResume,
-                modifier = Modifier.weight(1f)
-            )
-            QuickActionTile(
-                label = stringResource(R.string.dash_action_jobs),
-                icon = Icons.Rounded.WorkOutline,
-                tint = AivanceTheme.colors.info,
-                onClick = onJobs,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            QuickActionTile(
-                label = stringResource(R.string.dash_action_interview),
-                icon = Icons.Rounded.RecordVoiceOver,
-                tint = AivanceTheme.colors.warning,
-                onClick = onInterview,
-                modifier = Modifier.weight(1f)
-            )
-            QuickActionTile(
-                label = stringResource(R.string.dash_action_pipeline),
-                icon = Icons.Rounded.ViewKanban,
-                tint = MaterialTheme.colorScheme.primary,
-                onClick = onTracker,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        QuickActionTile(
-            label = stringResource(R.string.dash_action_insights),
-            icon = Icons.Rounded.BarChart,
-            tint = MaterialTheme.colorScheme.secondary,
-            onClick = onAnalytics,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun QuickActionTile(
-    label: String,
-    icon: ImageVector,
-    tint: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = AivanceTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Surface(shape = CircleShape, color = tint.copy(alpha = 0.12f)) {
-                Icon(
-                    icon,
-                    contentDescription = label,
-                    modifier = Modifier.padding(7.dp).size(18.dp),
-                    tint = tint
-                )
-            }
-            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-@Composable
 private fun scoreColor(score: Int?): Color {
     // An unmeasured score is neutral rather than "bad".
     if (score == null) return MaterialTheme.colorScheme.surfaceVariant
@@ -692,7 +604,10 @@ private fun DashboardContentPreview() {
                 isLoading = false,
                 greeting = "Good Morning, Azmath",
                 userDesignation = "Software Engineer at TCS",
-                careerScore = 78,
+                // careerScore intentionally left unmeasured in the preview:
+                // the card is absent at zero data, exactly as it is on a fresh
+                // account.
+
                 atsScore = 85,
                 activeApplications = 6,
                 nextInterview = "Fri 10:00",
@@ -702,7 +617,6 @@ private fun DashboardContentPreview() {
             onNavigateToResume = {},
             onNavigateToJobs = {},
             onNavigateToInterview = {},
-            onNavigateToAssistant = {},
             onNavigateToTracker = {},
             onNavigateToProfile = {},
             onNavigateToAnalytics = {}

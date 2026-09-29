@@ -8,6 +8,7 @@ import com.bangersoul.aivance.core.domain.engine.ContextEngine
 import com.bangersoul.aivance.core.domain.engine.IntentEngine
 import com.bangersoul.aivance.core.domain.engine.PromptOrchestrator
 import com.bangersoul.aivance.core.domain.repository.AssistantRepository
+import com.bangersoul.aivance.core.domain.repository.ProviderRepository
 import com.bangersoul.aivance.core.domain.usecase.assistant.AssistantRequest
 import com.bangersoul.aivance.core.domain.usecase.assistant.GetAssistantResponseUseCase
 import com.bangersoul.aivance.sdk.core.ProviderCapability
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -57,6 +59,7 @@ class AssistantViewModel @Inject constructor(
     private val getAssistantResponseUseCase: GetAssistantResponseUseCase,
     private val providerManager: ProviderManager,
     private val providerRegistry: ProviderRegistry,
+    private val providerRepository: ProviderRepository,
     private val stateEngine: CareerStateEngine,
     private val contextEngine: ContextEngine,
     private val intentEngine: IntentEngine,
@@ -81,21 +84,36 @@ class AssistantViewModel @Inject constructor(
         .map { it.metadata.id }
         .toSet()
 
-    val providerStatus: StateFlow<ProviderStatusUi> = providerManager.providerStatuses
-        .map { statuses ->
-            val ready = statuses.entries.firstOrNull { (id, status) ->
-                id in aiProviderIds && status in readyStatuses
-            }
-            if (ready != null) {
-                ProviderStatusUi(
-                    isReady = true,
-                    providerName = friendlyName(ready.key),
-                    statusLabel = ready.value.name.replaceFirstChar { it.uppercase() }
-                )
-            } else {
-                ProviderStatusUi(isReady = false)
-            }
+    /**
+     * The badge states configuration that actually exists (AUDIT 15/41).
+     *
+     * A live status alone is not evidence: `ProviderManager.initializeAll()`
+     * marks every registered provider `Ready` even with zero configuration, so a
+     * fresh, provider-optional account was told "Gemini · Ready". Readiness now
+     * requires a *persisted* provider configuration — the same authority the
+     * provider gate uses — together with an operational live status.
+     */
+    val providerStatus: StateFlow<ProviderStatusUi> = combine(
+        providerRepository.getProviderConfigs(),
+        providerManager.providerStatuses
+    ) { savedConfigs, statuses ->
+        val configuredAiIds = savedConfigs
+            .map { it.providerId }
+            .filter { it in aiProviderIds }
+            .toSet()
+        val ready = statuses.entries.firstOrNull { (id, status) ->
+            id in configuredAiIds && status in readyStatuses
         }
+        if (ready != null) {
+            ProviderStatusUi(
+                isReady = true,
+                providerName = friendlyName(ready.key),
+                statusLabel = ready.value.name.replaceFirstChar { it.uppercase() }
+            )
+        } else {
+            ProviderStatusUi(isReady = false)
+        }
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProviderStatusUi())
 
     val userName: StateFlow<String> = stateEngine.state

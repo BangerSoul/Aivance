@@ -3,10 +3,8 @@
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
     <string name="add">Add</string>
-    <string name="delete">Delete</string>
 
     <string name="career_pipeline_title">Career Pipeline</string>
-    <string name="pipeline_unavailable">Pipeline unavailable</string>
     <string name="add_application">Add application</string>
     <string name="add_application_title">Add Application</string>
     <string name="company">Company</string>
@@ -20,14 +18,35 @@
     <string name="unknown_company">Unknown Company</string>
     <string name="ats_optimized">ATS Optimized</string>
     <string name="open_tasks">%1$d open task%2$s</string>
-    <string name="timeline">Timeline</string>
-    <string name="no_activity">No activity recorded yet.</string>
-    <string name="notes">Notes</string>
-    <string name="notes_placeholder">Add follow-up notes, contact details, links…</string>
-    <string name="notes_autosave">Saved automatically as you type.</string>
-    <string name="open_job_listing">Open Job Listing</string>
-    <string name="delete_application">Delete Application</string>
-    <string name="delete_application_title">Delete application?</string>
-    <string name="delete_application_body">This removes "%1$s" and its entire history from your pipeline. This cannot be undone.</string>
-    <string name="updated">Updated %1$s</string>
+    <string name="tracker_subtitle">Manage your execution pipeline</string>
+    <string name="tracker_daily_quota">Daily Application Quota</string>
+    <string name="tracker_edit_cap">Edit cap</string>
+    <string name="tracker_quota_progress">%1$d of %2$d applied today</string>
+    <string name="tracker_daily_cap">Daily Application Cap</string>
+    <string name="tracker_daily_cap_detail">How many applications do you want to aim for per day?</string>
+    <string name="tracker_preset_per_day">%1$d per day</string>
+    <string name="tracker_preset_per_day_selected">%1$d per day ✓</string>
+    <string name="tracker_overview">Overview</string>
+    <string name="tracker_tasks">Tasks</string>
+    <string name="tracker_timeline">Timeline</string>
+    <string name="tracker_notes">Notes</string>
+    <string name="tracker_notes_placeholder">Add private notes about this application...</string>
+    <string name="tracker_open_listing">Open Job Listing</string>
+    <string name="delete">Delete</string>
+    <string name="tracker_delete_application">Delete Application</string>
+    <string name="tracker_delete_detail">Are you sure you want to remove %1$s at %2$s from your pipeline?</string>
+    <string name="tracker_no_tasks">No tasks yet</string>
+    <string name="tracker_no_tasks_detail">Tasks will be automatically generated as you progress through the pipeline.</string>
+    <string name="tracker_no_activity">No activity recorded yet.</string>
+
+    <string name="tracker_hero_title">Pipeline Performance</string>
+    <string name="tracker_hero_description">You have %1$d active applications.</string>
+    <string name="tracker_hero_conversion_detail">Your interview conversion is %1$d%%.</string>
+    <string name="tracker_hero_default_detail">Apply to a role to start tracking your interview conversion.</string>
+    <string name="tracker_view_analytics">View Analytics</string>
+    <string name="tracker_kanban_board">Kanban Board</string>
+    <string name="tracker_stat_ats_match">ATS Match</string>
+    <string name="tracker_stat_priority">Priority</string>
+    <string name="tracker_stat_high">High</string>
+
 </resources>

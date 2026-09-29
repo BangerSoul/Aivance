@@ -51,25 +51,18 @@ fun PrepStudioScreen(
     }
 
     var selectedTab by remember { mutableStateOf(0) }
+    // Two tabs replace the five-way wall (AUDIT 10–14): Research and History are
+    // now sections of Practice, and Learn is reachable only through the
+    // skill-gap chip that seeds it.
     val tabs = listOf(
-        "Practice",
-        "Research",
-        "History",
-        "Question Bank",
-        "Learn"
+        stringResource(R.string.practice),
+        stringResource(R.string.question_bank)
     )
 
-    // Arriving from a dashboard skill-gap chip: jump straight to the Learn tab
-    // and let it request recommendations for the seeded skill.
-    LaunchedEffect(initialLearnSkill) {
-        if (!initialLearnSkill.isNullOrBlank()) {
-            selectedTab = 4
-        }
-    }
-
     AivanceWorkspaceScaffold(
-        title = "Prep Studio",
-        subtitle = "Master your next interview",
+        title = stringResource(R.string.interview_title),
+        subtitle = stringResource(R.string.interview_subtitle),
+        backContentDescription = stringResource(R.string.back),
         onBack = onBack,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) {
@@ -92,23 +85,38 @@ fun PrepStudioScreen(
                 }
             }
             when (selectedTab) {
-                0 -> PracticeTab(interviewViewModel)
-                1 -> ResearchTab(interviewViewModel)
-                2 -> HistoryTab(interviewViewModel)
-                3 -> QuestionBankTab(questionBankViewModel)
-                4 -> LearnTab(learningViewModel, initialSkill = initialLearnSkill)
+                0 -> PracticeTab(interviewViewModel, learningViewModel, initialLearnSkill)
+                else -> QuestionBankTab(questionBankViewModel)
             }
         }
     }
 }
 
 @Composable
-private fun PracticeTab(viewModel: InterviewViewModel) {
+private fun PracticeTab(
+    viewModel: InterviewViewModel,
+    learningViewModel: LearningHubViewModel,
+    initialLearnSkill: String?
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     when (val state = uiState) {
         is InterviewUiState.Idle -> {
-            Column(modifier = Modifier.fillMaxSize()) {
+            if (!initialLearnSkill.isNullOrBlank()) {
+                // Arriving from a dashboard skill-gap chip: the focused Learn
+                // surface replaces the hub, and it is the only way in — Learn is
+                // no longer one of the tabs.
+                LearnTab(learningViewModel, initialSkill = initialLearnSkill)
+                return
+            }
+            // One scrolling surface for the whole Practice tab: hero, hub,
+            // session history and the folded role-intelligence card, instead of
+            // three more tabs competing for the same screen.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 // Hero Section
                 val upcoming = state.careerState?.pipeline?.upcomingInterviews?.firstOrNull()
                 PrepStudioHero(
@@ -136,6 +144,10 @@ private fun PracticeTab(viewModel: InterviewViewModel) {
                     onGeneratePack = { role -> viewModel.onEvent(InterviewUiEvent.GenerateStarPack(role)) },
                     onStart = { r, c, t, j, pack -> viewModel.onEvent(InterviewUiEvent.StartSession(r, c, t, j, pack)) }
                 )
+
+                RoleIntelligenceCard(state)
+
+                HistorySection(viewModel)
             }
         }
         is InterviewUiState.Preparing -> LoadingPanel("Configuring your AI interview coach...")
@@ -150,10 +162,10 @@ private fun PracticeTab(viewModel: InterviewViewModel) {
             onNewSession = { viewModel.onEvent(InterviewUiEvent.Reset) }
         )
         is InterviewUiState.Error -> AivanceEmptyState(
-            title = "Session Configuration Failed",
+            title = stringResource(R.string.interview_config_failed),
             description = state.message,
             icon = Icons.Rounded.ErrorOutline,
-            primaryActionText = "Retry",
+            primaryActionText = stringResource(R.string.try_again),
             onPrimaryAction = { viewModel.onEvent(InterviewUiEvent.Reset) }
         )
     }
@@ -167,10 +179,11 @@ private fun PrepStudioHero(
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
         AivanceHeroCard(
-            title = if (upcomingInterview != null) "Prep for ${upcomingInterview.company}" else "Interview Readiness",
+            title = if (upcomingInterview != null) stringResource(R.string.interview_hero_prep_title, upcomingInterview.company)
+                    else stringResource(R.string.interview_hero_readiness_title),
             description = if (upcomingInterview != null)
-                "You have an interview for ${upcomingInterview.role} scheduled for ${upcomingInterview.dateTime}."
-                else "Complete mock sessions to increase your score and confidence.",
+                stringResource(R.string.interview_hero_prep_description, upcomingInterview.role, upcomingInterview.dateTime)
+                else stringResource(R.string.interview_hero_default_description),
             actionLabel = "Quick Practice",
             onClick = onQuickPractice
         )
@@ -189,7 +202,7 @@ private fun PrepStudioHero(
                     // Not measured yet: an empty gauge and an em dash, never an invented score.
                     ScoreGauge(score = readinessScore ?: 0, size = 48.dp)
                     Column {
-                        Text("Readiness", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.interview_readiness), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(readinessScore?.let { "$it%" } ?: "—", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                     }
                 }
@@ -205,7 +218,7 @@ private fun PrepStudioHero(
                         Icon(Icons.Rounded.Timer, null, Modifier.padding(8.dp).size(20.dp), tint = AivanceTheme.colors.success)
                     }
                     Column {
-                        Text("Practice", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.interview_stat_practice), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             readinessScore?.let { "${String.format("%.1f", it * 0.15)} hrs" } ?: "—",
                             fontWeight = FontWeight.Bold,
@@ -233,20 +246,21 @@ private fun PracticeHub(
     var packRole by remember { mutableStateOf("") }
 
     val types = listOf(
-        "TECHNICAL" to "Technical",
-        "BEHAVIORAL" to "Behavioral",
-        "SYSTEM_DESIGN" to "System Design"
+        "TECHNICAL" to stringResource(R.string.technical),
+        "BEHAVIORAL" to stringResource(R.string.behavioral),
+        "SYSTEM_DESIGN" to stringResource(R.string.interview_type_system_design)
     )
 
+    // No scroll of its own: the Practice tab owns the single scroll surface, and
+    // a nested same-direction scrollable would blow up at measure time.
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (upcomingInterviews.isNotEmpty()) {
-            SectionHeader(title = "Scheduled Interviews")
+            SectionHeader(title = stringResource(R.string.interview_scheduled))
             upcomingInterviews.forEach { interview ->
                 AivanceWorkspaceCard(
                     onClick = { onStart(interview.role, interview.company, "BEHAVIORAL", interview.id.toLongOrNull(), null) }
@@ -259,13 +273,13 @@ private fun PracticeHub(
                             Text(interview.company, fontWeight = FontWeight.Bold)
                             Text(interview.role, style = MaterialTheme.typography.bodySmall)
                         }
-                        AivanceTertiaryButton(text = "Prep", onClick = { onStart(interview.role, interview.company, "BEHAVIORAL", interview.id.toLongOrNull(), null) })
+                        AivanceTertiaryButton(text = stringResource(R.string.interview_prep), onClick = { onStart(interview.role, interview.company, "BEHAVIORAL", interview.id.toLongOrNull(), null) })
                     }
                 }
             }
         }
 
-        SectionHeader(title = "Custom Mock Session")
+        SectionHeader(title = stringResource(R.string.interview_custom_mock))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -273,13 +287,13 @@ private fun PracticeHub(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
         ) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("Configure Session", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.interview_configure), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
                 OutlinedTextField(
                     value = role,
                     onValueChange = { role = it },
-                    label = { Text("Target Role") },
-                    placeholder = { Text("e.g. Android Engineer") },
+                    label = { Text(stringResource(R.string.target_role)) },
+                    placeholder = { Text(stringResource(R.string.target_role_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AivanceTheme.shapes.medium
@@ -288,7 +302,7 @@ private fun PracticeHub(
                 OutlinedTextField(
                     value = company,
                     onValueChange = { company = it },
-                    label = { Text("Company (Optional)") },
+                    label = { Text(stringResource(R.string.interview_company_optional)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AivanceTheme.shapes.medium
@@ -305,7 +319,7 @@ private fun PracticeHub(
                 }
 
                 AivancePrimaryButton(
-                    text = "Start Mock Interview",
+                    text = stringResource(R.string.interview_start_mock),
                     onClick = { onStart(role, company, type, null, null) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = role.isNotBlank(),
@@ -314,9 +328,9 @@ private fun PracticeHub(
             }
         }
 
-        SectionHeader(title = "STAR Prep Packs")
+        SectionHeader(title = stringResource(R.string.interview_star_packs))
         Text(
-            "Role-specific STAR-format question packs with worked answers — generate one, then practice it as a mock session.",
+            stringResource(R.string.interview_star_packs_detail),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -330,14 +344,14 @@ private fun PracticeHub(
                 OutlinedTextField(
                     value = packRole,
                     onValueChange = { packRole = it },
-                    label = { Text("Target Role") },
-                    placeholder = { Text("e.g. Android Engineer") },
+                    label = { Text(stringResource(R.string.target_role)) },
+                    placeholder = { Text(stringResource(R.string.target_role_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = AivanceTheme.shapes.medium
                 )
                 AivancePrimaryButton(
-                    text = if (isGeneratingPack) "Generating pack…" else "Generate STAR Pack",
+                    text = if (isGeneratingPack) stringResource(R.string.interview_generating_pack) else stringResource(R.string.interview_generate_star_pack),
                     onClick = { onGeneratePack(packRole) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = packRole.isNotBlank() && !isGeneratingPack,
@@ -361,7 +375,7 @@ private fun PracticeHub(
                         }
                         if (question.expectedKeyPoints.isNotEmpty()) {
                             Text(
-                                "STAR: ${question.expectedKeyPoints.joinToString(" · ")}",
+                                stringResource(R.string.interview_star_key_points, question.expectedKeyPoints.joinToString(" · ")),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -371,7 +385,7 @@ private fun PracticeHub(
             }
             Spacer(Modifier.height(8.dp))
             AivanceSecondaryButton(
-                text = "Practice this pack",
+                text = stringResource(R.string.interview_practice_pack),
                 onClick = { onStart(packRole, "", "BEHAVIORAL", null, starPack) },
                 modifier = Modifier.fillMaxWidth(),
                 icon = Icons.Rounded.PlayArrow
@@ -382,59 +396,30 @@ private fun PracticeHub(
     }
 }
 
+/**
+ * Role intelligence, folded out of the old Research tab into Practice.
+ *
+ * It renders only what the account actually knows — the target role and the
+ * skills on the profile. The tab it replaces also printed a generic "Company
+ * Research" overview and two canned "interview edge" bullets that were
+ * identical for every user and led nowhere (AUDIT 11).
+ */
 @Composable
-private fun ResearchTab(viewModel: InterviewViewModel) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val state = uiState as? InterviewUiState.Idle ?: return
+private fun RoleIntelligenceCard(state: InterviewUiState.Idle) {
+    val profile = state.careerState?.profile ?: return
+    val role = profile.targetRole.ifBlank { return }
+    val topSkills = profile.skills.take(3).joinToString(", ")
+    if (topSkills.isBlank()) return
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item {
-            Text("Role Intelligence", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("AI analysis of requirements vs. your skills.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        item {
-            val role = state.careerState?.profile?.targetRole?.ifBlank { null } ?: "Target Role"
-            val topSkills = state.careerState?.profile?.skills.orEmpty().take(3).joinToString(", ").ifBlank { "Architecture, Problem Solving" }
-            InsightCard(
-                text = "For $role, focus on demonstrating '$topSkills' and technical leadership.",
-                icon = Icons.Rounded.AutoAwesome
-            )
-        }
-
-        item {
-            val targetRole = state.careerState?.profile?.targetRole?.ifBlank { "Technology Leader" } ?: "Technology Leader"
-            SectionHeader(title = "Company Research")
-            AivanceWorkspaceCard {
-                Column(Modifier.padding(16.dp)) {
-                    Text("$targetRole Overview", fontWeight = FontWeight.Bold)
-                    Text(
-                        "Top organizations hiring for $targetRole look for strong engineering principles, scalable design patterns, and cross-functional team execution.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-
-        item {
-            val primarySkill = state.careerState?.profile?.skills?.firstOrNull() ?: "Core Domain"
-            val secondarySkill = state.careerState?.profile?.skills?.getOrNull(1) ?: "System Architecture"
-            SectionHeader(title = "Your Interview Edge")
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Rounded.CheckCircle, null, tint = AivanceTheme.colors.success, modifier = Modifier.size(18.dp))
-                    Text("Strong candidate match in '$primarySkill'", style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Rounded.Info, null, tint = AivanceTheme.colors.warning, modifier = Modifier.size(18.dp))
-                    Text("Refresh knowledge in '$secondarySkill' for live coding rounds", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
+        SectionHeader(title = stringResource(R.string.practice_role_intelligence))
+        InsightCard(
+            text = stringResource(R.string.practice_role_intelligence_body, role, topSkills),
+            icon = Icons.Rounded.AutoAwesome
+        )
     }
 }
     @Composable
@@ -555,7 +540,7 @@ private fun SessionReviewPanel(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Evaluation Hub", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.interview_evaluation_hub), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         if (feedback != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -564,16 +549,16 @@ private fun SessionReviewPanel(
                 Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     ScoreGauge(score = feedback.overallScore, size = 100.dp)
                     Column {
-                        Text("Overall Readiness", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("Based on technical and behavioral performance.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.interview_overall_readiness), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.interview_overall_readiness_detail), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
 
             // Skill Scores
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCard(label = "Communication", value = "85%", icon = Icons.Rounded.RecordVoiceOver, modifier = Modifier.weight(1f))
-                StatCard(label = "STAR Method", value = "70%", icon = Icons.Rounded.Star, modifier = Modifier.weight(1f))
+                StatCard(label = stringResource(R.string.interview_stat_communication), value = "85%", icon = Icons.Rounded.RecordVoiceOver, modifier = Modifier.weight(1f))
+                StatCard(label = stringResource(R.string.interview_stat_star), value = "70%", icon = Icons.Rounded.Star, modifier = Modifier.weight(1f))
             }
 
             if (feedback.detailedSummary.isNotBlank()) {
@@ -581,7 +566,7 @@ private fun SessionReviewPanel(
             }
 
             if (feedback.improvements.isNotEmpty()) {
-                SectionHeader(title = "Improvement Plan")
+                SectionHeader(title = stringResource(R.string.interview_improvement_plan))
                 feedback.improvements.forEach { tip ->
                     AivanceWorkspaceCard {
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -593,8 +578,8 @@ private fun SessionReviewPanel(
             }
         } else {
             AivanceEmptyState(
-                title = "Analysis in Progress",
-                description = "AI is evaluating your session and generating your improvement plan.",
+                title = stringResource(R.string.interview_analysis_progress),
+                description = stringResource(R.string.interview_analysis_progress_detail),
                 icon = Icons.Rounded.TrendingUp,
                 compact = true
             )
@@ -602,7 +587,7 @@ private fun SessionReviewPanel(
 
         Spacer(Modifier.height(16.dp))
         AivancePrimaryButton(
-            text = "Start a New Session",
+            text = stringResource(R.string.interview_new_session),
             onClick = onNewSession,
             modifier = Modifier.fillMaxWidth()
         )
@@ -626,8 +611,12 @@ private fun StatCard(label: String, value: String, icon: androidx.compose.ui.gra
     }
 }
 
+/**
+ * Session history as a section of the Practice tab (it used to be its own tab).
+ * A plain column: the Practice surface already scrolls.
+ */
 @Composable
-private fun HistoryTab(viewModel: InterviewViewModel) {
+private fun HistorySection(viewModel: InterviewViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val history = (uiState as? InterviewUiState.Idle)?.history.orEmpty()
 
@@ -640,12 +629,12 @@ private fun HistoryTab(viewModel: InterviewViewModel) {
         return
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+    Column(
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        items(history, key = { it.id }) { session ->
+        SectionHeader(title = stringResource(R.string.history))
+        history.forEach { session ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

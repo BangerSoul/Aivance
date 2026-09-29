@@ -3,13 +3,8 @@
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>
-    <string name="save">Save</string>
     <string name="edit">Edit</string>
-    <string name="ok">OK</string>
     <string name="done">Done</string>
-    <string name="delete">Delete</string>
-    <string name="email">Email</string>
-    <string name="settings">Settings</string>
     <string name="notifications">Notifications</string>
 
     <!-- Splash -->
@@ -20,15 +15,6 @@
     <!-- Welcome -->
     <string name="welcome_brand">✦  AiVance</string>
     <string name="welcome_tagline">AI Powered Career Operating System</string>
-    <string name="welcome_quote">“Made by a Job Seeker, For Us ❤️”</string>
-    <string name="welcome_headline">Land your next opportunity faster with AI.</string>
-    <string name="feature_resume_intelligence">Resume Intelligence</string>
-    <string name="feature_ats_optimization">ATS Optimization</string>
-    <string name="feature_job_discovery">Job Discovery</string>
-    <string name="feature_recruiter_intelligence">Recruiter Intelligence</string>
-    <string name="feature_interview_preparation">Interview Preparation</string>
-    <string name="feature_career_analytics">Career Analytics</string>
-    <string name="get_started">Get Started</string>
     <string name="skip_for_now">Skip for now</string>
 
     <!-- Login -->
@@ -43,8 +29,6 @@
 
     <!-- About -->
     <string name="about_title">About AiVance</string>
-    <string name="about_resources_title">Remote Work Resources</string>
-    <string name="about_resources_subtitle">Curated job boards, interview-prep guides and remote-first companies</string>
     <string name="resources_title">Remote Work Resources</string>
     <string name="resources_hub_title">Remote Work &amp; Career Hub</string>
     <string name="resources_hub_subtitle">Curated reference platforms and interview prep guides</string>
@@ -146,77 +130,9 @@
     <string name="go_to_dashboard">Go to Dashboard</string>
 
     <!-- Profile -->
-    <string name="profile_title">Profile</string>
-    <string name="profile_photo_desc">Profile photo</string>
-    <string name="change_photo">Change photo</string>
-    <string name="your_name_placeholder">Your Name</string>
-    <string name="add_current_role">Add your current role</string>
-    <string name="designation_at"> at </string>
-    <string name="tap_camera_hint">Tap the camera to change your photo</string>
-    <string name="personal_section">Personal</string>
-    <string name="full_name">Full Name</string>
-    <string name="email_locked">Email is linked to your account and cannot be changed.</string>
-    <string name="phone_optional">Phone (optional)</string>
-    <string name="date_of_birth">Date of Birth</string>
-    <string name="linkedin_optional">LinkedIn URL (optional)</string>
-    <string name="github_optional">GitHub URL (optional)</string>
-    <string name="career_section">Career</string>
-    <string name="current_role">Current Role</string>
     <string name="company">Company</string>
     <string name="target_role">Target Role</string>
-    <string name="years_experience">Years of Experience</string>
-    <string name="years_short">%1$d yrs</string>
-    <string name="skills">Skills</string>
-    <string name="no_skills">No skills added yet.</string>
-    <string name="remove_skill_desc">Remove %1$s</string>
-    <string name="settings_sub">Notifications, privacy, providers &amp; more</string>
-    <string name="quick_access">Quick Access</string>
     <string name="saved_jobs">Saved Jobs</string>
-    <string name="interview">Interview</string>
-    <string name="career_analytics">Career Analytics</string>
-    <string name="career_analytics_sub">KPIs, trends, and insights</string>
-    <string name="learning_hub">Learning Hub</string>
-    <string name="learning_hub_sub">Skills and resources</string>
-    <string name="notifications_sub">Alerts and reminders</string>
-    <string name="provider_management">Provider Management</string>
-    <string name="provider_management_sub">AI, job, and enrichment providers</string>
-    <string name="pick">Pick</string>
-    <string name="add_skill">+ Add</string>
-    <string name="skill_placeholder">Skill</string>
-    <string name="add_skill_desc">Add skill</string>
-
-    <!-- Settings -->
-    <string name="settings_title">Settings</string>
-    <string name="section_general">General</string>
-    <string name="appearance_item">Appearance</string>
-    <string name="appearance_item_sub">Theme, accent, and dynamic color</string>
-    <string name="section_notifications">Notifications</string>
-    <string name="job_alerts">Job alerts</string>
-    <string name="job_alerts_sub">New matching jobs</string>
-    <string name="interview_reminders">Interview reminders</string>
-    <string name="interview_reminders_sub">Upcoming sessions</string>
-    <string name="follow_up_reminders">Follow-up reminders</string>
-    <string name="follow_up_reminders_sub">Application follow-ups</string>
-    <string name="section_providers">Providers</string>
-    <string name="provider_management_item">Provider Management</string>
-    <string name="provider_management_item_sub">AI, Job, and Enrichment providers</string>
-    <string name="section_privacy">Privacy &amp; Security</string>
-    <string name="privacy_center_item">Privacy Center</string>
-    <string name="privacy_center_item_sub">Encryption, export, and delete</string>
-    <string name="analytics_insights">Analytics Insights</string>
-    <string name="analytics_insights_sub">Detailed career KPIs</string>
-    <string name="export_my_data">Export my data</string>
-    <string name="export_my_data_sub">Download your data as JSON</string>
-    <string name="delete_account">Delete account</string>
-    <string name="delete_account_sub">Permanently remove your data</string>
-    <string name="section_about">About</string>
-    <string name="about_item">About Aivance</string>
-    <string name="sign_out">Sign Out</string>
-    <string name="delete_account_confirm">Delete account?</string>
-    <string name="delete_account_confirm_body">This permanently removes your profile and career data. This action cannot be undone.</string>
-    <string name="language">Language</string>
-    <string name="selected">Selected</string>
-    <string name="language_english">English</string>
 
     <!-- On-device model download (WorkManager worker) -->
     <string name="model_download_channel_name">On-device model downloads</string>
@@ -238,4 +154,94 @@
     <string name="model_download_required">Download the model to use this provider</string>
     <string name="model_download_required_hint">The model runs fully on your device — no API key, no cloud. It downloads once and then works offline.</string>
     <string name="dismiss">Dismiss</string>
+
+    <string name="profile_tab_identity">Identity</string>
+    <string name="profile_tab_system">System</string>
+    <string name="providers_title">Providers</string>
+    <string name="profile_hub_title">Identity Hub</string>
+    <string name="profile_hub_subtitle">Control your career operating system</string>
+    <string name="profile_section_personal">Personal Information</string>
+    <string name="profile_full_name">Full Name</string>
+    <string name="profile_phone">Phone</string>
+    <string name="profile_email">Email</string>
+    <string name="profile_section_experience">Professional Experience</string>
+    <string name="profile_current_role">Current Role</string>
+    <string name="profile_experience">Experience</string>
+    <string name="profile_section_preferences">Career Preferences</string>
+    <string name="profile_preferences_hint">These settings influence your recommendations.</string>
+    <string name="profile_remote_work">Remote Work</string>
+    <string name="profile_visa_required">Visa Sponsorship Required</string>
+    <string name="profile_visa">Visa Sponsorship</string>
+    <string name="profile_yes">Yes</string>
+    <string name="profile_no">No</string>
+    <string name="profile_required">Required</string>
+    <string name="profile_not_required">Not required</string>
+    <string name="profile_section_goal">Target Career Goal</string>
+    <string name="profile_target_role_hint">e.g. Principal Software Engineer</string>
+    <string name="profile_section_skills">Skills of Interest</string>
+    <string name="profile_add_skill">+ Add Skill</string>
+    <string name="profile_skills_label">Skills</string>
+    <string name="profile_section_salary">Salary Expectation</string>
+    <string name="profile_salary_label">Annual Salary</string>
+    <string name="profile_salary_hint">e.g. $150,000</string>
+    <string name="profile_section_industries">Preferred Industries</string>
+    <string name="profile_add_industry_chip">+ Add</string>
+    <string name="profile_industries_label">Industries</string>
+    <string name="profile_saving">Saving...</string>
+    <string name="profile_save_changes">Save Changes</string>
+    <string name="profile_add_skill_title">Add Skill</string>
+    <string name="profile_skill_label">Skill</string>
+    <string name="profile_skill_hint">e.g. Jetpack Compose</string>
+    <string name="profile_add">Add</string>
+    <string name="profile_add_industry_title">Add Preferred Industry</string>
+    <string name="profile_industry_label">Industry</string>
+    <string name="profile_industry_hint">e.g. Fintech</string>
+    <string name="profile_not_provided">Not provided</string>
+    <string name="providers_loading">Loading providers…</string>
+    <string name="providers_retry">Retry</string>
+    <string name="providers_subtitle">Manage your AI and Job connectivity.</string>
+    <string name="providers_section_ai">AI</string>
+    <string name="providers_section_job_boards">Job Boards</string>
+    <string name="providers_enabled">Enabled</string>
+    <string name="providers_disabled">Disabled</string>
+    <string name="providers_delete_model">Delete model</string>
+    <string name="providers_not_downloaded">Model not downloaded — download once to use this provider fully offline.</string>
+    <string name="providers_model_label">Model</string>
+    <string name="providers_select_model">Select…</string>
+    <string name="providers_save">Save</string>
+    <string name="providers_testing">Testing…</string>
+    <string name="providers_test">Test</string>
+    <string name="providers_health_healthy">Healthy</string>
+    <string name="providers_health_degraded">Degraded</string>
+    <string name="providers_health_unhealthy">Unhealthy</string>
+    <string name="providers_health_unknown">Unknown</string>
+    <string name="providers_download_dialog_title">Download on-device model</string>
+    <string name="providers_model_size">Model size: %1$s (%2$d bytes)</string>
+    <string name="providers_free_storage">Free storage: %1$s</string>
+    <string name="providers_ram_warning">This device has less than 4 GB of RAM. The full model may run slowly.</string>
+    <string name="providers_storage_blocked">Not enough free storage for the full model. The smaller model fits — use it instead.</string>
+    <string name="providers_download_compact">Download smaller model (%1$s)</string>
+    <string name="providers_compact_note">Uses far less storage and RAM.</string>
+    <string name="providers_download">Download</string>
+    <string name="system_controls_title">System Controls</string>
+    <string name="system_appearance_item">Appearance &amp; Theme</string>
+    <string name="system_security_section">Security &amp; Privacy</string>
+    <string name="system_about_section">About</string>
+    <string name="system_data_section">Data Management</string>
+    <string name="system_reset">Reset All Settings</string>
+    <string name="system_sign_out">Sign Out</string>
+    <string name="system_version_banner">AiVance v%1$s (BETA)</string>
+    <string name="system_tagline">Your Career Operating System</string>
+    <string name="privacy_passphrase_required">Backup Passphrase Required</string>
+    <string name="privacy_passphrase_invalid">Invalid passphrase. Please re-enter the export passphrase for this backup file.</string>
+    <string name="privacy_passphrase_body">This backup was created on another device or with a custom passphrase. Enter your backup export passphrase to decrypt and restore data.</string>
+    <string name="privacy_passphrase_label">Export Passphrase</string>
+    <string name="privacy_decrypt_restore">Decrypt &amp; Restore</string>
+    <string name="profile_configure_provider">Configure %1$s</string>
+
+    <plurals name="profile_experience_years">
+        <item quantity="one">%1$d year</item>
+        <item quantity="other">%1$d years</item>
+    </plurals>
+
 </resources>

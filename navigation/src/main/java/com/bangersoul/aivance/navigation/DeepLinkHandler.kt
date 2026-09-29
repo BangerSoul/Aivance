@@ -9,11 +9,13 @@ import timber.log.Timber
  * [Destination] objects for navigation.
  *
  * Supported URI patterns:
- *   aivance://jobs/{jobId}
- *   aivance://chat/{conversationId}   → Assistant
- *   aivance://interview/{sessionId}   → Prep Studio
- *   aivance://settings                → Settings Hub
- *   aivance://resume/{resumeId}
+ *   aivance://jobs/{jobId}         → Job Details
+ *   aivance://chat[/…]             → the AI orb (Assistant)
+ *   aivance://interview[/…]        → Studio ▸ Practice
+ *   aivance://resume[/…]           → Studio ▸ Resumes
+ *   aivance://settings            → Identity Hub
+ *   aivance://saved               → Saved Jobs
+ *   aivance://notifications       → Notifications
  *   aivance://app (generic app open)
  */
 object DeepLinkHandler {
@@ -71,15 +73,18 @@ object DeepLinkHandler {
                 Destination.JobDetails(jobId = jobId)
             }
             "chat" -> {
-                // AI chat now lives in the Assistant surface.
-                Destination.Assistant
+                // The orb is the only assistant surface; the legacy Assistant
+                // spoke is gone.
+                Destination.AssistantOrb
             }
             "interview" -> {
-                // Interview practice was merged into Prep Studio.
-                Destination.PrepStudio
+                // Interview practice lives in Studio ▸ Practice: the segment is
+                // a nav argument now, not a separate destination.
+                Destination.Studio(segment = StudioSegment.PRACTICE)
             }
             "resume" -> {
-                Destination.Intelligence
+                // Resumes live in Studio ▸ Resumes.
+                Destination.Studio(segment = StudioSegment.RESUMES)
             }
             "app", "dashboard" -> {
                 Destination.Dashboard

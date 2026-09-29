@@ -16,18 +16,6 @@
     <string name="assistant_prompt_ats">What should I improve to raise my ATS score?</string>
     <string name="assistant_prompt_roadmap">Draft a career roadmap for the next 6 months</string>
     <string name="assistant_prompt_behavioral">Prepare me for a behavioral interview question</string>
-    <string name="assistant_your_title">Your AI Career Assistant</string>
-    <string name="assistant_welcome_subtitle">Optimize resumes, find recruiters, prepare for interviews — all in one command surface.</string>
-    <string name="assistant_quick_actions">Quick Actions</string>
-    <string name="assistant_action_improve_resume">Improve Resume</string>
-    <string name="assistant_action_find_jobs">Find Jobs</string>
-    <string name="assistant_action_interview_prep">Interview Prep</string>
-    <string name="assistant_action_cover_letter">Cover Letter</string>
-    <string name="assistant_chip_prompt_resume">Analyze my resume and suggest improvements</string>
-    <string name="assistant_chip_prompt_jobs">Find jobs matching my profile</string>
-    <string name="assistant_chip_prompt_interview">Start a mock interview for my target role</string>
-    <string name="assistant_chip_prompt_letter">Generate a cover letter for my target role</string>
-    <string name="assistant_try_prompt">Try a prompt</string>
     <string name="assistant_no_provider_configured">No AI provider configured</string>
     <string name="assistant_no_provider_detail">Connect an AI provider to unlock the full assistant.</string>
     <string name="assistant_configure">Configure</string>
@@ -44,4 +32,14 @@
     <string name="assistant_attached_file">[Attached: %1$s]\n</string>
     <string name="assistant_photo_attached">[Photo attached]\n</string>
     <string name="assistant_document_fallback">document</string>
+    <string name="assistant_snapshot">Career Snapshot</string>
+    <string name="assistant_career_score">Career Score</string>
+    <string name="assistant_ats_match">ATS Match</string>
+    <string name="assistant_quick_commands">Quick Commands</string>
+    <string name="assistant_chip_optimize">Optimize Resume</string>
+    <string name="assistant_chip_find_jobs">Find Jobs</string>
+    <string name="assistant_chip_mock">Mock Interview</string>
+    <string name="assistant_suggested">Suggested Advice</string>
+    <string name="assistant_recent_insights">Recent AI Insights</string>
+    <string name="assistant_no_insights">No recent insights. Ask me anything to get started!</string>
 </resources>

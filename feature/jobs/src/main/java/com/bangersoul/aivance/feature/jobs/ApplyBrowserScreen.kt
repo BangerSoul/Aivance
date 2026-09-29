@@ -91,6 +91,7 @@ fun ApplyBrowserScreen(
     AivanceWorkspaceScaffold(
         title = uiState.job?.title ?: stringResource(R.string.apply_title),
         subtitle = uiState.job?.company,
+        backContentDescription = stringResource(R.string.back),
         onBack = onNavigateBack,
         showAssistantAction = false,
         topBarActions = {

@@ -1,5 +1,6 @@
 package com.bangersoul.aivance.navigation
 
+import com.bangersoul.aivance.core.designsystem.icon.IconVariant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -14,9 +15,9 @@ class DestinationTest {
         assertEquals(
             listOf(
                 Destination.Dashboard,
-                Destination.Discovery,
-                Destination.Pipeline,
-                Destination.Studio
+                Destination.Discovery(),
+                Destination.Pipeline(),
+                Destination.Studio()
             ),
             Destination.rootDestinations
         )
@@ -31,17 +32,6 @@ class DestinationTest {
     }
 
     @Test
-    fun `legacy intel and prep roots alias onto the Studio workspace`() {
-        assertEquals(Destination.Studio, Destination.workspaceKey(Destination.Intelligence))
-        assertEquals(Destination.Studio, Destination.workspaceKey(Destination.PrepStudio))
-        assertEquals(Destination.Dashboard, Destination.workspaceKey(Destination.Dashboard))
-        assertEquals(Destination.Pipeline, Destination.workspaceKey(Destination.Pipeline))
-        Destination.rootDestinations.forEach { root ->
-            assertEquals(root, Destination.workspaceKey(root))
-        }
-    }
-
-    @Test
     fun `every root destination is authenticated`() {
         Destination.rootDestinations.forEach { dest ->
             assertTrue("${dest.label} must be authenticated", dest.isAuthenticatedDestination())
@@ -53,11 +43,11 @@ class DestinationTest {
         Destination.rootDestinations.forEach { dest ->
             assertNotNull(
                 "${dest.label} must resolve an outlined icon",
-                dest.iconIntent.forVariant(com.bangersoul.aivance.core.designsystem.icon.IconVariant.OUTLINED)
+                dest.iconIntent.forVariant(IconVariant.OUTLINED)
             )
             assertNotNull(
                 "${dest.label} must resolve a filled icon",
-                dest.iconIntent.forVariant(com.bangersoul.aivance.core.designsystem.icon.IconVariant.FILLED)
+                dest.iconIntent.forVariant(IconVariant.FILLED)
             )
         }
     }
@@ -79,20 +69,25 @@ class DestinationTest {
     }
 
     @Test
-    fun `assistant orb carries an accent intent without standard tab icon`() {
+    fun `assistant orb carries no standard tab icon`() {
         val intent = Destination.AssistantOrb.iconIntent
         assertNull("orb renders via AiOrbIcon, not a vector", intent.outlined)
         assertNull(intent.filled)
-
-        val assistant = Destination.Assistant.iconIntent
-        assertNotNull(assistant.outlined)
-        assertTrue("assistant icon uses the accent tint", assistant.isAccent)
+        assertTrue(Destination.AssistantOrb.isAuthenticatedDestination())
     }
 
     @Test
     fun `orb and studio are authenticated surfaces`() {
         assertTrue(Destination.AssistantOrb.isAuthenticatedDestination())
-        assertTrue(Destination.Studio.isAuthenticatedDestination())
+        assertTrue(Destination.Studio().isAuthenticatedDestination())
+    }
+
+    @Test
+    fun `resources is guarded like every other authenticated surface`() {
+        // Guard gap (AUDIT §3.2): without this, a deep link could push Resources
+        // onto the auth backstack before sign-in.
+        assertTrue(Destination.Resources in Destination.authenticatedDestinations)
+        assertTrue(Destination.Resources.isAuthenticatedDestination())
     }
 
     @Test
@@ -118,9 +113,20 @@ class DestinationTest {
         assertTrue(Destination.CompanyDetail("acme").isAuthenticatedDestination())
         assertTrue(Destination.ResumeDetail(1L).isAuthenticatedDestination())
         assertTrue(Destination.ResumeEngine(jobDescription = "JD").isAuthenticatedDestination())
-        assertTrue(Destination.TrackApplication("job-1").isAuthenticatedDestination())
-        assertTrue(Destination.DiscoverBySkill("Kotlin").isAuthenticatedDestination())
-        assertTrue(Destination.LearnSkill("Kotlin").isAuthenticatedDestination())
+    }
+
+    @Test
+    fun `seeded workspace variants stay authenticated despite differing from the canonical tab`() {
+        // Discovery/Pipeline/Studio are parameterised: a seeded instance is not
+        // equal to the set member, so membership alone would funnel these to the
+        // auth backstack.
+        assertTrue(Destination.Discovery(query = "Kotlin").isAuthenticatedDestination())
+        assertTrue(Destination.Pipeline(jobId = "job-1").isAuthenticatedDestination())
+        assertTrue(Destination.Studio(segment = StudioSegment.PRACTICE).isAuthenticatedDestination())
+        assertTrue(
+            Destination.Studio(segment = StudioSegment.PRACTICE, learnSkill = "Kotlin")
+                .isAuthenticatedDestination()
+        )
     }
 
     @Test
@@ -130,23 +136,33 @@ class DestinationTest {
     }
 
     @Test
-    fun `track application carries the source job id and maps to pipeline`() {
-        assertEquals("job-1", Destination.TrackApplication("job-1").jobId)
-        assertEquals("Pipeline", Destination.TrackApplication("job-1").label)
-        assertNotNull(Destination.TrackApplication("job-1").icon)
+    fun `pipeline absorbs the tracked application id as a nav argument`() {
+        // The TrackApplication spoke is gone; the job id rides on the tab.
+        assertEquals(null, Destination.Pipeline().jobId)
+        assertEquals("job-1", Destination.Pipeline(jobId = "job-1").jobId)
+        assertEquals("Pipeline", Destination.Pipeline(jobId = "job-1").label)
+        assertNotNull(Destination.Pipeline(jobId = "job-1").icon)
     }
 
     @Test
-    fun `skill-gap deep links carry the skill and map to their workspaces`() {
-        val discover = Destination.DiscoverBySkill("Kubernetes")
-        assertEquals("Kubernetes", discover.skill)
+    fun `discovery absorbs the skill-gap query as a nav argument`() {
+        val discover = Destination.Discovery(query = "Kubernetes")
+        assertEquals("Kubernetes", discover.query)
         assertEquals("Job Discovery", discover.label)
         assertNotNull(discover.icon)
+        assertEquals(null, Destination.Discovery().query)
+    }
 
-        val learn = Destination.LearnSkill("Kubernetes")
-        assertEquals("Kubernetes", learn.skill)
-        assertEquals("Prep Studio", learn.label)
-        assertNotNull(learn.icon)
+    @Test
+    fun `studio absorbs the segment and learn-skill seeds as nav arguments`() {
+        assertEquals(StudioSegment.RESUMES, Destination.Studio().segment)
+        assertEquals(null, Destination.Studio().learnSkill)
+
+        val practice = Destination.Studio(segment = StudioSegment.PRACTICE, learnSkill = "Kubernetes")
+        assertEquals(StudioSegment.PRACTICE, practice.segment)
+        assertEquals("Kubernetes", practice.learnSkill)
+        assertEquals("Studio", practice.label)
+        assertNotNull(practice.icon)
     }
 
     @Test
@@ -178,8 +194,8 @@ class DestinationTest {
 
     @Test
     fun `v2 career destinations carry labels`() {
-        assertEquals("Prep Studio", Destination.PrepStudio.label)
-        assertEquals("Pipeline", Destination.Pipeline.label)
+        assertEquals("Studio", Destination.Studio().label)
+        assertEquals("Pipeline", Destination.Pipeline().label)
         assertEquals("Identity Hub", Destination.IdentityHub.label)
         assertEquals("Company", Destination.CompanyDetail("x").label)
         assertEquals("Provider Setup", Destination.ProviderSetup.label)

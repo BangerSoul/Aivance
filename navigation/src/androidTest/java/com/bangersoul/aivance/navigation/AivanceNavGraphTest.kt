@@ -83,23 +83,32 @@ class AivanceNavGraphTest {
 
     @Test
     fun deepLinkChatParsesCorrectly() {
+        // The Assistant spoke is gone; the orb is the only assistant surface.
         val uri = Uri.parse("aivance://chat")
         val dest = DeepLinkHandler.parseUri(uri)
-        assertTrue("Expected Assistant, got $dest", dest is Destination.Assistant)
+        assertTrue("Expected AssistantOrb, got $dest", dest is Destination.AssistantOrb)
     }
 
     @Test
     fun deepLinkInterviewParsesCorrectly() {
         val uri = Uri.parse("aivance://interview")
         val dest = DeepLinkHandler.parseUri(uri)
-        assertTrue("Expected PrepStudio, got $dest", dest is Destination.PrepStudio)
+        assertTrue("Expected Studio, got $dest", dest is Destination.Studio)
+        assertEquals(
+            StudioSegment.PRACTICE,
+            (dest as Destination.Studio).segment
+        )
     }
 
     @Test
     fun deepLinkResumeParsesCorrectly() {
         val uri = Uri.parse("aivance://resume")
         val dest = DeepLinkHandler.parseUri(uri)
-        assertTrue("Expected Intelligence, got $dest", dest is Destination.Intelligence)
+        assertTrue("Expected Studio, got $dest", dest is Destination.Studio)
+        assertEquals(
+            StudioSegment.RESUMES,
+            (dest as Destination.Studio).segment
+        )
     }
 
     @Test

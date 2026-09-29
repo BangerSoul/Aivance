@@ -3,12 +3,7 @@
     <!-- Common -->
     <string name="back">वापस</string>
     <string name="cancel">रद्द करें</string>
-    <string name="save">सहेजें</string>
     <string name="retry">पुनः प्रयास करें</string>
-    <string name="loading">लोड हो रहा है...</string>
-    <string name="not_set">सेट नहीं किया गया</string>
-    <string name="enabled">सक्षम</string>
-    <string name="disabled">अक्षम</string>
 
     <!-- Auth -->
     <string name="auth_create_account_title">अपना खाता बनाएं</string>
@@ -27,48 +22,12 @@
     <string name="auth_or_separator">"  या  "</string>
     <string name="auth_google">Google से जारी रखें</string>
 
-    <!-- AI Settings -->
-    <string name="ai_settings">AI सेटिंग्स</string>
-    <string name="ai_configuration">AI कॉन्फ़िगरेशन</string>
-    <string name="provider_format">प्रदाता: %1$s</string>
-    <string name="model_format">मॉडल: %1$s</string>
-    <string name="status_format">स्थिति: %1$s</string>
-
     <!-- Provider Management -->
-    <string name="providers">प्रदाता</string>
-    <string name="refresh_providers">प्रदाताओं को रीफ़्रेश करें</string>
-    <string name="loading_providers">प्रदाता लोड हो रहे हैं…</string>
-    <string name="section_ai_providers">AI प्रदाता</string>
-    <string name="section_job_providers">नौकरी प्रदाता</string>
-    <string name="section_enrichment_providers">एनरिचमेंट प्रदाता</string>
-    <string name="api_key_configured">API कुंजी (कॉन्फ़िगर की गई)</string>
     <string name="api_key">API कुंजी</string>
-    <string name="model">मॉडल</string>
-    <string name="select">चुनें…</string>
-    <string name="testing">परीक्षण हो रहा है…</string>
-    <string name="test">परीक्षण</string>
-    <string name="healthy">स्वस्थ</string>
-    <string name="degraded">विकृत</string>
-    <string name="unhealthy">अस्वस्थ</string>
-    <string name="unknown">अज्ञात</string>
     <string name="download_model">मॉडल डाउनलोड करें</string>
-    <string name="delete_model">मॉडल हटाएं</string>
-    <string name="model_ready">मॉडल तैयार</string>
-    <string name="model_downloaded">डाउनलोड हो गया</string>
-    <string name="model_not_downloaded">मॉडल डाउनलोड नहीं हुआ — इस प्रदाता को पूरी तरह ऑफ़लाइन उपयोग करने के लिए एक बार डाउनलोड करें।</string>
-    <string name="downloading_model">मॉडल डाउनलोड हो रहा है… %1$d%%</string>
-    <string name="download_model_title">ऑन-डिवाइस मॉडल डाउनलोड करें</string>
-    <string name="download_model_size">मॉडल का आकार: %1$s (%2$d बाइट्स)</string>
-    <string name="download_model_free_storage">खाली स्टोरेज: %1$s</string>
-    <string name="download_model_ram_warning">इस डिवाइस में 4 GB से कम RAM है। पूरा मॉडल धीमा चल सकता है।</string>
-    <string name="download_model_storage_blocked">पूरे मॉडल के लिए पर्याप्त खाली स्टोरेज नहीं। छोटा मॉडल फिट हो जाता है — इसके बजाय उसका उपयोग करें।</string>
-    <string name="download_model_compact_label">छोटा मॉडल डाउनलोड करें (%1$s)</string>
-    <string name="download_model_compact_hint">बहुत कम स्टोरेज और RAM का उपयोग करता है।</string>
-    <string name="download_model_confirm">डाउनलोड करें</string>
 
     <!-- Notifications -->
     <string name="notifications">सूचनाएं</string>
-    <string name="unread_count">%1$d अपठित</string>
     <string name="no_notifications">अभी कोई सूचना नहीं</string>
 
     <!-- Learning (Prep Studio Learn tab) -->
@@ -96,23 +55,13 @@
     <string name="go_to_dashboard">डैशबोर्ड पर जाएं</string>
 
     <!-- Prep Studio -->
-    <string name="prep_studio">प्रेप स्टूडियो</string>
     <string name="practice">अभ्यास</string>
     <string name="history">इतिहास</string>
     <string name="question_bank">प्रश्न बैंक</string>
-    <string name="learn">सीखें</string>
-    <string name="starting_session">आपका सत्र शुरू हो रहा है…</string>
-    <string name="session_failed">सत्र विफल रहा</string>
-    <string name="new_practice_session">नया अभ्यास सत्र</string>
-    <string name="practice_subtitle">आपके लक्ष्य पद के अनुरूप AI-संचालित सिमुलेशन।</string>
-    <string name="session_type">सत्र का प्रकार</string>
     <string name="technical">तकनीकी</string>
     <string name="behavioral">व्यवहारिक</string>
-    <string name="hr_culture">HR और संस्कृति</string>
     <string name="target_role">लक्ष्य पद</string>
     <string name="target_role_hint">जैसे सीनियर एंड्रॉइड इंजीनियर</string>
-    <string name="company_optional">कंपनी (वैकल्पिक)</string>
-    <string name="start_mock_interview">मॉक इंटरव्यू शुरू करें</string>
     <string name="question_progress">प्रश्न %1$d/%2$d</string>
     <string name="preparing">तैयारी हो रही है</string>
     <string name="question">प्रश्न</string>
@@ -122,13 +71,6 @@
     <string name="submit_answer">उत्तर जमा करें</string>
     <string name="next_question">अगला प्रश्न</string>
     <string name="end_session">सत्र समाप्त करें</string>
-    <string name="session_review">सत्र समीक्षा</string>
-    <string name="overall_performance">समग्र प्रदर्शन</string>
-    <string name="ai_evaluation">आपके उत्तरों का AI मूल्यांकन</string>
-    <string name="key_strengths">प्रमुख ताकतें</string>
-    <string name="analysis_in_progress">विश्लेषण जारी है</string>
-    <string name="analysis_pending">मूल्यांकन पूरा होने पर विस्तृत AI फीडबैक दिखाई देगा।</string>
-    <string name="start_new_session">नया सत्र शुरू करें</string>
     <string name="no_sessions">अभी कोई सत्र नहीं</string>
     <string name="no_sessions_desc">एक अभ्यास सत्र पूरा करें और आपकी प्रगति यहां दिखाई देगी।</string>
     <string name="all">सभी</string>
@@ -151,13 +93,9 @@
     <string name="load_resources_failed">संसाधन लोड नहीं हो सके</string>
     <string name="no_resources">अभी कोई संसाधन नहीं</string>
     <string name="no_resources_desc">अनलॉक व्यक्तिगत लर्निंग पथ के लिए अपनी प्रोफ़ाइल को और पूरा करें।</string>
-    <string name="loading_ellipsis">लोड हो रहा है…</string>
 
     <!-- Destinations (bottom-nav & screen titles) -->
     <string name="dest_splash">स्प्लैश</string>
-    <string name="dest_welcome">स्वागत है</string>
-    <string name="dest_login">लॉगिन</string>
-    <string name="dest_onboarding">ऑनबोर्डिंग</string>
     <string name="dest_dashboard">डैशबोर्ड</string>
     <string name="dest_assistant">सहायक</string>
     <string name="dest_intelligence">इंटेलिजेंस</string>
@@ -165,26 +103,19 @@
     <string name="studio_segment_resumes">रिज़्यूमे</string>
     <string name="studio_segment_practice">अभ्यास</string>
     <string name="dest_discovery">डिस्कवरी</string>
-    <string name="dest_resume">रिज़्यूमे</string>
-    <string name="dest_jobs">नौकरियां</string>
     <string name="dest_profile">प्रोफ़ाइल</string>
     <string name="dest_ats">ATS स्कैनर</string>
     <string name="dest_cover_letter">कवर लेटर</string>
     <string name="dest_job_details">नौकरी विवरण</string>
     <string name="dest_recruiter_discovery">भर्तीकर्ता खोज</string>
-    <string name="dest_prep_studio">प्रेप स्टूडियो</string>
     <string name="dest_saved_jobs">सहेजी गई नौकरियां</string>
-    <string name="dest_settings">सेटिंग्स</string>
     <string name="dest_appearance">दिखावट</string>
-    <string name="dest_ai_settings">AI सेटिंग्स</string>
-    <string name="dest_providers">प्रदाता</string>
     <string name="dest_notifications">सूचनाएं</string>
     <string name="dest_analytics">एनालिटिक्स</string>
     <string name="dest_privacy">गोपनीयता और सुरक्षा</string>
     <string name="dest_sign_in">साइन इन</string>
     <string name="dest_provider_setup">प्रदाता सेटअप</string>
     <string name="dest_pipeline">पाइपलाइन</string>
-    <string name="dest_job_comparison">नौकरी की तुलना</string>
     <string name="dest_company">कंपनी</string>
     <string name="dest_resume_detail">रिज़्यूमे विवरण</string>
     <string name="dest_about">हमारे बारे में</string>

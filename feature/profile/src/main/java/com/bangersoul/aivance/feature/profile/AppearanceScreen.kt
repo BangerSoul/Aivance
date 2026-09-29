@@ -47,7 +47,11 @@ fun AppearanceScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        AivanceTopBar(title = stringResource(R.string.appearance_title), onBack = onBack)
+        AivanceTopBar(
+            title = stringResource(R.string.appearance_title),
+            backContentDescription = stringResource(R.string.back),
+            onBack = onBack
+        )
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

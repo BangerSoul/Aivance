@@ -71,4 +71,11 @@
     <string name="interview_analysis_progress">Analysis in Progress</string>
     <string name="interview_analysis_progress_detail">AI is evaluating your session and generating your improvement plan.</string>
     <string name="interview_new_session">Start a New Session</string>
+
+    <string name="interview_hero_readiness_title">Interview Readiness</string>
+    <string name="interview_hero_prep_title">Prep for %1$s</string>
+    <string name="interview_hero_prep_description">You have an interview for %1$s scheduled for %2$s.</string>
+    <string name="interview_hero_default_description">Complete mock sessions to increase your score and confidence.</string>
+    <string name="interview_star_key_points">STAR: %1$s</string>
+
 </resources>

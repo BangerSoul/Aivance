@@ -67,4 +67,11 @@
     <string name="interview_analysis_progress">विश्लेषण जारी है</string>
     <string name="interview_analysis_progress_detail">AI आपका सेशन मूल्यांकन कर आपकी सुधार योजना बना रहा है।</string>
     <string name="interview_new_session">नया सेशन शुरू करें</string>
+
+    <string name="interview_hero_readiness_title">इंटरव्यू की तैयारी</string>
+    <string name="interview_hero_prep_title">%1$s के लिए तैयारी</string>
+    <string name="interview_hero_prep_description">आपका %1$s के लिए इंटरव्यू %2$s पर निर्धारित है।</string>
+    <string name="interview_hero_default_description">अपना स्कोर और आत्मविश्वास बढ़ाने के लिए मॉक सेशन पूरे करें।</string>
+    <string name="interview_star_key_points">STAR: %1$s</string>
+
 </resources>

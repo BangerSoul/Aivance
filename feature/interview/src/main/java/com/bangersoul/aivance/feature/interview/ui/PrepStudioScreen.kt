@@ -178,10 +178,11 @@ private fun PrepStudioHero(
 ) {
     Column(modifier = Modifier.padding(16.dp)) {
         AivanceHeroCard(
-            title = if (upcomingInterview != null) "Prep for ${upcomingInterview.company}" else "Interview Readiness",
+            title = if (upcomingInterview != null) stringResource(R.string.interview_hero_prep_title, upcomingInterview.company)
+                    else stringResource(R.string.interview_hero_readiness_title),
             description = if (upcomingInterview != null)
-                "You have an interview for ${upcomingInterview.role} scheduled for ${upcomingInterview.dateTime}."
-                else "Complete mock sessions to increase your score and confidence.",
+                stringResource(R.string.interview_hero_prep_description, upcomingInterview.role, upcomingInterview.dateTime)
+                else stringResource(R.string.interview_hero_default_description),
             actionLabel = "Quick Practice",
             onClick = onQuickPractice
         )
@@ -373,7 +374,7 @@ private fun PracticeHub(
                         }
                         if (question.expectedKeyPoints.isNotEmpty()) {
                             Text(
-                                "STAR: ${question.expectedKeyPoints.joinToString(" · ")}",
+                                stringResource(R.string.interview_star_key_points, question.expectedKeyPoints.joinToString(" · ")),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

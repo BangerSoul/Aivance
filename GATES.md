@@ -256,6 +256,32 @@ Insights entry, the dashboard's Quick Actions) stayed behind when their screens
 were rewritten.
 The gate is a floor: delete a dead resource, never add it to an allowlist.
 
+## G20 — No hardcoded user-visible literals in any composable (i18n guard)
+
+```bash
+./gradlew :navigation:testDebugUnitTest --console=plain
+```
+
+EXPECT: `BUILD SUCCESSFUL` with `HardcodedUiLiteralTest` green. The test scans
+every `src/main` Kotlin file that declares a `@Composable`, tokenizes it
+(comments and string contents blanked, `${}` templates tracked), and fails when
+a string literal sits directly inside a render site — `Text(...)`,
+`Toast.makeText(...)`, or a `text`/`title`/`label`/`placeholder`/`description`/
+`contentDescription` argument — unless that literal lives inside a
+`stringResource(...)`/`pluralStringResource(...)` call, inside a `@Preview`
+span, is interpolation-only (`"$score%"`), or labels an animation
+(`AnimatedContent`, `animate*AsState`, ...): tooling identifiers, never
+rendered. Canaries fail the scan itself if fewer than 40 composable sources are
+found or fewer than 250 render sites fire, so a broken walk cannot masquerade as
+a clean project.
+`Text("Save")` compiles, runs, and looks finished - it just never speaks Hindi.
+Unlike a missing resource, nothing downstream catches it: the string never
+enters the resource tables that G19 guards. The remedy is to extract the copy
+into the module's `values/strings.xml` and `values-hi/strings.xml` and render it
+with `stringResource`; the failure list prints `file:line:literal` to make each
+fix mechanical.
+The gate is a floor: extract the literal, never allowlist it.
+
 ## G6 — Whole-graph verification (all touched modules)
 ```bash
 ./gradlew :core:designsystem:testDebugUnitTest :navigation:testDebugUnitTest \

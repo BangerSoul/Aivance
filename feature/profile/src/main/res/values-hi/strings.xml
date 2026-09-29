@@ -224,4 +224,25 @@
         <item quantity="other">%1$d वर्ष</item>
     </plurals>
 
+    <!-- Remote work resources hub -->
+    <string name="resources_title">रिमोट कार्य संसाधन</string>
+    <string name="resources_hub_title">रिमोट कार्य और करियर हब</string>
+    <string name="resources_hub_subtitle">चुनी हुई संदर्भ प्लेटफ़ॉर्म और इंटरव्यू तैयारी गाइड</string>
+    <string name="resources_cat_job_boards">जॉब बोर्ड</string>
+    <string name="resources_cat_curated">चयनित सूचियां</string>
+    <string name="resources_cat_prep">इंटरव्यू तैयारी</string>
+    <string name="resources_cat_companies">रिमोट कंपनियां</string>
+    <string name="open_link">लिंक खोलें</string>
+
+    <!-- On-device model download -->
+    <string name="download_model">मॉडल डाउनलोड करें</string>
+    <string name="continue_label">जारी रखें</string>
+    <string name="dismiss">खारिज करें</string>
+    <string name="model_downloaded_status">डाउनलोड हो गया</string>
+    <string name="model_offline_hint">पूरी तरह ऑफ़लाइन चलता है — किसी API कुंजी की ज़रूरत नहीं।</string>
+    <string name="model_downloading_percent">मॉडल डाउनलोड हो रहा है… %1$d%%</string>
+    <string name="model_download_background_hint">यह एक बड़ी फ़ाइल है। आप ऐप को बैकग्राउंड में रख सकते हैं — डाउनलोड जारी रहेगा।</string>
+    <string name="model_download_required">इस प्रदाता का उपयोग करने के लिए मॉडल डाउनलोड करें</string>
+    <string name="model_download_required_hint">यह मॉडल पूरी तरह आपके डिवाइस पर चलता है — कोई API कुंजी नहीं, कोई क्लाउड नहीं। एक बार डाउनलोड होने के बाद यह ऑफ़लाइन काम करता है।</string>
+
 </resources>

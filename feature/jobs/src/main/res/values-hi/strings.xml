@@ -91,4 +91,64 @@
     <string name="job_match_potential">संभावित मैच</string>
     <string name="job_experience_level_match">आपके %1$s अनुभव से मेल खाता है।</string>
 
+    <!-- Job search filters -->
+    <string name="filters">फ़िल्टर</string>
+    <string name="filters_active_count">फ़िल्टर (%1$d)</string>
+    <string name="filters_active_hint">फ़िल्टर आपके परिणामों को सीमित कर रहे हैं।</string>
+    <string name="location">स्थान</string>
+    <string name="location_placeholder">शहर, क्षेत्र, या रिमोट</string>
+    <string name="remote_only">केवल रिमोट</string>
+    <string name="quick_match">त्वरित मैच</string>
+    <string name="set_target_role">लक्ष्य भूमिका तय करें</string>
+    <string name="best_match">सर्वोत्तम मैच</string>
+    <string name="remote_policy">रिमोट नीति</string>
+    <string name="tech_stack">टेक स्टैक</string>
+    <string name="tech_stack_placeholder">जैसे Kotlin, Python</string>
+    <string name="must_include">शामिल होना चाहिए</string>
+    <string name="must_include_placeholder">जैसे Kotlin, रिमोट</string>
+    <string name="exclude">बाहर रखें</string>
+    <string name="exclude_placeholder">जैसे बिना वेतन, सीनियर</string>
+
+    <!-- Apply assistant -->
+    <string name="apply_title">आवेदन करें</string>
+    <string name="apply_no_link">इस नौकरी के लिए कोई आवेदन लिंक उपलब्ध नहीं है</string>
+    <string name="apply_ai_assist">AI आवेदन सहायक</string>
+    <string name="apply_ai_assist_desc">आवेदन भरते समय लाइव सहायता।</string>
+    <string name="apply_open_external">ब्राउज़र में खोलें</string>
+    <string name="apply_reload_page">पेज पुनः लोड करें</string>
+    <string name="apply_section_ats">ATS मेल</string>
+    <string name="apply_section_cover">कवर लेटर</string>
+    <string name="apply_section_recruiters">भर्तीकर्ता ईमेल</string>
+    <string name="apply_ats_run">मेरा रिज़्यूमे स्कोर करें</string>
+    <string name="apply_ats_running">आपका रिज़्यूमे इस भूमिका के विरुद्ध स्कोर किया जा रहा है…</string>
+    <string name="apply_ats_score">मेल %1$d%%</string>
+    <string name="apply_ats_matched">मेल खाते कीवर्ड</string>
+    <string name="apply_ats_missing">गुम कीवर्ड</string>
+    <string name="apply_cover_generate">कवर लेटर बनाएं</string>
+    <string name="apply_cover_generating">आपका कवर लेटर लिखा जा रहा है…</string>
+    <string name="apply_cover_copy">कॉपी करें</string>
+    <string name="apply_recruiters_find">भर्तीकर्ता ईमेल खोजें</string>
+    <string name="apply_recruiters_finding">भर्ती संपर्क खोजे जा रहे हैं…</string>
+    <string name="apply_recruiters_none">इस कंपनी के लिए कोई सत्यापित भर्तीकर्ता ईमेल नहीं मिला।</string>
+    <string name="apply_recruiters_copy_email">ईमेल कॉपी करें</string>
+    <string name="apply_no_resume">AI सहायता का उपयोग करने के लिए पहले रिज़्यूमे आयात करें।</string>
+    <string name="apply_no_company_domain">भर्तीकर्ता खोजने के लिए कोई कंपनी डोमेन उपलब्ध नहीं है।</string>
+    <string name="apply_tracked">पाइपलाइन में ट्रैक किया गया</string>
+    <string name="apply_verified">सत्यापित</string>
+    <string name="apply_confidence">%1$d%% विश्वास</string>
+
+    <!-- Company details -->
+    <string name="company_company_size">कंपनी का आकार</string>
+    <string name="company_region">क्षेत्र</string>
+    <string name="company_technologies">टेक स्टैक</string>
+    <string name="company_careers">करियर पेज देखें</string>
+
+    <!-- Remote policy -->
+    <string name="remote_policy_fully_remote">पूरी तरह रिमोट</string>
+    <string name="remote_policy_remote_first">रिमोट-प्रथम</string>
+    <string name="remote_policy_remote_friendly">रिमोट-अनुकूल</string>
+    <string name="remote_policy_hybrid">हाइब्रिड</string>
+    <string name="remote_policy_unknown">अज्ञात</string>
+    <string name="company_catalog_available">रिमोट-कंपनी कैटलॉग से</string>
+
 </resources>

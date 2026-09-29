@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="practice">अभ्यास</string>
+    <string name="practice_role_intelligence">भूमिका इंटेलिजेंस</string>
+    <string name="practice_role_intelligence_body">%1$s इंटरव्यू %2$s और तकनीकी नेतृत्व को प्रदर्शित करने को प्रोत्साहित करते हैं।</string>
     <string name="history">इतिहास</string>
     <string name="question_bank">प्रश्न बैंक</string>
     <string name="technical">तकनीकी</string>

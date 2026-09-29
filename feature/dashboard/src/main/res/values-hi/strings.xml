@@ -20,4 +20,23 @@
     <string name="dash_chip_not_scored">अभी स्कोर नहीं</string>
     <string name="notifications_cd">सूचनाएँ</string>
     <string name="profile_cd">प्रोफ़ाइल</string>
+
+    <!-- Career Graph / Skill Match -->
+    <string name="dash_graph_insights">करियर ग्राफ</string>
+    <string name="dash_skill_match">कौशल मेल</string>
+    <string name="dash_skill_match_subtitle">लक्ष्य नौकरी के %2$d में से %1$d कौशल प्रदर्शित</string>
+    <string name="dash_missing_skills">अंतर भरने के लिए प्रमुख कौशल</string>
+    <string name="dash_missing_skills_hint">उस कौशल की मांग वाली नौकरियां देखने के लिए कौशल पर टैप करें, या लर्निंग सुझाव के लिए स्कूल आइकन दबाएं।</string>
+    <string name="dash_learn_skill_cd">%1$s के लिए लर्निंग अनुशंसाएं प्राप्त करें</string>
+    <string name="dash_no_skill_gaps">आपकी लक्ष्य नौकरियों की मांग वाले सभी कौशल आपके पास हैं। 🎯</string>
+    <string name="dash_skill_match_none">अपना कौशल मेल मापने के लिए लक्ष्य नौकरियां सहेजें।</string>
+    <string name="dash_skill_explored">मिलान वाली नौकरियां खोजी जा रही हैं</string>
+    <string name="dash_skill_learning">पढ़ाई चल रही है</string>
+    <string name="dash_gap_progress">%2$d में से %1$d अंतरों पर काम चल रहा है</string>
+    <string name="dash_demanded_by_one_job">1 नौकरी</string>
+    <string name="dash_demanded_by_jobs">%1$d नौकरियां</string>
+
+    <!-- Active applications context -->
+    <string name="dash_active_context">सक्रिय आवेदन</string>
+    <string name="dash_context_with_interviews">%1$s · %2$d इंटरव्यू</string>
 </resources>

@@ -38,4 +38,15 @@
     <string name="tracker_no_tasks">अभी कोई कार्य नहीं</string>
     <string name="tracker_no_tasks_detail">पाइपलाइन में प्रगति के साथ कार्य स्वतः बनाए जाएंगे।</string>
     <string name="tracker_no_activity">अभी कोई गतिविधि दर्ज नहीं हुई।</string>
+
+    <string name="tracker_hero_title">पाइपलाइन प्रदर्शन</string>
+    <string name="tracker_hero_description">आपके पास %1$d सक्रिय आवेदन हैं।</string>
+    <string name="tracker_hero_conversion_detail">आपका इंटरव्यू रूपांतरण %1$d%% है।</string>
+    <string name="tracker_hero_default_detail">अपने इंटरव्यू रूपांतरण को ट्रैक करना शुरू करने के लिए किसी भूमिका के लिए आवेदन करें।</string>
+    <string name="tracker_view_analytics">एनालिटिक्स देखें</string>
+    <string name="tracker_kanban_board">कानबन बोर्ड</string>
+    <string name="tracker_stat_ats_match">ATS मैच</string>
+    <string name="tracker_stat_priority">प्राथमिकता</string>
+    <string name="tracker_stat_high">उच्च</string>
+
 </resources>

@@ -38,4 +38,15 @@
     <string name="tracker_no_tasks">No tasks yet</string>
     <string name="tracker_no_tasks_detail">Tasks will be automatically generated as you progress through the pipeline.</string>
     <string name="tracker_no_activity">No activity recorded yet.</string>
+
+    <string name="tracker_hero_title">Pipeline Performance</string>
+    <string name="tracker_hero_description">You have %1$d active applications.</string>
+    <string name="tracker_hero_conversion_detail">Your interview conversion is %1$d%%.</string>
+    <string name="tracker_hero_default_detail">Apply to a role to start tracking your interview conversion.</string>
+    <string name="tracker_view_analytics">View Analytics</string>
+    <string name="tracker_kanban_board">Kanban Board</string>
+    <string name="tracker_stat_ats_match">ATS Match</string>
+    <string name="tracker_stat_priority">Priority</string>
+    <string name="tracker_stat_high">High</string>
+
 </resources>

@@ -182,11 +182,13 @@ private fun PipelineContent(
         // Hero Section
         Column(modifier = Modifier.padding(16.dp)) {
             AivanceHeroCard(
-                title = "Pipeline Performance",
+                title = stringResource(R.string.tracker_hero_title),
                 description = metrics.interviewRate?.let {
-                    "You have ${metrics.activeCount} active applications. Your interview conversion is $it%."
-                } ?: "You have ${metrics.activeCount} active applications. Apply to a role to start tracking your interview conversion.",
-                actionLabel = "View Analytics",
+                    stringResource(R.string.tracker_hero_description, metrics.activeCount) + " " +
+                        stringResource(R.string.tracker_hero_conversion_detail, it)
+                } ?: stringResource(R.string.tracker_hero_description, metrics.activeCount) + " " +
+                    stringResource(R.string.tracker_hero_default_detail),
+                actionLabel = stringResource(R.string.tracker_view_analytics),
                 onClick = onNavigateToAnalytics
             )
             Spacer(Modifier.height(12.dp))
@@ -196,7 +198,7 @@ private fun PipelineContent(
                 onEditCap = { showCapDialog = true }
             )
             Spacer(Modifier.height(16.dp))
-            SectionHeader(title = "Kanban Board")
+            SectionHeader(title = stringResource(R.string.tracker_kanban_board))
         }
 
         PipelineBoard(
@@ -689,8 +691,8 @@ private fun ApplicationWorkspaceHeader(application: Application) {
             }
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(application.job?.title ?: "Unknown Role", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(application.job?.company ?: "Unknown Company", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(application.job?.title ?: stringResource(R.string.unknown_role), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(application.job?.company ?: stringResource(R.string.unknown_company), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         StatusChip(text = application.currentStageId, tone = BannerTone.INFO)
     }
@@ -719,8 +721,8 @@ private fun ApplicationOverviewTab(
     ) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard(label = "ATS Match", value = "${application.atsReportId?.let { 85 } ?: 0}%", icon = Icons.Rounded.Analytics, modifier = Modifier.weight(1f))
-                StatCard(label = "Priority", value = "High", icon = Icons.Rounded.Flag, modifier = Modifier.weight(1f))
+                StatCard(label = stringResource(R.string.tracker_stat_ats_match), value = "${application.atsReportId?.let { 85 } ?: 0}%", icon = Icons.Rounded.Analytics, modifier = Modifier.weight(1f))
+                StatCard(label = stringResource(R.string.tracker_stat_priority), value = stringResource(R.string.tracker_stat_high), icon = Icons.Rounded.Flag, modifier = Modifier.weight(1f))
             }
         }
 

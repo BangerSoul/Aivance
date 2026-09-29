@@ -138,7 +138,7 @@ private fun ResumeCard(resume: Resume, onClick: () -> Unit) {
             Column {
                 Text(resume.name, fontWeight = FontWeight.Bold)
                 Text(
-                    "Last updated ${formatRelativeTime(resume.lastModified)}",
+                    stringResource(R.string.resume_last_updated, formatRelativeTime(resume.lastModified)),
                     style = MaterialTheme.typography.bodySmall
                 )
             }

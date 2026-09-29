@@ -321,7 +321,7 @@ private fun AtsReportContent(
                 Column(Modifier.padding(vertical = 4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(name, style = MaterialTheme.typography.labelLarge)
-                        Text("$score%", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.ats_section_score_percent, score), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(4.dp))
                     LinearProgressIndicator(

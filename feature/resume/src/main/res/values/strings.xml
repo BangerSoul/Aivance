@@ -103,4 +103,7 @@
     <string name="resume_no_ats">No ATS scans yet</string>
     <string name="resume_no_ats_desc">Run an ATS scan from the Resume Engine to see your match history.</string>
     <string name="resume_ats_match_line">%1$d%% Match · %2$s</string>
+
+    <string name="resume_last_updated">Last updated %1$s</string>
+
 </resources>

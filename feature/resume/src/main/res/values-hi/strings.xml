@@ -103,4 +103,7 @@
     <string name="resume_no_ats">अभी कोई ATS स्कैन नहीं</string>
     <string name="resume_no_ats_desc">अपना मैच इतिहास देखने के लिए रिज़्यूमे इंजन से ATS स्कैन चलाएँ।</string>
     <string name="resume_ats_match_line">%1$d%% मैच · %2$s</string>
+
+    <string name="resume_last_updated">अंतिम अपडेट %1$s</string>
+
 </resources>

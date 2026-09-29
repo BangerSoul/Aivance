@@ -92,7 +92,7 @@ class NetworkRetryTest {
                 thrown = e
             }
 
-            assertEquals(status, thrown?.statusCode)
+            assertEquals(status, thrown?.statusCode ?: -1)
             assertEquals("status $status must not be retried", 1, calls)
         }
     }
@@ -110,7 +110,7 @@ class NetworkRetryTest {
             thrown = e
         }
 
-        assertEquals(502, thrown?.statusCode)
+        assertEquals(502, thrown?.statusCode ?: -1)
         assertEquals(3, calls) // initial attempt + 2 retries
     }
 

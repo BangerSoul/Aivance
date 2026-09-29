@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Base class for REST-based job providers.
- * Implements caching, retries via [RetryInterceptor], and basic circuit breaker logic.
+ * Implements caching, retries via [NetworkRetry], and basic circuit breaker logic.
  */
 abstract class RestJobProvider(
     metadata: ProviderMetadata,
@@ -36,12 +36,31 @@ abstract class RestJobProvider(
     abstract val baseUrl: String
 
     /**
-     * OkHttpClient configured with [RetryInterceptor] and other common configurations.
+     * OkHttpClient used by this provider.
+     *
+     * Deliberately carries no retry interceptor: retrying here would sleep with
+     * `Thread.sleep` on an OkHttp dispatcher thread, and with only 5 concurrent
+     * requests permitted per host, a few failing providers could hold every
+     * dispatcher thread in the pool. Retries are applied by [retrying] at the
+     * suspending call sites instead, where the backoff releases the thread.
      */
     protected val okHttpClient: OkHttpClient by lazy {
-        baseOkHttpClient.newBuilder()
-            .addInterceptor(RetryInterceptor())
-            .build()
+        baseOkHttpClient.newBuilder().build()
+    }
+
+    /**
+     * Runs [block] with transient-failure retries. Backoff suspends rather than
+     * blocking, so a slow provider never occupies an OkHttp dispatcher thread.
+     */
+    protected suspend fun <T> retrying(
+        maxRetries: Int = NetworkRetry.DEFAULT_MAX_RETRIES,
+        block: suspend (attempt: Int) -> T
+    ): T = NetworkRetry.execute(maxRetries = maxRetries) { attempt ->
+        block(attempt).also {
+            if (attempt > 0) {
+                Timber.d("Provider ${metadata.id} succeeded on retry $attempt")
+            }
+        }
     }
 
     /**
@@ -65,7 +84,7 @@ abstract class RestJobProvider(
         }
 
         return try {
-            val jobs = executeSearch(filter, sortOrder, page)
+            val jobs = retrying { executeSearch(filter, sortOrder, page) }
 
             // Success: Reset error counter and restore status if needed
             consecutiveErrors.set(0)
@@ -103,7 +122,7 @@ abstract class RestJobProvider(
 
         // 2. Try Network if implemented by subclass
         return try {
-            val job = executeGetDetails(jobId)
+            val job = retrying { executeGetDetails(jobId) }
             if (job != null) {
                 jobCache.saveJobs(listOf(job))
                 Result.Success(job)
@@ -118,11 +137,19 @@ abstract class RestJobProvider(
 
     /**
      * Hook for subclasses to implement fetching a single job by ID from the network.
+     *
+     * Implementations should throw [ProviderHttpException] (with the real status
+     * code) on a non-2xx response so [retrying] can distinguish a transient 503
+     * from a permanent 401.
      */
     protected open suspend fun executeGetDetails(jobId: String): JobListing? = null
 
     /**
      * Implementation-specific search logic using [okHttpClient].
+     *
+     * Implementations should throw [ProviderHttpException] (with the real status
+     * code) on a non-2xx response so [retrying] can distinguish a transient 503
+     * from a permanent 401.
      */
     protected abstract suspend fun executeSearch(
         filter: JobSearchFilter,
@@ -145,7 +172,7 @@ abstract class RestJobProvider(
 
     override suspend fun checkHealth(): ProviderStatus {
         return try {
-            performHealthCheck()
+            retrying { performHealthCheck() }
 
             // If health check succeeds, reset errors and mark as Active
             consecutiveErrors.set(0)
@@ -174,6 +201,8 @@ abstract class RestJobProvider(
 
     /**
      * Hook for subclasses to implement actual health check (e.g., pinging an endpoint).
+     *
+     * Implementations should throw [ProviderHttpException] on a non-2xx response.
      */
     protected open suspend fun performHealthCheck() {
         // Default: no-op, assumes healthy if no exceptions

@@ -7,6 +7,7 @@ import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
 import com.bangersoul.aivance.core.common.result.ProviderError
 import com.bangersoul.aivance.core.common.result.Result
+import com.bangersoul.aivance.job.base.ProviderHttpException
 import com.bangersoul.aivance.job.base.RestJobProvider
 import com.bangersoul.aivance.job.cache.JobCache
 import com.bangersoul.aivance.job.lever.dto.LeverJobDto
@@ -72,7 +73,12 @@ class LeverProvider(
                 (filter.location.isBlank() || it.categories?.location?.contains(filter.location, ignoreCase = true) == true)
             }?.map { mapToJobListing(it) } ?: emptyList()
         } else {
-            throw Exception("Lever API failed: ${response.code()}")
+            throw ProviderHttpException(
+                providerId = metadata.id,
+                statusCode = response.code(),
+                message = "Lever API failed",
+                retryAfterSeconds = response.headers()["Retry-After"]?.toLongOrNull()
+            )
         }
     }
 

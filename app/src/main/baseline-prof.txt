@@ -9,6 +9,11 @@
 # Format: rule flags (H=hot, S=startup, P=post-startup, L=layout)
 # followed by the class or method descriptor.
 # Method rules MUST carry at least one of H/S/P.
+#
+# NOTE: the rules below are hand-authored. A generated profile is strictly
+# better — regenerate with ./gradlew :app:generateBaselineProfile on a device
+# (the :macrobenchmark StartupBenchmark drives cold start and can emit one) and
+# replace this file wholesale.
 
 # Application Startup
 HSPLcom/bangersoul/aivance/AivanceApp;->onCreate()V
@@ -69,3 +74,26 @@ HSPLcom/bangersoul/aivance/core/common/result/Result$Failure;->getError()Lcom/ba
 # SDK
 HSPLcom/bangersoul/aivance/sdk/core/ProviderManager;->getProvider(Ljava/lang/String;)Lcom/bangersoul/aivance/sdk/api/AIProvider;
 HSPLcom/bangersoul/aivance/sdk/core/ProviderRegistry;->getAll()Ljava/util/Map;
+
+# Job provider sync path
+# The sync orchestrator and the suspending retry helper run while the user is
+# already on a workspace, so they are post-startup (P) rather than startup (S).
+HSPLcom/bangersoul/aivance/worker/SyncManager;->enqueue(Lcom/bangersoul/aivance/worker/PendingOperation;)V
+HSPLcom/bangersoul/aivance/worker/SyncManager;->drainQueue()V
+HSPLcom/bangersoul/aivance/job/base/RestJobProvider;->searchJobs(Lcom/bangersoul/aivance/core/common/model/JobSearchFilter;Lcom/bangersoul/aivance/core/common/enums/JobSortOrder;I)Lcom/bangersoul/aivance/core/common/result/Result;
+HSPLcom/bangersoul/aivance/job/base/RestJobProvider;->getJobDetails(Ljava/lang/String;)Lcom/bangersoul/aivance/core/common/result/Result;
+HSPLcom/bangersoul/aivance/job/base/RestJobProvider;->checkHealth()Lcom/bangersoul/aivance/sdk/core/ProviderStatus;
+HSPLcom/bangersoul/aivance/job/base/NetworkRetry;
+HSPLcom/bangersoul/aivance/job/base/NetworkRetry;->backoffDelayMs(IJJJD)J
+
+# Compose layout and draw for the analytics trend chart
+# LineChart reads its canvas size via onSizeChanged and builds point geometry in
+# remember(), so its draw/measure path is on the first frame of that screen.
+# (The file-class rule covers the top-level composables in AivanceCharts.kt.)
+Lcom/bangersoul/aivance/core/designsystem/components/AivanceChartsKt;
+
+# WorkManager download progress
+# The on-device model download posts foreground progress, which touches these
+# on the worker path.
+HSPLcom/bangersoul/aivance/feature/profile/worker/GemmaModelDownloadWorker;->doWork()Landroidx/work/ListenableWorker$Result;
+HSPLcom/bangersoul/aivance/feature/profile/worker/ModelDownloadNotifier;->progressNotification(F)Landroid/app/Notification;

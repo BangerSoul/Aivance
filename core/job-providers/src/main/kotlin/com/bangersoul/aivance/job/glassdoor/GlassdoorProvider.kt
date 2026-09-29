@@ -4,6 +4,7 @@ import com.bangersoul.aivance.core.common.enums.JobSortOrder
 import com.bangersoul.aivance.core.common.enums.RemoteType
 import com.bangersoul.aivance.core.common.model.JobListing
 import com.bangersoul.aivance.core.common.model.JobSearchFilter
+import com.bangersoul.aivance.job.base.ProviderHttpException
 import com.bangersoul.aivance.job.base.RestJobProvider
 import com.bangersoul.aivance.job.cache.JobCache
 import com.bangersoul.aivance.job.glassdoor.dto.GlassdoorResponseDto
@@ -88,7 +89,13 @@ class GlassdoorProvider(
                     postedDate = System.currentTimeMillis() - ((dto.ageInDays ?: 0) * 86400000L)
                 )
             }
+        } else {
+            throw ProviderHttpException(
+                providerId = metadata.id,
+                statusCode = response.code(),
+                message = "Glassdoor API failed",
+                retryAfterSeconds = response.headers()["Retry-After"]?.toLongOrNull()
+            )
         }
-        return emptyList()
     }
 }

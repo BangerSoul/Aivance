@@ -116,6 +116,11 @@ fun AtsScreen(
             // so keying on the object made AnimatedContent tear down and re-fade
             // the whole subtree on every single token. The content below still
             // reads `uiState` directly, so streaming text keeps updating.
+            //
+            // `uiState::class` is only a transition key, which is why the content
+            // lambda cannot use the target-state parameter it is handed; suppressing
+            // the lint check keeps that reading of the live state.
+            @Suppress("UnusedContentLambdaTargetStateParameter")
             AnimatedContent(
                 targetState = uiState::class,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },

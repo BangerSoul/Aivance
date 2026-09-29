@@ -658,6 +658,15 @@ private fun AssistantInputBar(
     val context = LocalContext.current
     val permissionState = rememberPermissionState(android.Manifest.permission.RECORD_AUDIO)
 
+    // Resolve these with stringResource instead of context.getString so they are
+    // observed as configuration state and re-read when the locale changes. They are
+    // hoisted here because the launchers below capture them inside non-composable
+    // callbacks, where stringResource cannot be called.
+    val documentFallback = stringResource(R.string.assistant_document_fallback)
+    val attachedFileTemplate = stringResource(R.string.assistant_attached_file)
+    val photoAttached = stringResource(R.string.assistant_photo_attached)
+    val speakPrompt = stringResource(R.string.assistant_speak_prompt)
+
     // ── Voice input via SpeechRecognizer ────────────────────────────────────
     val speechLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -682,8 +691,9 @@ private fun AssistantInputBar(
                 uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.getString(0) else null
-            } ?: context.getString(R.string.assistant_document_fallback)
-            val prefix = context.getString(R.string.assistant_attached_file, name)
+            } ?: documentFallback
+            // %1$s is a document filename, so plain formatting is locale-neutral.
+            val prefix = attachedFileTemplate.format(name)
             onValueChange(prefix + value)
         }
     }
@@ -693,7 +703,7 @@ private fun AssistantInputBar(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri != null) {
-            val marker = context.getString(R.string.assistant_photo_attached)
+            val marker = photoAttached
             onValueChange(marker + value)
         }
     }
@@ -713,7 +723,7 @@ private fun AssistantInputBar(
                 if (permissionState.status.isGranted) {
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.assistant_speak_prompt))
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, speakPrompt)
                         putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                     }
                     speechLauncher.launch(intent)

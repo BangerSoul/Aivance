@@ -89,4 +89,18 @@
     <string name="done">पूर्ण</string>
     <string name="step_failed">%1$s विफल</string>
     <string name="export_resume">रिज़्यूमे निर्यात करें</string>
+    <string name="resume_delete_ats_report">ATS रिपोर्ट हटाएँ?</string>
+    <string name="resume_delete_ats_report_detail">“%1$s” (%2$d%% मैच) स्थायी रूप से हटा दिया जाएगा।</string>
+    <string name="resume_delete_ats_report_cd">ATS रिपोर्ट हटाएँ</string>
+    <string name="delete">हटाएँ</string>
+    <string name="resume_intelligence_hub">इंटेलिजेंस हब</string>
+    <string name="resume_intelligence_hub_subtitle">अपना करियर उत्पाद प्रबंधित करें</string>
+    <string name="resume_add_resume">रिज़्यूमे जोड़ें</string>
+    <string name="resume_your_resumes">आपकी रिज़्यूमे</string>
+    <string name="resume_no_resumes">अभी कोई रिज़्यूमे नहीं</string>
+    <string name="resume_no_resumes_desc">अपना पहला रिज़्यूमे बनाने के लिए + दबाकर PDF या DOCX आयात करें।</string>
+    <string name="resume_recent_ats">हाल के ATS स्कैन</string>
+    <string name="resume_no_ats">अभी कोई ATS स्कैन नहीं</string>
+    <string name="resume_no_ats_desc">अपना मैच इतिहास देखने के लिए रिज़्यूमे इंजन से ATS स्कैन चलाएँ।</string>
+    <string name="resume_ats_match_line">%1$d%% मैच · %2$s</string>
 </resources>

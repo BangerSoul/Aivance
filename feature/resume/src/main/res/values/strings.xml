@@ -89,4 +89,18 @@
     <string name="done">Done</string>
     <string name="step_failed">%1$s failed</string>
     <string name="export_resume">Export Resume</string>
+    <string name="resume_delete_ats_report">Delete ATS report?</string>
+    <string name="resume_delete_ats_report_detail">“%1$s” (%2$d%% Match) will be removed permanently.</string>
+    <string name="resume_delete_ats_report_cd">Delete ATS report</string>
+    <string name="delete">Delete</string>
+    <string name="resume_intelligence_hub">Intelligence Hub</string>
+    <string name="resume_intelligence_hub_subtitle">Manage your career product</string>
+    <string name="resume_add_resume">Add Resume</string>
+    <string name="resume_your_resumes">Your Resumes</string>
+    <string name="resume_no_resumes">No resumes yet</string>
+    <string name="resume_no_resumes_desc">Tap + to import a PDF or DOCX and build your first resume.</string>
+    <string name="resume_recent_ats">Recent ATS Scans</string>
+    <string name="resume_no_ats">No ATS scans yet</string>
+    <string name="resume_no_ats_desc">Run an ATS scan from the Resume Engine to see your match history.</string>
+    <string name="resume_ats_match_line">%1$d%% Match · %2$s</string>
 </resources>

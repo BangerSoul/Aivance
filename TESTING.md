@@ -131,17 +131,20 @@ graph TD
 Engineers execute fast local test verification prior to submitting code for review:
 
 ```powershell
-# Run all local unit tests across all 16 modules
-./gradlew testDebugUnitTest
+# Run all local unit tests across all 16 modules.
+# :app sets testBuildType = "release", so its unit tests are named
+# testReleaseUnitTest and a bare testDebugUnitTest silently skips them.
+./gradlew testDebugUnitTest :app:testReleaseUnitTest
 
 # Run unit tests for a specific feature module
 ./gradlew :feature:resume:testDebugUnitTest
 
 # Run unit tests with Jacoco coverage reporting
-./gradlew testDebugUnitTest jacocoTestReport
+./gradlew testDebugUnitTest :app:testReleaseUnitTest jacocoTestReport
 
-# Run connected Android instrumentation tests on connected emulator
-./gradlew connectedDebugAndroidTest
+# Run connected Android instrumentation tests on connected emulator.
+# :app runs against the minified release build; libraries run debug.
+./gradlew :app:connectedReleaseAndroidTest :core:database:connectedDebugAndroidTest
 ```
 
 ### 3.2 Pre-commit Hooks & Static Verification

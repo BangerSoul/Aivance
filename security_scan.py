@@ -162,18 +162,49 @@ def main():
     check("No hardcoded secrets in core sources", not hits, "; ".join(hits[:5]))
 
     # ── [4] Release BuildConfig hygiene ───────────────────────────────────
+    # A provider credential must never reach the release BuildConfig. The
+    # androidTest source set compiles against the *release* variant (see
+    # `testBuildType` in app/build.gradle.kts), so the fields ProviderIntegrationTest
+    # reads have to be declared there — but every one of them must be a hardcoded
+    # empty literal.
+    #
+    # This checks assigned *values*, not the presence of the field name. The old
+    # check only asked whether the name appeared in the release block, which both
+    # rejected the legitimate empty declaration and was blind to the case that
+    # actually matters: a leak that never spells the name, e.g.
+    # `integrationApiKey("groqApiKey")`.
+    EMPTY_LITERAL = '"\\"\\""'
+
+    def key_field_values(block, key):
+        """Assigned values of every `buildConfigField` declared for `key`."""
+        return re.findall(
+            r'buildConfigField\(\s*"String"\s*,\s*"' + re.escape(key) + r'"\s*,\s*(.+?)\s*\)',
+            block,
+        )
+
+    non_empty_release_values = [
+        f"{k} = {v}"
+        for k in ("APIFY_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "HUNTER_API_KEY")
+        for v in key_field_values(release_block, k)
+        if v != EMPTY_LITERAL
+    ]
+    # `integrationApiKey` is the only path by which local.properties (which holds
+    # real provider keys) can reach a buildConfigField. Forbidding the call in the
+    # release block closes leaks that never mention a field name.
+    release_reads_local_props = "integrationApiKey" in release_block
+
     app_bs = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
     default_cfg = app_bs.split("buildTypes")[0]
     release_block = app_bs.split("release {")[1].split("debug {")[0] if "release {" in app_bs else ""
     keys_in_default = [k for k in ("APIFY_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "HUNTER_API_KEY")
                        if f'"{k}"' in default_cfg]
-    keys_in_release = [k for k in ("APIFY_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "HUNTER_API_KEY")
-                       if f'"{k}"' in release_block]
     net_bs = (ROOT / "core/network/build.gradle.kts").read_text(encoding="utf-8")
     net_release = net_bs.split("release {")[1].split("}")[0] if "release {" in net_bs else ""
     net_key_in_release = "GEMINI_API_KEY" in net_release and '""' not in net_release
     check("No API keys in defaultConfig", not keys_in_default, f"found: {keys_in_default}")
-    check("No API keys in release buildType", not keys_in_release, f"found: {keys_in_release}")
+    check("Release buildType declares no non-empty provider key", not non_empty_release_values,
+          "; ".join(non_empty_release_values))
+    check("Release buildType never reads local.properties credentials", not release_reads_local_props)
     check("core:network release has empty GEMINI_API_KEY", not net_key_in_release)
 
     # ── [5] Backup rules exclude DB + keysets ─────────────────────────────

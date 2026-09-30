@@ -186,7 +186,15 @@ jobs:
       - name: Run unit tests for ${{ matrix.module }}
         run: |
           MODULE_GRADLE=$(echo "${{ matrix.module }}" | tr '/' ':')
-          ./gradlew :${MODULE_GRADLE}:testDebugUnitTest --no-daemon --continue
+          # `:app` targets the release build type (see `testBuildType` in
+          # app/build.gradle.kts), so its unit-test task is `testReleaseUnitTest`.
+          # Requesting `testDebugUnitTest` there fails with "Cannot locate tasks".
+          if [ ":${MODULE_GRADLE}" = ":app" ]; then
+            TASK=testReleaseUnitTest
+          else
+            TASK=testDebugUnitTest
+          fi
+          ./gradlew :${MODULE_GRADLE}:$TASK --no-daemon --continue
 
       # NOTE: the "=" must survive, or GITHUB_OUTPUT rejects the line
       # ("Invalid format") and the job goes red. A negated class like

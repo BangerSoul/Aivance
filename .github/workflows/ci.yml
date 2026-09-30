@@ -163,7 +163,19 @@ jobs:
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
       - name: Run unit tests for ${{ matrix.module }}
-        run: ./gradlew ${{ matrix.module }}:testDebugUnitTest --no-daemon --continue
+        run: |
+          # `:app` sets `testBuildType = "release"` (app/build.gradle.kts) so its
+          # androidTest runs against the minified build. That retargets the JVM unit
+          # test variant too, so the task is `testReleaseUnitTest` there and does not
+          # exist as `testDebugUnitTest` any more — asking for it fails with
+          # "Cannot locate tasks that match ':app:testDebugUnitTest'". Every library
+          # module still uses the default test build type and keeps the debug task.
+          if [ "${{ matrix.module }}" = ":app" ]; then
+            TASK=testReleaseUnitTest
+          else
+            TASK=testDebugUnitTest
+          fi
+          ./gradlew ${{ matrix.module }}:$TASK --no-daemon --continue
 
       - name: Sanitize module name for artifact
         id: sanitize

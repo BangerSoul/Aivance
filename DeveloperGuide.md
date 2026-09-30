@@ -327,7 +327,9 @@ Execute the initial Gradle build via command line:
 Run all unit tests to confirm setup integrity:
 
 ```powershell
-.\gradlew testDebugUnitTest
+# :app targets the release build type, so its unit tests live under
+# testReleaseUnitTest and are NOT picked up by a bare testDebugUnitTest.
+.\gradlew testDebugUnitTest :app:testReleaseUnitTest
 ```
 
 ---

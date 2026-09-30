@@ -144,6 +144,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Rules for the instrumentation *harness* APK. Separate from
+            // `proguardFiles` because `minifyReleaseAndroidTestWithR8` processes
+            // the test APK, not the app. See the file for why it must not shrink.
+            testProguardFiles("proguard-androidTest-rules.pro")
             optimization {
                 enable = true
             }

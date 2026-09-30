@@ -268,7 +268,7 @@ stateDiagram-v2
 A PR cannot be merged unless all automated CI pipeline checks pass:
 * **Build Verification:** `./gradlew assembleDebug assembleRelease` succeeds with zero errors.
 * **Static Analysis:** `./gradlew detekt ktlintCheck lintDebug` passes with zero violations.
-* **Unit Tests:** `./gradlew testDebugUnitTest` achieves 100% pass rate.
+* **Unit Tests:** `./gradlew testDebugUnitTest` achieves 100% pass rate. Note that `:app` is **not** included in a bare `testDebugUnitTest` run — it sets `testBuildType = "release"`, so its task is `:app:testReleaseUnitTest`. Run both.
 * **Instrumentation Tests:** `./gradlew :app:connectedReleaseAndroidTest` (plus the per-module `connectedDebugAndroidTest` tasks) passes on the managed emulator. The `:app` task runs against the **release** variant on purpose — see “R8 and the release variant” below.
 * **Coverage Verification:** JaCoCo report confirms >80% coverage on modified files.
 * **Binary Size Check:** Release APK size change is within +500KB tolerance.
@@ -793,7 +793,7 @@ try {
 
 ### 19.1 Pre-Commit Checklist
 * [ ] Code builds cleanly via `.\gradlew assembleDebug`.
-* [ ] Unit tests pass via `.\gradlew testDebugUnitTest`.
+* [ ] Unit tests pass via `.\gradlew testDebugUnitTest :app:testReleaseUnitTest`. (`:app` uses the release test variant — see “R8 and the release variant”.)
 * [ ] Code style and lint checks pass via `.\gradlew detekt ktlintCheck`.
 * [ ] No secret keys or hardcoded passwords in diff.
 * [ ] Commit message follows Conventional Commits format with co-author trailer.

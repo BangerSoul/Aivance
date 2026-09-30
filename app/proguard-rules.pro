@@ -40,7 +40,7 @@
 # them in place. The two APKs disagree about what a class is called, and the
 # instrumentation process dies before a single test executes.
 #
-# Two real instances, both found by running the suite, not by reading rules:
+# Three real instances, all found by running the suite, not by reading rules:
 #
 #   androidx.tracing.Trace
 #     androidx.test:runner -> AndroidJUnitRunner.onCreate()
@@ -50,34 +50,37 @@
 #     androidx.test:monitor -> io.TestDirCalculator.<init> (`by lazy {}`)
 #     NoClassDefFoundError: Failed resolution of: Lkotlin/LazyKt;
 #
-# The second one is the sharper lesson: it is a `by lazy {}` the *harness* owns,
+#   androidx.tracing.Trace.beginSection(String)
+#     androidx.test:runner -> AndroidJUnitRunner.onCreate()
+#     NoSuchMethodError: No static method beginSection(...) in class Trace;
+#
+# The second is the sharper lesson: it is a `by lazy {}` the *harness* owns,
 # not the app's. No amount of reading this project's source would have surfaced
 # it -- only running the release variant on a device did.
 #
-# Triage rule for anything new that fails this way: add the class to the tier
-# below that matches WHY it broke. Don't add a single-class `-keep` per
-# incident; the harness links a whole closure of them.
+# The third is the lesson about *how* to write these rules. `-keepnames` is
+# shorthand for `-keep,allowshrinking`: it preserves the class name but still
+# lets R8 shrink, inline and delete members it cannot see being used. The
+# harness links MEMBERS by name and signature, so that is not enough -- R8
+# inlined Trace.beginSection/endSection into its app-side callers and dropped
+# the methods, turning a load failure into a link failure. `-keepnames` is the
+# wrong tool for a cross-APK link surface.
 #
-# Tier 1 -- must be present AND keep its original name.
-# R8 never sees the harness's reference, so it is free to shrink or inline
-# these classes even though something genuinely needs them at runtime. Keep
-# the names, but still allow body optimization so R8 keeps working.
+# Triage rule for anything new that fails this way: keep the whole linked
+# closure, not the one class in the stack trace, and do not reach for
+# `-keepnames`. Optimizing stays allowed -- R8 still does real work here, it
+# just may not rename or remove something the harness calls.
 -keep,allowoptimization class kotlin.** { *; }
-
-# Tier 2 -- must keep its original name, but R8 already keeps these because
-# the app uses them; renaming is the only thing that breaks.
-# Each entry is reachable from the app APK *and* linkable from
-# androidx.test:runner / monitor / core.
--keepnames class androidx.tracing.**
--keepnames class androidx.test.**
--keepnames class androidx.annotation.**
--keepnames class androidx.lifecycle.**
--keepnames class androidx.core.**
--keepnames class kotlinx.coroutines.**
--keepnames class com.google.common.**
--keepnames class com.google.gson.**
--keepnames class org.junit.**
--keepnames class org.hamcrest.**
+-keep,allowoptimization class androidx.tracing.** { *; }
+-keep,allowoptimization class androidx.test.** { *; }
+-keep,allowoptimization class androidx.annotation.** { *; }
+-keep,allowoptimization class androidx.core.** { *; }
+-keep,allowoptimization class androidx.lifecycle.** { *; }
+-keep,allowoptimization class kotlinx.coroutines.** { *; }
+-keep,allowoptimization class com.google.common.** { *; }
+-keep,allowoptimization class com.google.gson.** { *; }
+-keep,allowoptimization class org.junit.** { *; }
+-keep,allowoptimization class org.hamcrest.** { *; }
 
 # OkHttp and Retrofit ship their own consumer rules; only suppress the
 # optional-JVM-class warnings (okio/java9). App Retrofit interfaces are kept

@@ -175,6 +175,10 @@ def main():
     # `integrationApiKey("groqApiKey")`.
     EMPTY_LITERAL = '"\\"\\""'
 
+    app_bs = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
+    default_cfg = app_bs.split("buildTypes")[0]
+    release_block = app_bs.split("release {")[1].split("debug {")[0] if "release {" in app_bs else ""
+
     def key_field_values(block, key):
         """Assigned values of every `buildConfigField` declared for `key`."""
         return re.findall(
@@ -193,9 +197,6 @@ def main():
     # release block closes leaks that never mention a field name.
     release_reads_local_props = "integrationApiKey" in release_block
 
-    app_bs = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
-    default_cfg = app_bs.split("buildTypes")[0]
-    release_block = app_bs.split("release {")[1].split("debug {")[0] if "release {" in app_bs else ""
     keys_in_default = [k for k in ("APIFY_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "HUNTER_API_KEY")
                        if f'"{k}"' in default_cfg]
     net_bs = (ROOT / "core/network/build.gradle.kts").read_text(encoding="utf-8")

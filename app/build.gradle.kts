@@ -89,6 +89,15 @@ android {
             buildConfigField("String", "GROQ_API_KEY", "\"${integrationApiKey("groqApiKey")}\"")
             buildConfigField("String", "GEMINI_API_KEY", "\"${integrationApiKey("geminiApiKey")}\"")
             buildConfigField("String", "HUNTER_API_KEY", "\"${integrationApiKey("hunterApiKey")}\"")
+            // RemoteOK and Remotive need no key, so there is no key to gate
+            // their live-API tests on. This opt-in keeps them runnable locally
+            // without letting a third party's response shape decide whether CI
+            // is green. Not a credential, so it is safe in the debug variant.
+            buildConfigField(
+                "boolean",
+                "RUN_LIVE_API_TESTS",
+                "(${integrationApiKey("runLiveApiTests").equals("true", ignoreCase = true)})",
+            )
         }
     }
 

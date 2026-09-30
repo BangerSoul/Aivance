@@ -1,0 +1,168 @@
+name: Android Emulator & Instrumented Tests
+
+# Replaces the previous "Docker Emulator & Web Browser RDP Testing" workflow,
+# which never produced a green run. It booted a `budtmo/docker-android:emulator_11.0`
+# container and then waited in an unbounded `until adb shell getprop sys.boot_completed`
+# loop: if the container never came up (or came up without KVM), the loop spun until
+# the job hit its own 45-minute timeout. That produced 13 consecutive non-green runs
+# across every branch, which made an unrelated emulator outage look like a repo-wide
+# regression. `reactivecircus/android-emulator-runner` boots the emulator directly on
+# the runner, fails with real diagnostics instead of hanging, and needs no container.
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+    inputs:
+      api_level:
+        description: 'Emulator API level'
+        type: string
+        default: '35'
+
+env:
+  JAVA_VERSION: "17"
+
+concurrency:
+  group: android-emulator-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Category: Instrumented (androidTest) coverage ────────────────────────────
+  emulator-instrumented-tests:
+    name: 🤖 Emulator & Instrumented Tests
+    runs-on: ubuntu-latest
+    # Boot plus a full connectedAndroidTest sweep fits in ~25 min. The previous
+    # 45 was only ever reached by the hang described above.
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Fail fast and legibly when the runner has no nested virtualisation.
+      # Without this the symptom is a 35-minute timeout with no explanation.
+      - name: Verify KVM acceleration is available
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::/dev/kvm is not present on this runner — hardware-accelerated" \
+                 "emulation is unavailable, so instrumented tests cannot run." \
+                 "GitHub-hosted Linux runners expose KVM; a self-hosted or larger" \
+                 "runner may not."
+            exit 1
+          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --subsystem-match=misc
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      # `api_level` is a workflow_dispatch input; for push/pull_request events
+      # github.event.inputs is empty, so the expression falls back to 35.
+      #
+      # Deliberately no `profile:` input. That input is passed straight to
+      # `avdmanager create avd --device <profile>`, which takes a *hardware
+      # device* id (`Nexus 6`, `pixel_6`, ...) — not an image tag. Passing
+      # `google_apis` there aborted the very first attempt with
+      # "No device found matching --device google_apis"; the emulator never
+      # started, and the action's own `emu kill` teardown then failed too,
+      # burying the real message. Leaving it unset omits `--device` entirely
+      # and lets avdmanager pick its default hardware profile.
+      - name: Run instrumented tests on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ github.event.inputs.api_level || '35' }}
+          target: google_apis
+          arch: x86_64
+          # Room DAO + migration suites are the heaviest instrumented tests here.
+          ram-size: 4096M
+          # The app ships per-ABI splits, so the x86_64 slice is the one the
+          # emulator can install. Disable them for the connected run to avoid
+          # the universal-APK/split mismatch the old Docker job hit.
+          # `useRegisteredAppId` builds the debug variant under the release
+          # application id instead of `….debug`. It has to be passed to
+          # `connectedDebugAndroidTest` itself: that task builds its own copy of
+          # the app APK with default flags, so setting it on a separate
+          # `assembleDebug` invocation would not affect the app under test, and
+          # ExampleInstrumentedTest asserts the package name is
+          # `com.bangersoul.aivance`.
+          #
+          # The task list is explicit rather than a bare `connectedDebugAndroidTest`.
+          # AGP registers that task for *every* Android module, and the ~20
+          # library modules with no `src/androidTest` still build and install a
+          # test APK. With no `androidx.test:runner` on their classpath they
+          # cannot even start, so each one failed with
+          # `ClassNotFoundException: androidx.test.runner.AndroidJUnitRunner`
+          # — noise that buried the four modules that actually have tests.
+          # Keep this list in sync when a module gains an `androidTest` source
+          # set: `find . -type d -name androidTest -not -path '*/build/*'`.
+          #
+          # `:macrobenchmark` is deliberately excluded. It holds no
+          # `src/androidTest`, and its StartupBenchmark refuses to run on an
+          # emulator by design ("ERROR: Running on Emulator", plus
+          # "Benchmark Target is Debuggable"); macrobenchmarks are only
+          # meaningful on a physical, non-debuggable target.
+          #
+          # There is deliberately no manual `adb install` / `am start` here. The
+          # previous script installed `app-universal-debug.apk`, a filename that
+          # does not exist (the ABI split block sets `isUniversalApk = false`),
+          # and `am start` exits 0 even when the app dies immediately after, so
+          # it could only ever produce false confidence.
+          # `connectedDebugAndroidTest` builds, installs and launches the app
+          # itself, and a Hilt/Compose init crash fails the instrumentation
+          # rather than passing quietly.
+          #
+          # Each `script` line runs as its own `sh -c`, so no `\`
+          # line continuations here — they would be split into broken fragments.
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: ./gradlew :app:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest :core:database:connectedDebugAndroidTest :feature:dashboard:connectedDebugAndroidTest :navigation:connectedDebugAndroidTest -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon --continue
+
+      # The emulator action's teardown step (`adb … emu kill`) also fails when
+      # the emulator never came up, and it is the last line in the log. That
+      # buries the actual cause, so re-print the AVD/emulator state on failure.
+      - name: Collect emulator diagnostics
+        if: failure()
+        run: |
+          echo "=== AVD definitions ==="
+          avdmanager list avd || true
+          echo "=== adb devices ==="
+          adb devices -l || true
+          echo "=== emulator process ==="
+          ps -ef | grep -i "[e]mulator" || echo "(no emulator process)"
+          echo "=== system images installed ==="
+          sdkmanager --list_installed 2>/dev/null | grep -i "system-images" || true
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-reports
+          path: |
+            **/build/reports/androidTests/
+            **/build/outputs/androidTest-results/
+          retention-days: 14
+
+      # Interactive debugging is opt-in and only offered on manual runs, so it
+      # never blocks a PR. The old workflow's tmate step was gated the same way
+      # but only ever ran after a boot that never completed, so it was dead code.
+      - name: Open an interactive shell
+        if: github.event_name == 'workflow_dispatch'
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true

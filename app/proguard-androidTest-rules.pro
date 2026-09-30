@@ -31,20 +31,15 @@
 #                 identities the runner reflects over.
 # -dontnote/-dontwarn  This binary is not distributed, so its R8 notes and
 #                 warnings are noise in an otherwise readable CI log.
-# -keep com.bangersoul.aivance.**
-#                 The test classes THEMSELVES were still losing members to R8
-#                 despite the -dont* flags above. JUnit calls
-#                 Class.getDeclaredMethods() on the test class, which resolves
-#                 every signature, and ProviderIntegrationTest's anonymous
-#                 `object : JobCache` -- compiled to
-#                 ProviderIntegrationTest$jobCache$1 -- was not in the APK. It
-#                 surfaced as `NoClassDefFoundError:
-#                 ...ProviderIntegrationTest$jobCache$1` from
-#                 MethodSorter.getDeclaredMethods: a failure in a test class's
-#                 own nested type, with no app code involved at all. An
-#                 explicit keep makes that deterministic instead of leaving it
-#                 to whatever the global flags happen to imply for synthetic
-#                 and anonymous classes. Test-only APK, so this costs nothing.
+# -keep com.bangersoul.aivance.**  Defence in depth for the test classes
+#                 themselves. Note this did NOT rescue ProviderIntegrationTest's
+#                 anonymous `object : JobCache` (compiled to the synthetic
+#                 ProviderIntegrationTest$jobCache$1), which was still dropped
+#                 from the APK and which JUnit surfaced through
+#                 MethodSorter.getDeclaredMethods; that test was changed to use
+#                 a named object instead. The keep stays because a test class
+#                 vanishing is always a whole-class error, not one failed
+#                 assertion. Test-only APK, so it costs nothing.
 
 -dontobfuscate
 -dontshrink

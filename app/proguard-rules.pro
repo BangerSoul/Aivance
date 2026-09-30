@@ -40,7 +40,7 @@
 # them in place. The two APKs disagree about what a class is called, and the
 # instrumentation process dies before a single test executes.
 #
-# Four real instances, all found by running the suite, not by reading rules:
+# Five real instances, all found by running the suite, not by reading rules:
 #
 #   androidx.tracing.Trace
 #     androidx.test:runner -> AndroidJUnitRunner.onCreate()
@@ -59,6 +59,10 @@
 #     building a runner for PlayIntegrityInstrumentedTest
 #     NoClassDefFoundError: Failed resolution of:
 #         Lkotlinx/coroutines/DelayWithTimeoutDiagnostics;
+#
+#   kotlinx.coroutines.Dispatchers.getMain()
+#     the tests' runTest, via the app APK's coroutines
+#     NoSuchMethodError: No static method getMain() in class Dispatchers;
 #
 # The second is the sharper lesson: it is a `by lazy {}` the *harness* owns,
 # not the app's. No amount of reading this project's source would have surfaced
@@ -86,13 +90,21 @@
 -keep,allowoptimization class kotlin.** { *; }
 -keep,allowoptimization class androidx.tracing.** { *; }
 
-# Tier 1, one class. Promoting all of kotlinx.coroutines to Tier 1 was tried and
-# reverted: it reproduced the same `minifyReleaseWithR8` failure as defect (5)
-# below (POI -> Batik / java.awt missing classes), so a whole-package keep of
-# coroutines costs more than the single class the harness actually needs.
-# This is that class. It is `@InternalCoroutinesApi`, nothing in the app reaches
-# it, and it must survive for the harness to build a test runner at all.
+# Tier 1, coroutines. Promoting all of kotlinx.coroutines to Tier 1 was tried
+# and reverted: it reproduced the same `minifyReleaseWithR8` failure as
+# defect (5) below (POI -> Batik / java.awt missing classes), so the fix is
+# pinned to the dispatcher surface the tests actually link.
+#
+#   DelayWithTimeoutDiagnostics  @InternalCoroutinesApi, reached only by
+#       `withTimeout`; without it the harness cannot build a test runner at all.
+#   Dispatchers / getMain()      the app never touches the Main dispatcher, so
+#       R8 removed the accessor while the tests' `runTest` still calls it:
+#       `NoSuchMethodError: No static method getMain() in class Dispatchers`.
 -keep class kotlinx.coroutines.DelayWithTimeoutDiagnostics { *; }
+-keep,allowoptimization class kotlinx.coroutines.Dispatchers { *; }
+-keep,allowoptimization class kotlinx.coroutines.Dispatchers$* { *; }
+-keep,allowoptimization class kotlinx.coroutines.MainCoroutineDispatcher { *; }
+-keep,allowoptimization class kotlinx.coroutines.MainCoroutineDispatcher$* { *; }
 
 # Tier 2 -- name-only insurance for the rest of the harness's likely link
 # surface. `-keepnames` (i.e. `-keep,allowshrinking`) cannot make R8 retain a

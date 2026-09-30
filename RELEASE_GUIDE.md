@@ -15,7 +15,17 @@ This guide defines how AiVance versions are managed and how a release is cut, va
 
 ## Release Types (CI `workflow_dispatch`)
 
-`release_type` input: `alpha`, `beta`, `rc`, `stable`. The production upload job currently targets the `production` track with a staged rollout.
+The `Release` workflow (`.github/workflows/release.yml`) takes:
+
+| Input | Default | Effect |
+| :--- | :--- | :--- |
+| `release_type` | `stable` | `stable` maps to the Play `production` track with a staged rollout; `alpha`/`beta`/`rc` map to `beta`/`draft`. |
+| `publish_to_play` | `false` | Uploads the AAB. Requires the `PLAY_SERVICE_ACCOUNT_JSON` secret. |
+| `create_github_release` | `true` | Attaches the AAB to a **draft** GitHub release. |
+
+It also runs on any `v*` tag push, where `release_type` does not apply and Play upload is skipped.
+
+The workflow **builds, signs and verifies** on every run. Only publishing is opt-in, so a signing or R8 regression is caught whether or not anyone intends to ship.
 
 ## Release Process
 
@@ -23,7 +33,7 @@ This guide defines how AiVance versions are managed and how a release is cut, va
 - [ ] Full test suite green: `./gradlew testDebugUnitTest`.
 - [ ] Lint + static analysis clean.
 - [ ] `assembleDebug` and `bundleRelease`/`assembleRelease` succeed.
-- [ ] Instrumented tests pass (CI: API 29 & 34).
+- [ ] Instrumented tests pass (CI: API 35, `google_apis` image, x86_64).
 - [ ] Manual QA checklist complete (see `TEST_PLAN.md`).
 - [ ] `KNOWN_ISSUES.md` reviewed — no release-blocking issues.
 - [ ] Telemetry sweep — no credentials in logs.
@@ -39,11 +49,20 @@ git push origin v1.0.0
 ```
 
 ### 4. Build & sign
-- CI `build` job produces AAB + APK + mapping (signing via secrets).
-- Verify artifacts: `app/build/outputs/bundle/release/app-release.aab`, mapping file.
+- Run the `Release` workflow (`.github/workflows/release.yml`). It fails at a
+  preflight step listing any missing `AIVANCE_*` secrets, builds the signed AAB
+  and per-ABI APKs with `-Paivance.requireSigning=true`, and then verifies the
+  outputs: `jarsigner` on the bundle plus an explicit check for its `META-INF`
+  signature block, and `apksigner verify --print-certs` on every APK, asserting
+  they all share one signing certificate.
+- Artifacts: `app-release.aab`, per-ABI `-release.apk`s, `mapping.txt`, native
+  symbol table.
+- Without the secrets this workflow cannot run, and PR CI compiles the release
+  variant unsigned instead, so R8 regressions still surface on every PR.
 
 ### 5. Play Console submission
-- **Recommended**: `upload-google-play` CI job (staged `userFraction 0.1`).
+- **Recommended**: re-run the `Release` workflow with `publish_to_play: true`
+  and `release_type: stable` (staged `userFraction 0.1`).
 - **Manual alternative**: Play Console → App bundle explorer → upload AAB → release notes → rollout.
 - Upload `mapping.txt` to Play Console for crash deobfuscation.
 

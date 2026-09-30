@@ -17,10 +17,34 @@ This guide covers building, signing, and deploying AiVance across the four envir
 ## Prerequisites
 
 1. JDK 17, Android SDK with `platforms;android-37`.
-2. `keystore.jks` in the repo root (or CI secret `AIVANCE_KEYSTORE_BASE64`).
-3. Signing env vars: `AIVANCE_STORE_PASSWORD`, `AIVANCE_KEY_ALIAS`, `AIVANCE_KEY_PASSWORD`.
+2. Release signing credentials, from **either** source (see below).
+3. CI repository secrets: `AIVANCE_KEYSTORE_BASE64`, `AIVANCE_STORE_PASSWORD`,
+   `AIVANCE_KEY_ALIAS`, `AIVANCE_KEY_PASSWORD`.
 
-The `release` signing config only activates when the keystore file exists **and** all env vars are set — otherwise the release build is unsigned (safe for local experimentation).
+### Signing credentials
+
+`app/build.gradle.kts` resolves signing credentials in this order:
+
+| Source | Use for | Contents |
+| :--- | :--- | :--- |
+| Environment variables | CI | `AIVANCE_STORE_FILE`, `AIVANCE_STORE_PASSWORD`, `AIVANCE_KEY_ALIAS`, `AIVANCE_KEY_PASSWORD` |
+| `keystore.properties` (gitignored, repo root) | local release builds | `storeFile`, `storePassword`, `keyAlias`, `keyPassword` |
+
+Both sources must be **complete**. Setting only some of the environment
+variables is a hard error rather than a partially-signed build, because a
+half-configured release produces an artifact that looks signed and cannot be
+updated later.
+
+### Unsigned vs. required signing
+
+By default, `assembleRelease` / `bundleRelease` succeed with **no** keystore and
+emit an unsigned artifact. That is intentional: it lets CI compile the release
+variant on every PR, which is the only way R8 rule regressions and
+resource-shrinker failures surface before release day.
+
+Any build that is meant to ship must pass `-Paivance.requireSigning=true`,
+which turns a missing or incomplete keystore into a `GradleException` before
+compilation starts. The release workflow sets this flag.
 
 ## Building
 
@@ -35,6 +59,9 @@ The `release` signing config only activates when the keystore file exists **and*
 # Universal release APK
 ./gradlew assembleRelease
 # Output: app/build/outputs/apk/release/app-release.apk
+
+# Signed release — fails loudly if the keystore is missing
+./gradlew bundleRelease -Paivance.requireSigning=true
 ```
 
 Release builds run R8 (minify + shrink resources) and emit:
@@ -51,15 +78,23 @@ CI does this automatically in the `build` job (gated on `code-quality`, `unit-te
 
 ## Deployment Pipeline
 
-The CI `release` job (manual `workflow_dispatch`) uploads to Google Play:
+The `Release` workflow (`.github/workflows/release.yml`) is the only path that
+produces a shippable artifact. See `RELEASE_GUIDE.md` for the full procedure.
 
-1. Downloads the release AAB + ProGuard mapping artifacts.
-2. Extracts version from `app/build.gradle.kts`.
-3. Uploads via `r0adkll/upload-google-play@v1`:
-   - Track: `production`, status `completed`, `userFraction 0.1` (staged rollout).
-4. Uploads the mapping file for crash symbolication.
+1. **Preflight** — fails immediately if any signing secret is missing, and runs
+   `keytool -list` to catch a truncated or password-mismatched keystore before
+   Gradle starts.
+2. **Build** — signed AAB and per-ABI APKs with `-Paivance.requireSigning=true`.
+3. **Verify** — `jarsigner` plus an explicit `META-INF` signature-block check on
+   the bundle, and `apksigner verify --print-certs` on every APK, asserting all
+   of them share one signing certificate.
+4. **Publish (opt-in)** — `publish_to_play: true` uploads the AAB via
+   `r0adkll/upload-google-play@v1`: track `production`, status `completed`,
+   `userFraction 0.1` (staged rollout).
 
-**Required secrets**: `PLAY_SERVICE_ACCOUNT_JSON`, plus signing vars listed above.
+**Required secrets**: `AIVANCE_KEYSTORE_BASE64`, `AIVANCE_STORE_PASSWORD`,
+`AIVANCE_KEY_ALIAS`, `AIVANCE_KEY_PASSWORD`; plus `PLAY_SERVICE_ACCOUNT_JSON`
+for step 4 only.
 
 ## Rollout & Rollback
 

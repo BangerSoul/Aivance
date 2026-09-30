@@ -9,6 +9,9 @@
 # Format: rule flags (H=hot, S=startup, P=post-startup, L=layout)
 # followed by the class or method descriptor.
 # Method rules MUST carry at least one of H/S/P.
+# Class rules (a bare descriptor with no "->") may carry ONLY "L" — ART rejects
+# H/S/P on class rules with "Class rules don't support flags" and fails
+# :app:expandReleaseArtProfileWildcards, which breaks every release build.
 #
 # NOTE: the rules below are hand-authored. A generated profile is strictly
 # better — regenerate with ./gradlew :app:generateBaselineProfile on a device
@@ -83,7 +86,7 @@ HSPLcom/bangersoul/aivance/worker/SyncManager;->drainQueue()V
 HSPLcom/bangersoul/aivance/job/base/RestJobProvider;->searchJobs(Lcom/bangersoul/aivance/core/common/model/JobSearchFilter;Lcom/bangersoul/aivance/core/common/enums/JobSortOrder;I)Lcom/bangersoul/aivance/core/common/result/Result;
 HSPLcom/bangersoul/aivance/job/base/RestJobProvider;->getJobDetails(Ljava/lang/String;)Lcom/bangersoul/aivance/core/common/result/Result;
 HSPLcom/bangersoul/aivance/job/base/RestJobProvider;->checkHealth()Lcom/bangersoul/aivance/sdk/core/ProviderStatus;
-HSPLcom/bangersoul/aivance/job/base/NetworkRetry;
+Lcom/bangersoul/aivance/job/base/NetworkRetry;
 HSPLcom/bangersoul/aivance/job/base/NetworkRetry;->backoffDelayMs(IJJJD)J
 
 # Compose layout and draw for the analytics trend chart

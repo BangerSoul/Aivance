@@ -95,19 +95,27 @@ jobs:
           # emulator can install. Disable them for the connected run to avoid
           # the universal-APK/split mismatch the old Docker job hit.
           # `useRegisteredAppId` builds the debug variant under the release
-          # application id instead of `….debug`, so the on-device run exercises
-          # the already-registered Firebase app entry (see app/build.gradle.kts)
-          # and ExampleInstrumentedTest's package-name assertion holds.
+          # application id instead of `….debug`. It has to be passed to
+          # `connectedDebugAndroidTest` itself: that task builds its own copy of
+          # the app APK with default flags, so setting it on a separate
+          # `assembleDebug` invocation would not affect the app under test, and
+          # ExampleInstrumentedTest asserts the package name is
+          # `com.bangersoul.aivance`.
+          #
+          # There is deliberately no manual `adb install` / `am start` here. The
+          # previous script installed `app-universal-debug.apk`, a filename that
+          # does not exist (the ABI split block sets `isUniversalApk = false`),
+          # and `am start` exits 0 even when the app dies immediately after, so
+          # it could only ever produce false confidence.
+          # `connectedDebugAndroidTest` builds, installs and launches the app
+          # itself, and a Hilt/Compose init crash fails the instrumentation
+          # rather than passing quietly.
+          #
           # Each `script` line runs as its own `sh -c`, so no `\`
           # line continuations here — they would be split into broken fragments.
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-          script: |
-            ./gradlew :app:assembleDebug -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon
-            adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
-            adb shell am start -n com.bangersoul.aivance/com.bangersoul.aivance.MainActivity
-            # `--continue` so one module's failure still reports the rest.
-            ./gradlew connectedDebugAndroidTest --no-daemon --continue
+          script: ./gradlew connectedDebugAndroidTest -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon --continue
 
       # The emulator action's teardown step (`adb … emu kill`) also fails when
       # the emulator never came up, and it is the last line in the log. That

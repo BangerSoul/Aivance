@@ -1,0 +1,257 @@
+name: Release
+
+# The workflow RELEASE_GUIDE.md and DEPLOYMENT_GUIDE.md describe, but which did
+# not exist: both guides referenced a `release` job with a `release_type` input
+# and a `PLAY_SERVICE_ACCOUNT_JSON` secret, while the only place a release could
+# be built was an `if: secrets exist` step inside the general CI pipeline. That
+# step has never run — the repository has no signing secrets — so no release
+# artifact had ever been produced, and R8 had never been compiled.
+#
+# This workflow makes the release path explicit and separates the two things
+# that were conflated before:
+#   * build + sign + verify   — always runs, fails loudly if it cannot sign
+#   * publish to Play         — opt-in via `publish_to_play`, and needs its secret
+#
+# It never mutates the repository: `versionCode` / `versionName` stay in
+# app/build.gradle.kts (see RELEASE_GUIDE.md §2) and the tag is checked against
+# them rather than overriding them.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release channel'
+        type: choice
+        default: stable
+        options: [ alpha, beta, rc, stable ]
+      publish_to_play:
+        description: 'Upload the AAB to Google Play (requires PLAY_SERVICE_ACCOUNT_JSON)'
+        type: boolean
+        default: false
+      create_github_release:
+        description: 'Create a draft GitHub release for the tag'
+        type: boolean
+        default: true
+  push:
+    tags: [ 'v*' ]
+
+env:
+  JAVA_VERSION: "17"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    name: 📦 Signed Release Artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Fails with the exact list of missing secrets rather than at
+      # `apksigner verify` twenty minutes later. `aivance.requireSigning`
+      # (see app/build.gradle.kts) is the second line of defence.
+      - name: Preflight signing credentials
+        env:
+          STORE_BASE64: ${{ secrets.AIVANCE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$STORE_BASE64" ]   || missing+=("AIVANCE_KEYSTORE_BASE64")
+          [ -n "$STORE_PASSWORD" ] || missing+=("AIVANCE_STORE_PASSWORD")
+          [ -n "$KEY_ALIAS" ]      || missing+=("AIVANCE_KEY_ALIAS")
+          [ -n "$KEY_PASSWORD" ]   || missing+=("AIVANCE_KEY_PASSWORD")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::Missing release signing secret(s): ${missing[*]}"
+            echo "Add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          printf '%s' "$STORE_BASE64" | base64 --decode > keystore.jks
+          # `keytool -list` is the only way to catch a truncated or
+          # password-mismatched keystore before Gradle starts.
+          keytool -list -keystore keystore.jks \
+            -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null
+
+      # RELEASE_GUIDE.md §2 makes the version a reviewed, committed edit, so the
+      # tag has to agree with it. A mismatch means the build file was not bumped
+      # for this release.
+      - name: Verify tag matches the committed version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          expected=$(git describe --tags --exact-match 2>/dev/null || echo "$GITHUB_REF_NAME")
+          actual=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ "$expected" != "v$actual" ]; then
+            echo "::error::Tag $expected does not match versionName \"$actual\" in app/build.gradle.kts"
+            exit 1
+          fi
+          echo "Tag $expected matches versionName $actual"
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      # AGP cannot produce split APKs and a bundle from one build
+      # (AGP issue 402800800), so the AAB and the per-ABI APKs are separate
+      # invocations. `requireSigning` makes an unsigned result a build failure
+      # rather than an artifact that silently cannot be updated later.
+      - name: Build Signed Release AAB
+        run: ./gradlew :app:bundleRelease -Paivance.disableAbiSplits=true -Paivance.requireSigning=true --no-daemon
+        env:
+          AIVANCE_STORE_FILE: keystore.jks
+          AIVANCE_STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
+          AIVANCE_KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
+          AIVANCE_KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
+
+      - name: Build Signed Release APKs (per-ABI splits)
+        run: ./gradlew :app:assembleRelease -Paivance.requireSigning=true --no-daemon
+        env:
+          AIVANCE_STORE_FILE: keystore.jks
+          AIVANCE_STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
+          AIVANCE_KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
+          AIVANCE_KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
+
+      # A build that "succeeded" is not evidence of a signed artifact. Check the
+      # signature on the real outputs, and cross-check that every APK carries the
+      # same certificate — a split set signed with mixed keys cannot be updated.
+      - name: Verify signatures
+        env:
+          STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/apksigner | sort -V | tail -1)"
+          AAB=app/build/outputs/bundle/release/app-release.aab
+          test -f "$AAB" || { echo "::error::$AAB was not produced"; exit 1; }
+
+          jarsigner -verify "$AAB" > /dev/null \
+            || { echo "::error::AAB failed jarsigner verification"; exit 1; }
+          # AGP signs bundles with JAR signing (v1) — Play re-signs them — so a
+          # signed bundle carries META-INF/<alias>.{RSA,DSA,EC}. `jarsigner`
+          # alone exits 0 on a bundle with no signature at all, so check for the
+          # signature block explicitly rather than trusting the exit code.
+          #
+          # The listing is captured rather than piped into `grep -q`: an early-exit
+          # grep closes the pipe, `unzip` dies on SIGPIPE, and `pipefail` then
+          # reports failure for a perfectly valid signed bundle.
+          listing=$(unzip -l "$AAB")
+          grep -qE 'META-INF/[^/]+\.(RSA|DSA|EC)' <<< "$listing" \
+            || { echo "::error::AAB carries no JAR signature block — it is unsigned"; exit 1; }
+          echo "AAB: signature valid"
+
+          mapfile -t apks < <(find app/build/outputs/apk/release -name '*-release.apk' | sort)
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "::error::no release APKs were produced"
+            exit 1
+          fi
+          reference=""
+          for apk in "${apks[@]}"; do
+            # Same SIGPIPE/`pipefail` trap as above: capture, then match.
+            # `|| true` because a non-matching grep would otherwise trip `set -e`
+            # and abort the step before the diagnostic below could print.
+            certs=$("$APKSIGNER" verify --print-certs "$apk")
+            sha=$(grep -oPm1 'Signer #1 certificate SHA-256 digest: \K\S+' <<< "$certs" || true)
+            [ -n "$sha" ] || {
+              echo "::error::$apk is not signed, or apksigner reported no signer digest"
+              exit 1
+            }
+            if [ -z "$reference" ]; then reference="$sha"; fi
+            if [ "$sha" != "$reference" ]; then
+              echo "::error::$apk is signed with a different certificate than the rest of the set"
+              exit 1
+            fi
+            echo "$(basename "$apk"): signed (${sha:0:16}…)"
+          done
+          echo "All ${#apks[@]} release APKs share one signing certificate."
+
+      - name: Upload Release Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: aivance-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Upload Release APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: aivance-release-apks
+          path: app/build/outputs/apk/release/*-release.apk
+          retention-days: 90
+          if-no-files-found: error
+
+      # mapping.txt and the native symbol table are the inputs to crash
+      # deobfuscation (RELEASE_GUIDE.md §6). Losing them makes every future
+      # release's stack trace unreadable, hence the long retention.
+      - name: Upload R8 Mapping and Native Symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: aivance-release-symbols
+          path: |
+            app/build/outputs/mapping/release/mapping.txt
+            app/build/outputs/native-debug-symbols/
+          retention-days: 365
+          if-no-files-found: warn
+
+      - name: Upload to Google Play
+        if: inputs.publish_to_play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          service_account_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          file: app/build/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.release_type == 'stable' && 'production' || 'beta' }}
+          status: ${{ inputs.release_type == 'stable' && 'completed' || 'draft' }}
+          # Staged rollout, per DEPLOYMENT_GUIDE.md — 10% first.
+          user_fraction: 0.1
+          in_app_update_priority: 2
+          changes_not_sent_for_review: true
+          timeout: 1800
+
+  github-release:
+    name: 🏷️ Draft GitHub Release
+    needs: build-release
+    # `inputs` is empty on a tag push, so compare against the event name rather
+    # than against `false` — a null/false comparison here is not reliable.
+    if: >-
+      always() && needs.build-release.result == 'success'
+      && (github.event_name != 'workflow_dispatch' || inputs.create_github_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The bundle was built in another job, so it has to be fetched before it
+      # can be attached to the release.
+      - name: Download release bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: aivance-release-aab
+          path: release
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: release/app-release.aab

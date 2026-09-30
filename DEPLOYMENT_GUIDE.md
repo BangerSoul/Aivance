@@ -78,15 +78,23 @@ CI does this automatically in the `build` job (gated on `code-quality`, `unit-te
 
 ## Deployment Pipeline
 
-The CI `release` job (manual `workflow_dispatch`) uploads to Google Play:
+The `Release` workflow (`.github/workflows/release.yml`) is the only path that
+produces a shippable artifact. See `RELEASE_GUIDE.md` for the full procedure.
 
-1. Downloads the release AAB + ProGuard mapping artifacts.
-2. Extracts version from `app/build.gradle.kts`.
-3. Uploads via `r0adkll/upload-google-play@v1`:
-   - Track: `production`, status `completed`, `userFraction 0.1` (staged rollout).
-4. Uploads the mapping file for crash symbolication.
+1. **Preflight** — fails immediately if any signing secret is missing, and runs
+   `keytool -list` to catch a truncated or password-mismatched keystore before
+   Gradle starts.
+2. **Build** — signed AAB and per-ABI APKs with `-Paivance.requireSigning=true`.
+3. **Verify** — `jarsigner` plus an explicit `META-INF` signature-block check on
+   the bundle, and `apksigner verify --print-certs` on every APK, asserting all
+   of them share one signing certificate.
+4. **Publish (opt-in)** — `publish_to_play: true` uploads the AAB via
+   `r0adkll/upload-google-play@v1`: track `production`, status `completed`,
+   `userFraction 0.1` (staged rollout).
 
-**Required secrets**: `PLAY_SERVICE_ACCOUNT_JSON`, plus signing vars listed above.
+**Required secrets**: `AIVANCE_KEYSTORE_BASE64`, `AIVANCE_STORE_PASSWORD`,
+`AIVANCE_KEY_ALIAS`, `AIVANCE_KEY_PASSWORD`; plus `PLAY_SERVICE_ACCOUNT_JSON`
+for step 4 only.
 
 ## Rollout & Rollback
 

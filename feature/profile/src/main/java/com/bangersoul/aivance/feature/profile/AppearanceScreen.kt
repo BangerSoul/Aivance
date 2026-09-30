@@ -61,6 +61,7 @@ fun AppearanceScreen(
             item { ThemeModeSection(uiState, viewModel) }
             item { AccentSection(uiState, viewModel) }
             item { DynamicColorSection(uiState, viewModel) }
+            item { LanguageSection(uiState, viewModel) }
         }
     }
 }
@@ -156,6 +157,31 @@ private fun DynamicColorSection(state: AppearanceUiState, viewModel: AppearanceV
                     checked = state.dynamicColor,
                     onCheckedChange = { viewModel.setDynamicColor(it) }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageSection(state: AppearanceUiState, viewModel: AppearanceViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionLabel(stringResource(R.string.app_language))
+        DashboardCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Only these two ship translations. A previous Language enum
+                // advertised five more (Spanish, French, German, Chinese,
+                // Japanese) that have no values-<locale> resources, so offering
+                // them would silently render English anyway.
+                listOf(
+                    "en" to stringResource(R.string.app_language_english),
+                    "hi" to stringResource(R.string.app_language_hindi)
+                ).forEach { (code, label) ->
+                    SelectableRow(
+                        label = label,
+                        selected = state.language == code,
+                        onClick = { viewModel.setLanguage(code) }
+                    )
+                }
             }
         }
     }

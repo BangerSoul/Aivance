@@ -177,7 +177,7 @@ class AivanceNavGraphTest {
     fun appShowsSplashOrDashboardOnStart() {
         composeTestRule.setContent {
             AivanceTheme {
-                AivanceNavGraph()
+                AivanceNavGraph(appVersion = "0.0.0-test")
             }
         }
 

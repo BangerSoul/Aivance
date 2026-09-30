@@ -77,6 +77,9 @@
     <string name="material_you">Material You</string>
     <string name="dynamic_color">Dynamic Color</string>
     <string name="dynamic_color_sub">Use system wallpaper colors (Android 12+)</string>
+    <string name="app_language">App Language</string>
+    <string name="app_language_english">English</string>
+    <string name="app_language_hindi">Hindi</string>
 
     <!-- Privacy Center -->
     <string name="privacy_title">Privacy &amp; Security</string>

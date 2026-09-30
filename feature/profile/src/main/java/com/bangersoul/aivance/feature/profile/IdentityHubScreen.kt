@@ -47,6 +47,12 @@ fun IdentityHubScreen(
     onNavigateToAppearance: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {},
     /**
+     * `BuildConfig.VERSION_NAME` from the app module, threaded in by the caller.
+     * The System tab used to hardcode its own version string, which drifted from
+     * `app/build.gradle.kts` and shipped a wrong number in release builds.
+     */
+    appVersion: String,
+    /**
      * Selected sub-tab, owned by the caller (B5). A local `remember` here was
      * wiped every time the user left the hub for a System spoke (Appearance,
      * Privacy, …) and came back — the spoke push/replace re-creates this
@@ -108,7 +114,8 @@ fun IdentityHubScreen(
                             onNavigateToAbout = onNavigateToAbout,
                             onNavigateToResources = onNavigateToResources,
                             onNavigateToAppearance = onNavigateToAppearance,
-                            onNavigateToPrivacy = onNavigateToPrivacy
+                            onNavigateToPrivacy = onNavigateToPrivacy,
+                            appVersion = appVersion
                         )
                         // Identity is also the fallback: a tab index saved before
                         // the Preferences/Vault merges would otherwise land nowhere.
@@ -938,7 +945,8 @@ private fun SystemTab(
     onNavigateToAbout: () -> Unit = {},
     onNavigateToResources: () -> Unit = {},
     onNavigateToAppearance: () -> Unit = {},
-    onNavigateToPrivacy: () -> Unit = {}
+    onNavigateToPrivacy: () -> Unit = {},
+    appVersion: String
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1020,7 +1028,7 @@ private fun SystemTab(
                 modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(R.string.system_version_banner, "2.0.0"), style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.system_version_banner, appVersion), style = MaterialTheme.typography.labelSmall)
                 Text(stringResource(R.string.system_tagline), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
         }

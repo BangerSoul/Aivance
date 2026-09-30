@@ -82,7 +82,14 @@ import kotlinx.coroutines.withTimeoutOrNull
  *    auth state.
  */
 @Composable
-fun AivanceNavGraph() {
+fun AivanceNavGraph(
+    /**
+     * `BuildConfig.VERSION_NAME` from the :app module, which owns the version
+     * and is the only place BuildConfig is generated. The System tab renders
+     * it instead of a hardcoded literal that drifts from app/build.gradle.kts.
+     */
+    appVersion: String
+) {
     val authViewModel: AuthenticationViewModel = hiltViewModel()
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     // The central provider gate — one authority for product entry. It reads
@@ -106,7 +113,7 @@ fun AivanceNavGraph() {
     }
 
     AivanceAppShell {
-        AivanceWorkflowNavGraph(initialDestination, authViewModel, providerGate)
+        AivanceWorkflowNavGraph(initialDestination, authViewModel, providerGate, appVersion)
     }
 }
 
@@ -131,7 +138,8 @@ private fun workspaceOwnerOf(destination: Destination): Destination? = when (des
 private fun AivanceWorkflowNavGraph(
     initialDestination: Destination,
     authViewModel: AuthenticationViewModel,
-    providerGate: ProviderGateState?
+    providerGate: ProviderGateState?,
+    appVersion: String
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val isAuthed = authState is AuthenticationUiState.Authenticated
@@ -356,7 +364,8 @@ private fun AivanceWorkflowNavGraph(
                 studioSegment = studioSegment,
                 onStudioSegmentChange = { studioSegment = it },
                 identityTab = identityTab,
-                onIdentityTabChange = { identityTab = it }
+                onIdentityTabChange = { identityTab = it },
+                appVersion = appVersion
             )
         }
     } else {
@@ -367,7 +376,8 @@ private fun AivanceWorkflowNavGraph(
             studioSegment = studioSegment,
             onStudioSegmentChange = { studioSegment = it },
             identityTab = identityTab,
-            onIdentityTabChange = { identityTab = it }
+            onIdentityTabChange = { identityTab = it },
+            appVersion = appVersion
         )
     }
 }
@@ -380,7 +390,8 @@ private fun NavHostContent(
     studioSegment: StudioSegment,
     onStudioSegmentChange: (StudioSegment) -> Unit,
     identityTab: Int,
-    onIdentityTabChange: (Int) -> Unit
+    onIdentityTabChange: (Int) -> Unit,
+    appVersion: String
 ) {
     val currentDestination = if (backStack.isNotEmpty()) backStack.last() else return
     AnimatedContent(
@@ -401,6 +412,7 @@ private fun NavHostContent(
                 onStudioSegmentChange = onStudioSegmentChange,
                 identityTab = identityTab,
                 onIdentityTabChange = onIdentityTabChange,
+                appVersion = appVersion,
                 onBack = {
                     if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
                 }
@@ -418,6 +430,7 @@ private fun ScreenContent(
     onStudioSegmentChange: (StudioSegment) -> Unit,
     identityTab: Int,
     onIdentityTabChange: (Int) -> Unit,
+    appVersion: String,
     onBack: () -> Unit
 ) {
     val shellState = LocalAppShellState.current
@@ -534,6 +547,7 @@ private fun ScreenContent(
             onBack = onBack,
             selectedTab = identityTab,
             onTabChange = onIdentityTabChange,
+            appVersion = appVersion,
             onNavigateToAbout = { onNavigate(Destination.About) },
             onNavigateToResources = { onNavigate(Destination.Resources) },
             onNavigateToAppearance = { onNavigate(Destination.Appearance) },

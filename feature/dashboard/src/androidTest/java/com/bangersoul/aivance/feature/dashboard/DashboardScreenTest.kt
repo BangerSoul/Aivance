@@ -13,7 +13,7 @@ import org.junit.Test
  * Instrumented dashboard rendering.
  *
  * The last two tests are the **UI half of the metric-integrity guard**: with zero data on screen,
- * no rated number may be rendered at all. The JVM half lives in
+ * no rated number and no scored surface may be rendered at all. The JVM half lives in
  * `DashboardZeroDataMetricGuardTest` and proves the state mapping; this proves the render.
  */
 class DashboardScreenTest {
@@ -66,7 +66,6 @@ class DashboardScreenTest {
                     onNavigateToResume = {},
                     onNavigateToJobs = {},
                     onNavigateToInterview = {},
-                    onNavigateToAssistant = {},
                     onNavigateToTracker = {},
                     onNavigateToProfile = {},
                     onNavigateToAnalytics = {}
@@ -121,16 +120,38 @@ class DashboardScreenTest {
     }
 
     @Test
-    fun zeroDataDashboardExplainsThatNothingIsScoredYet() {
+    fun zeroDataDashboardRendersNoCareerScoreSurface() {
         renderContent(zeroDataState())
 
-        composeTestRule.onNodeWithText("Career Score").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Unlock your score").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Not scored yet").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Upload a resume and run an ATS scan to unlock scoring.").assertIsDisplayed()
+        // The career-score card is gated on `state.careerScore != null`
+        // (DashboardScreen.kt §2, AUDIT 06/34): a fresh account used to open on a
+        // placeholder ring that also offered a third route into a career surface,
+        // and unmeasured metrics now render nothing at all. This test used to
+        // assert the *opposite* — that the placeholder and its "Unlock your
+        // score" copy were on screen — and only now fails, because androidTest
+        // had never been compiled against the current UI.
+        //
+        // So the guard is inverted: at zero data none of the scored surface may
+        // appear. Do not "fix" this by restoring the placeholder.
+        assertTrue(
+            "the career-score ring must not render before anything is measured",
+            !textIsRendered("Career Score")
+        )
+        assertTrue(
+            "the unlock title must not render before anything is measured",
+            !textIsRendered("Unlock your score")
+        )
+        assertTrue(
+            "the unlock copy must not render before anything is measured",
+            !textIsRendered("Upload a resume and run an ATS scan to unlock scoring.")
+        )
+        assertTrue(
+            "the 'not scored yet' chip belongs to the card, which must be absent",
+            !textIsRendered("Not scored yet")
+        )
 
-        // Skill Match is shown as unmeasured and asks for the input it needs, rather than
-        // celebrating a profile that has no target jobs.
+        // Skill Match is still shown, unmeasured, and asks for the input it needs
+        // rather than celebrating a profile that has no target jobs.
         composeTestRule.onNodeWithText("Skill Match").assertIsDisplayed()
         composeTestRule.onNodeWithText("Save target jobs to measure your skill match.").assertIsDisplayed()
     }

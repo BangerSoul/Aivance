@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -97,13 +97,13 @@ jobs:
           echo "Tag $expected matches versionName $actual"
 
       - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
@@ -181,7 +181,7 @@ jobs:
           echo "All ${#apks[@]} release APKs share one signing certificate."
 
       - name: Upload Release Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aivance-release-aab
           path: app/build/outputs/bundle/release/app-release.aab
@@ -189,7 +189,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Release APKs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aivance-release-apks
           path: app/build/outputs/apk/release/*-release.apk
@@ -200,7 +200,7 @@ jobs:
       # deobfuscation (RELEASE_GUIDE.md §6). Losing them makes every future
       # release's stack trace unreadable, hence the long retention.
       - name: Upload R8 Mapping and Native Symbols
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aivance-release-symbols
           path: |
@@ -237,20 +237,20 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       # The bundle was built in another job, so it has to be fetched before it
       # can be attached to the release.
       - name: Download release bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: aivance-release-aab
           path: release
 
       - name: Create draft release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           generate_release_notes: true

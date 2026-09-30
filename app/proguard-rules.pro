@@ -40,7 +40,7 @@
 # them in place. The two APKs disagree about what a class is called, and the
 # instrumentation process dies before a single test executes.
 #
-# Three real instances, all found by running the suite, not by reading rules:
+# Four real instances, all found by running the suite, not by reading rules:
 #
 #   androidx.tracing.Trace
 #     androidx.test:runner -> AndroidJUnitRunner.onCreate()
@@ -85,7 +85,14 @@
 # Every entry here is backed by an actual CI crash, quoted above.
 -keep,allowoptimization class kotlin.** { *; }
 -keep,allowoptimization class androidx.tracing.** { *; }
--keep,allowoptimization class kotlinx.coroutines.** { *; }
+
+# Tier 1, one class. Promoting all of kotlinx.coroutines to Tier 1 was tried and
+# reverted: it reproduced the same `minifyReleaseWithR8` failure as defect (5)
+# below (POI -> Batik / java.awt missing classes), so a whole-package keep of
+# coroutines costs more than the single class the harness actually needs.
+# This is that class. It is `@InternalCoroutinesApi`, nothing in the app reaches
+# it, and it must survive for the harness to build a test runner at all.
+-keep class kotlinx.coroutines.DelayWithTimeoutDiagnostics { *; }
 
 # Tier 2 -- name-only insurance for the rest of the harness's likely link
 # surface. `-keepnames` (i.e. `-keep,allowshrinking`) cannot make R8 retain a
@@ -93,11 +100,12 @@
 #
 # Deliberately NOT `-keep`: promoting these to a full keep is what broke
 # `minifyReleaseWithR8` in the next CI round. Retaining all of androidx.core /
-# lifecycle / kotlinx.coroutines pulled Apache POI's XSLF->SVG rendering path
-# back into the app, which then referenced org.apache.batik.* and java.awt.* --
-# neither of which exists on Android -- and R8 failed the whole build with
-# "Missing classes detected while running R8". Broad keeps do not fail loudly
-# in the harness; they fail in the shrinker, on unrelated third-party code.
+# lifecycle pulled Apache POI's XSLF->SVG rendering path back into the app,
+# which then referenced org.apache.batik.* and java.awt.* -- neither of which
+# exists on Android -- and R8 failed the whole build with "Missing classes
+# detected while running R8". A full keep of kotlinx.coroutines alone
+# reproduced it too. Broad keeps do not fail loudly in the harness; they fail
+# in the shrinker, on unrelated third-party code.
 #
 # If a future run needs a member of one of these preserved, promote that ONE
 # package to Tier 1 and add `-dontwarn` entries for whatever the wider
@@ -107,6 +115,7 @@
 -keepnames class androidx.annotation.**
 -keepnames class androidx.core.**
 -keepnames class androidx.lifecycle.**
+-keepnames class kotlinx.coroutines.**
 -keepnames class com.google.common.**
 -keepnames class com.google.gson.**
 -keepnames class org.junit.**

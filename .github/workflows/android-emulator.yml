@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     # Boot plus a full connectedAndroidTest sweep fits in ~25 min. The previous
     # 45 was only ever reached by the hang described above.
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Checkout Source Code
@@ -74,23 +74,55 @@ jobs:
 
       # `api_level` is a workflow_dispatch input; for push/pull_request events
       # github.event.inputs is empty, so the expression falls back to 35.
+      #
+      # Deliberately no `profile:` input. That input is passed straight to
+      # `avdmanager create avd --device <profile>`, which takes a *hardware
+      # device* id (`Nexus 6`, `pixel_6`, ...) — not an image tag. Passing
+      # `google_apis` there aborted the very first attempt with
+      # "No device found matching --device google_apis"; the emulator never
+      # started, and the action's own `emu kill` teardown then failed too,
+      # burying the real message. Leaving it unset omits `--device` entirely
+      # and lets avdmanager pick its default hardware profile.
       - name: Run instrumented tests on the emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ github.event.inputs.api_level || '35' }}
+          target: google_apis
           arch: x86_64
-          profile: google_apis
+          # Room DAO + migration suites are the heaviest instrumented tests here.
+          ram-size: 4096M
           # The app ships per-ABI splits, so the x86_64 slice is the one the
           # emulator can install. Disable them for the connected run to avoid
           # the universal-APK/split mismatch the old Docker job hit.
+          # `useRegisteredAppId` builds the debug variant under the release
+          # application id instead of `….debug`, so the on-device run exercises
+          # the already-registered Firebase app entry (see app/build.gradle.kts)
+          # and ExampleInstrumentedTest's package-name assertion holds.
+          # Each `script` line runs as its own `sh -c`, so no `\`
+          # line continuations here — they would be split into broken fragments.
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: |
-            ./gradlew :app:assembleDebug -Paivance.disableAbiSplits=true --no-daemon
+            ./gradlew :app:assembleDebug -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon
             adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
-            adb shell am start -n com.bangersoul.aivance.debug/com.bangersoul.aivance.MainActivity
+            adb shell am start -n com.bangersoul.aivance/com.bangersoul.aivance.MainActivity
             # `--continue` so one module's failure still reports the rest.
             ./gradlew connectedDebugAndroidTest --no-daemon --continue
+
+      # The emulator action's teardown step (`adb … emu kill`) also fails when
+      # the emulator never came up, and it is the last line in the log. That
+      # buries the actual cause, so re-print the AVD/emulator state on failure.
+      - name: Collect emulator diagnostics
+        if: failure()
+        run: |
+          echo "=== AVD definitions ==="
+          avdmanager list avd || true
+          echo "=== adb devices ==="
+          adb devices -l || true
+          echo "=== emulator process ==="
+          ps -ef | grep -i "[e]mulator" || echo "(no emulator process)"
+          echo "=== system images installed ==="
+          sdkmanager --list_installed 2>/dev/null | grep -i "system-images" || true
 
       - name: Upload Test Reports
         if: always()

@@ -66,7 +66,6 @@ class DashboardScreenTest {
                     onNavigateToResume = {},
                     onNavigateToJobs = {},
                     onNavigateToInterview = {},
-                    onNavigateToAssistant = {},
                     onNavigateToTracker = {},
                     onNavigateToProfile = {},
                     onNavigateToAnalytics = {}

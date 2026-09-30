@@ -102,6 +102,22 @@ jobs:
           # ExampleInstrumentedTest asserts the package name is
           # `com.bangersoul.aivance`.
           #
+          # The task list is explicit rather than a bare `connectedDebugAndroidTest`.
+          # AGP registers that task for *every* Android module, and the ~20
+          # library modules with no `src/androidTest` still build and install a
+          # test APK. With no `androidx.test:runner` on their classpath they
+          # cannot even start, so each one failed with
+          # `ClassNotFoundException: androidx.test.runner.AndroidJUnitRunner`
+          # — noise that buried the four modules that actually have tests.
+          # Keep this list in sync when a module gains an `androidTest` source
+          # set: `find . -type d -name androidTest -not -path '*/build/*'`.
+          #
+          # `:macrobenchmark` is deliberately excluded. It holds no
+          # `src/androidTest`, and its StartupBenchmark refuses to run on an
+          # emulator by design ("ERROR: Running on Emulator", plus
+          # "Benchmark Target is Debuggable"); macrobenchmarks are only
+          # meaningful on a physical, non-debuggable target.
+          #
           # There is deliberately no manual `adb install` / `am start` here. The
           # previous script installed `app-universal-debug.apk`, a filename that
           # does not exist (the ABI split block sets `isUniversalApk = false`),
@@ -115,7 +131,7 @@ jobs:
           # line continuations here — they would be split into broken fragments.
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-          script: ./gradlew connectedDebugAndroidTest -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon --continue
+          script: ./gradlew :app:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest :core:database:connectedDebugAndroidTest :feature:dashboard:connectedDebugAndroidTest :navigation:connectedDebugAndroidTest -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon --continue
 
       # The emulator action's teardown step (`adb … emu kill`) also fails when
       # the emulator never came up, and it is the last line in the log. That

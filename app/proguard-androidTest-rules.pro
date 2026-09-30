@@ -4,13 +4,15 @@
 # separately by `minifyReleaseWithR8`, and that minification is the coverage this
 # setup exists for. Nothing here reduces it.
 #
-# What actually caused the first failure was NOT harness shrinking. It was a name
-# mismatch: R8 obfuscated `androidx.tracing.Trace` in the app APK, while the
-# harness resolved it by its original name from
-# `androidx.test:runner`'s `AndroidJUnitRunner.onCreate`, giving
-# NoClassDefFoundError before any test ran. That is fixed on the app side, in
-# `proguard-rules.pro`, with `-keepnames class androidx.tracing.**`. These rules
-# are the hardening around it, and each earns its place:
+# What actually caused the failures was NOT harness shrinking. It was a name
+# mismatch. R8 obfuscates classes in the app APK; the harness resolves classes
+# out of that same dependency closure by their original names; the two APKs then
+# disagree and the instrumentation process dies before any test runs. Two
+# distinct classes hit it -- `androidx.tracing.Trace` (from
+# `androidx.test:runner`'s `AndroidJUnitRunner.onCreate`) and `kotlin.LazyKt`
+# (from `androidx.test:monitor`'s `TestDirCalculator`). Both are fixed on the
+# app side, in `proguard-rules.pro`, under "Instrumented-test bridge". These
+# rules are the hardening around that, and each earns its place:
 #
 # -dontobfuscate  A crashed harness is the artifact you actually need to read, and
 #                 an obfuscated stack trace is close to worthless. Keeping names

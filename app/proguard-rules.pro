@@ -29,24 +29,55 @@
 -keep,allowobfuscation interface com.bangersoul.aivance.**.api.** { *; }
 -keep,allowobfuscation interface com.bangersoul.aivance.**.*Api { *; }
 
-# Keep androidx.tracing names stable.
+# ============================================================
+# Instrumented-test bridge: app APK <-> androidx.test harness
+# ============================================================
+# `app` runs its instrumented suite against this minified release APK. The
+# androidTest APK is built separately and is NOT obfuscated (see
+# `proguard-androidTest-rules.pro`), yet both APKs are loaded into the same
+# classloader. The harness therefore resolves classes out of the app's
+# dependency closure by their ORIGINAL names, while R8 has already renamed
+# them in place. The two APKs disagree about what a class is called, and the
+# instrumentation process dies before a single test executes.
 #
-# `androidx.tracing:tracing` reaches the *app* through Compose UI, and R8
-# obfuscates it in the release APK. The instrumentation harness, however, resolves
-# it by its original name: `androidx.test:runner`'s AndroidJUnitRunner calls
-# `androidx.tracing.Trace` from onCreate. With the app obfuscated and the harness
-# not, the two APKs disagree about what the class is called and the release
-# instrumented run dies before a single test executes:
+# Two real instances, both found by running the suite, not by reading rules:
 #
-#   java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/tracing/Trace;
-#       at androidx.test.runner.AndroidJUnitRunner.onCreate(AndroidJUnitRunner.java:307)
-#   Caused by: java.lang.ClassNotFoundException: androidx.tracing.Trace
+#   androidx.tracing.Trace
+#     androidx.test:runner -> AndroidJUnitRunner.onCreate()
+#     NoClassDefFoundError: Failed resolution of: Landroidx/tracing/Trace;
 #
-# This is a name-identity problem, not a size problem, so `allowshrinking` is
-# deliberately NOT used: letting R8 drop the class entirely is fine, but if it
-# keeps it, it must keep the *name* the harness looks for.
+#   kotlin.LazyKt
+#     androidx.test:monitor -> io.TestDirCalculator.<init> (`by lazy {}`)
+#     NoClassDefFoundError: Failed resolution of: Lkotlin/LazyKt;
+#
+# The second one is the sharper lesson: it is a `by lazy {}` the *harness* owns,
+# not the app's. No amount of reading this project's source would have surfaced
+# it -- only running the release variant on a device did.
+#
+# Triage rule for anything new that fails this way: add the class to the tier
+# below that matches WHY it broke. Don't add a single-class `-keep` per
+# incident; the harness links a whole closure of them.
+#
+# Tier 1 -- must be present AND keep its original name.
+# R8 never sees the harness's reference, so it is free to shrink or inline
+# these classes even though something genuinely needs them at runtime. Keep
+# the names, but still allow body optimization so R8 keeps working.
+-keep,allowoptimization class kotlin.** { *; }
+
+# Tier 2 -- must keep its original name, but R8 already keeps these because
+# the app uses them; renaming is the only thing that breaks.
+# Each entry is reachable from the app APK *and* linkable from
+# androidx.test:runner / monitor / core.
 -keepnames class androidx.tracing.**
--keep class androidx.tracing.Trace { *; }
+-keepnames class androidx.test.**
+-keepnames class androidx.annotation.**
+-keepnames class androidx.lifecycle.**
+-keepnames class androidx.core.**
+-keepnames class kotlinx.coroutines.**
+-keepnames class com.google.common.**
+-keepnames class com.google.gson.**
+-keepnames class org.junit.**
+-keepnames class org.hamcrest.**
 
 # OkHttp and Retrofit ship their own consumer rules; only suppress the
 # optional-JVM-class warnings (okio/java9). App Retrofit interfaces are kept

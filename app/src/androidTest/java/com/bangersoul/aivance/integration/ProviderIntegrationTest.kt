@@ -71,11 +71,7 @@ class ProviderIntegrationTest {
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
 
-    private val jobCache = object : JobCache {
-        override suspend fun getJobs(): List<JobListing> = emptyList()
-        override suspend fun saveJobs(jobs: List<JobListing>) = Unit
-        override suspend fun clear() = Unit
-    }
+    private val jobCache = NoOpJobCache
 
     // ── AI providers ────────────────────────────────────────────────────
 
@@ -290,4 +286,24 @@ class ProviderIntegrationTest {
             result is Result.Success
         )
     }
+}
+
+/**
+ * A named singleton rather than an anonymous `object :` expression, on purpose.
+ *
+ * With `testBuildType = "release"` the androidTest APK is minified, and the
+ * anonymous form — which the compiler names
+ * `ProviderIntegrationTest$jobCache$1` — went missing from the APK. JUnit
+ * resolves every declared method signature before running anything
+ * (`MethodSorter.getDeclaredMethods`), so the whole test class failed to load
+ * and all of its tests errored with
+ * `NoClassDefFoundError: ...ProviderIntegrationTest$jobCache$1` — including
+ * the ones whose only assertion is an `assumeTrue` skip. A named top-level
+ * object is an ordinary class with a static INSTANCE, and does not depend on
+ * that synthetic name surviving.
+ */
+private object NoOpJobCache : JobCache {
+    override suspend fun getJobs(): List<JobListing> = emptyList()
+    override suspend fun saveJobs(jobs: List<JobListing>) = Unit
+    override suspend fun clear() = Unit
 }

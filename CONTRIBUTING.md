@@ -268,10 +268,36 @@ stateDiagram-v2
 A PR cannot be merged unless all automated CI pipeline checks pass:
 * **Build Verification:** `./gradlew assembleDebug assembleRelease` succeeds with zero errors.
 * **Static Analysis:** `./gradlew detekt ktlintCheck lintDebug` passes with zero violations.
-* **Unit Tests:** `./gradlew testDebugUnitTest` achieves 100% pass rate.
-* **Instrumentation Tests:** `./gradlew connectedDebugAndroidTest` passes on managed emulator.
+* **Unit Tests:** `./gradlew testDebugUnitTest` achieves 100% pass rate. Note that `:app` is **not** included in a bare `testDebugUnitTest` run — it sets `testBuildType = "release"`, so its task is `:app:testReleaseUnitTest`. Run both.
+* **Instrumentation Tests:** `./gradlew :app:connectedReleaseAndroidTest` (plus the per-module `connectedDebugAndroidTest` tasks) passes on the managed emulator. The `:app` task runs against the **release** variant on purpose — see “R8 and the release variant” below.
 * **Coverage Verification:** JaCoCo report confirms >80% coverage on modified files.
 * **Binary Size Check:** Release APK size change is within +500KB tolerance.
+
+#### R8 and the release variant
+
+`:app` declares `testBuildType = "release"`, so its instrumented tests run against the
+minified, resource-shrunk build rather than the debug one. This is deliberate. Debug sets
+`isMinifyEnabled = false`, so a green debug test run says nothing about the binary that
+actually ships. R8 is whole-file analysis, and the code it most often breaks here is code
+this app leans on heavily — `@Serializable` types, Hilt-generated components, Room DAO
+implementations and Retrofit interfaces. Those fail at **runtime**, with a
+`SerializationException` or `ClassNotFoundException`, after every compile-time check has
+already passed.
+
+Two consequences for contributors:
+
+* **A release-variant test failure may be a ProGuard problem, not a code problem.** Check
+  `app/proguard-rules.pro` before “fixing” the test. A new `@Serializable` class or a
+  Hilt-bound type that needs an explicit keep rule shows up exactly this way.
+* **Release `BuildConfig` deliberately has empty provider keys.** `ProviderIntegrationTest`
+  needs the `BuildConfig` fields to exist, but a real key must never be compiled into a
+  release APK. The live-API tests therefore report as *skipped* under release, via their
+  `assumeTrue(...isNotBlank())` guards. That is correct behaviour, not a regression.
+
+Running the release instrumented suite locally requires a keystore, because a non-debuggable
+target can only be instrumented by an APK signed with the same key. See
+`DEPLOYMENT_GUIDE.md` → *Signing credentials*. CI provisions one automatically, using the
+repository secrets when they are configured and a throwaway per-run key otherwise.
 
 ### 5.4 Merge Strategies
 * **Squash and Merge:** Standard merge strategy for all feature, fix, and refactor PRs. Combines all branch commits into a clean, single commit on `main`.
@@ -767,7 +793,7 @@ try {
 
 ### 19.1 Pre-Commit Checklist
 * [ ] Code builds cleanly via `.\gradlew assembleDebug`.
-* [ ] Unit tests pass via `.\gradlew testDebugUnitTest`.
+* [ ] Unit tests pass via `.\gradlew testDebugUnitTest :app:testReleaseUnitTest`. (`:app` uses the release test variant — see “R8 and the release variant”.)
 * [ ] Code style and lint checks pass via `.\gradlew detekt ktlintCheck`.
 * [ ] No secret keys or hardcoded passwords in diff.
 * [ ] Commit message follows Conventional Commits format with co-author trailer.

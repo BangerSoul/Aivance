@@ -34,6 +34,11 @@ The workflow **builds, signs and verifies** on every run. Only publishing is opt
 - [ ] Lint + static analysis clean.
 - [ ] `assembleDebug` and `bundleRelease`/`assembleRelease` succeed.
 - [ ] Instrumented tests pass (CI: API 35, `google_apis` image, x86_64).
+- [ ] **Release-variant instrumented tests pass** — `:app` runs its androidTest against
+      the minified, resource-shrunk build (`testBuildType = "release"`), so this is the step
+      that catches an R8 regression. `assembleRelease` succeeding only proves R8 did not
+      *error*; it does not prove the shrunken app still runs. A failure here usually means a
+      keep rule is missing from `app/proguard-rules.pro`, not that the test is wrong.
 - [ ] Manual QA checklist complete (see `TEST_PLAN.md`).
 - [ ] `KNOWN_ISSUES.md` reviewed — no release-blocking issues.
 - [ ] Telemetry sweep — no credentials in logs.

@@ -327,7 +327,9 @@ Execute the initial Gradle build via command line:
 Run all unit tests to confirm setup integrity:
 
 ```powershell
-.\gradlew testDebugUnitTest
+# :app targets the release build type, so its unit tests live under
+# testReleaseUnitTest and are NOT picked up by a bare testDebugUnitTest.
+.\gradlew testDebugUnitTest :app:testReleaseUnitTest
 ```
 
 ---
@@ -721,8 +723,12 @@ class FollowUpWorker @AssistedInject constructor(
 # Run unit tests for a specific module (:feature:resume)
 .\gradlew :feature:resume:testDebugUnitTest
 
-# Run connected Android UI instrumentation tests on attached device
-.\gradlew connectedDebugAndroidTest
+# Run connected Android UI instrumentation tests on attached device.
+# :app tests the RELEASE variant (minified + shrunk) on purpose, so R8
+# regressions surface here instead of on a user's device. It needs a
+# keystore — see DEPLOYMENT_GUIDE.md > Signing credentials. Library modules
+# test their debug variants, which is expected: R8 only runs in the app module.
+.\gradlew :app:connectedReleaseAndroidTest :core:database:connectedDebugAndroidTest
 ```
 
 ---

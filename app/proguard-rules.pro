@@ -29,6 +29,110 @@
 -keep,allowobfuscation interface com.bangersoul.aivance.**.api.** { *; }
 -keep,allowobfuscation interface com.bangersoul.aivance.**.*Api { *; }
 
+# ============================================================
+# Instrumented-test bridge: app APK <-> androidx.test harness
+# ============================================================
+# `app` runs its instrumented suite against this minified release APK. The
+# androidTest APK is built separately and is NOT obfuscated (see
+# `proguard-androidTest-rules.pro`), yet both APKs are loaded into the same
+# classloader. The harness therefore resolves classes out of the app's
+# dependency closure by their ORIGINAL names, while R8 has already renamed
+# them in place. The two APKs disagree about what a class is called, and the
+# instrumentation process dies before a single test executes.
+#
+# Five real instances, all found by running the suite, not by reading rules:
+#
+#   androidx.tracing.Trace
+#     androidx.test:runner -> AndroidJUnitRunner.onCreate()
+#     NoClassDefFoundError: Failed resolution of: Landroidx/tracing/Trace;
+#
+#   kotlin.LazyKt
+#     androidx.test:monitor -> io.TestDirCalculator.<init> (`by lazy {}`)
+#     NoClassDefFoundError: Failed resolution of: Lkotlin/LazyKt;
+#
+#   androidx.tracing.Trace.beginSection(String)
+#     androidx.test:runner -> AndroidJUnitRunner.onCreate()
+#     NoSuchMethodError: No static method beginSection(...) in class Trace;
+#
+#   kotlinx.coroutines.DelayWithTimeoutDiagnostics
+#     androidx.test:monitor -> ScanningTestLoader -> Class.forName(...) while
+#     building a runner for PlayIntegrityInstrumentedTest
+#     NoClassDefFoundError: Failed resolution of:
+#         Lkotlinx/coroutines/DelayWithTimeoutDiagnostics;
+#
+#   kotlinx.coroutines.Dispatchers.getMain()
+#     the tests' runTest, via the app APK's coroutines
+#     NoSuchMethodError: No static method getMain() in class Dispatchers;
+#
+# The second is the sharper lesson: it is a `by lazy {}` the *harness* owns,
+# not the app's. No amount of reading this project's source would have surfaced
+# it -- only running the release variant on a device did.
+#
+# The third is the lesson about *how* to write these rules. `-keepnames` is
+# shorthand for `-keep,allowshrinking`: it preserves the class name but still
+# lets R8 shrink, inline and delete members it cannot see being used. The
+# harness links MEMBERS by name and signature, so that is not enough -- R8
+# inlined Trace.beginSection/endSection into its app-side callers and dropped
+# the methods, turning a load failure into a link failure. `-keepnames` is the
+# wrong tool for a cross-APK link surface.
+#
+# The fourth is `-keepnames` failing at its other job. The coroutines class was
+# not renamed, it was shrunk out of the APK entirely, because nothing the app
+# itself does reaches it -- only the tests do.
+#
+# Triage rule for anything new that fails this way: keep the whole linked
+# closure, not the one class in the stack trace. Optimizing stays allowed --
+# R8 still does real work here, it just may not rename or remove something the
+# harness calls.
+#
+# Tier 1 -- classes the harness is OBSERVED to link, by name and by member.
+# Every entry here is backed by an actual CI crash, quoted above.
+-keep,allowoptimization class kotlin.** { *; }
+-keep,allowoptimization class androidx.tracing.** { *; }
+
+# Tier 1, coroutines. Promoting all of kotlinx.coroutines to Tier 1 was tried
+# and reverted: it reproduced the same `minifyReleaseWithR8` failure as
+# defect (5) below (POI -> Batik / java.awt missing classes), so the fix is
+# pinned to the dispatcher surface the tests actually link.
+#
+#   DelayWithTimeoutDiagnostics  @InternalCoroutinesApi, reached only by
+#       `withTimeout`; without it the harness cannot build a test runner at all.
+#   Dispatchers / getMain()      the app never touches the Main dispatcher, so
+#       R8 removed the accessor while the tests' `runTest` still calls it:
+#       `NoSuchMethodError: No static method getMain() in class Dispatchers`.
+-keep class kotlinx.coroutines.DelayWithTimeoutDiagnostics { *; }
+-keep,allowoptimization class kotlinx.coroutines.Dispatchers { *; }
+-keep,allowoptimization class kotlinx.coroutines.Dispatchers$* { *; }
+-keep,allowoptimization class kotlinx.coroutines.MainCoroutineDispatcher { *; }
+-keep,allowoptimization class kotlinx.coroutines.MainCoroutineDispatcher$* { *; }
+
+# Tier 2 -- name-only insurance for the rest of the harness's likely link
+# surface. `-keepnames` (i.e. `-keep,allowshrinking`) cannot make R8 retain a
+# class the app does not already use, so this is zero-cost against APK size.
+#
+# Deliberately NOT `-keep`: promoting these to a full keep is what broke
+# `minifyReleaseWithR8` in the next CI round. Retaining all of androidx.core /
+# lifecycle pulled Apache POI's XSLF->SVG rendering path back into the app,
+# which then referenced org.apache.batik.* and java.awt.* -- neither of which
+# exists on Android -- and R8 failed the whole build with "Missing classes
+# detected while running R8". A full keep of kotlinx.coroutines alone
+# reproduced it too. Broad keeps do not fail loudly in the harness; they fail
+# in the shrinker, on unrelated third-party code.
+#
+# If a future run needs a member of one of these preserved, promote that ONE
+# package to Tier 1 and add `-dontwarn` entries for whatever the wider
+# retention drags in. Tier 2 is insurance against the class-name failure mode
+# only, which is the one actually seen twice.
+-keepnames class androidx.test.**
+-keepnames class androidx.annotation.**
+-keepnames class androidx.core.**
+-keepnames class androidx.lifecycle.**
+-keepnames class kotlinx.coroutines.**
+-keepnames class com.google.common.**
+-keepnames class com.google.gson.**
+-keepnames class org.junit.**
+-keepnames class org.hamcrest.**
+
 # OkHttp and Retrofit ship their own consumer rules; only suppress the
 # optional-JVM-class warnings (okio/java9). App Retrofit interfaces are kept
 # separately above so R8 can shrink the libraries themselves.

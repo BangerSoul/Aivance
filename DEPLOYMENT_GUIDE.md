@@ -74,6 +74,26 @@ Release builds run R8 (minify + shrink resources) and emit:
 ./gradlew testDebugUnitTest lintDebug bundleRelease assembleRelease
 ```
 
+These commands are necessary but **not sufficient**. A successful `assembleRelease` only
+proves R8 completed without error — it says nothing about whether the shrunken app still
+runs. Minification removes classes by whole-file analysis, so the usual casualties here are
+`@Serializable` types, Hilt-generated components, Room DAO implementations and Retrofit
+interfaces, all of which fail at runtime with a `SerializationException` or
+`ClassNotFoundException` while every compile-time check still passes.
+
+To close that gap, run the app's instrumented suite against the release variant before
+shipping:
+
+```bash
+./gradlew :app:connectedReleaseAndroidTest
+```
+
+This needs a keystore, because Android will not instrument a non-debuggable target unless
+the test APK carries the same signature (see *Signing credentials* above). CI handles this
+for you: the `android-emulator` job uses the repository secrets when they are configured and
+generates a throwaway per-run key otherwise, so R8/runtime coverage is enforced on every push
+regardless of signing state.
+
 CI does this automatically in the `build` job (gated on `code-quality`, `unit-tests`, `security-scan`).
 
 ## Deployment Pipeline

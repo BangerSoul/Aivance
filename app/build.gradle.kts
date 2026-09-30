@@ -144,12 +144,36 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Rules for the instrumentation *harness* APK. Separate from
+            // `proguardFiles` because `minifyReleaseAndroidTestWithR8` processes
+            // the test APK, not the app. See the file for why it must not shrink.
+            testProguardFiles("proguard-androidTest-rules.pro")
             optimization {
                 enable = true
             }
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
             }
+
+            // `ProviderIntegrationTest` reads these five fields, and
+            // androidTest compiles against the release variant now (see
+            // `testOptions` below). So release has to *declare* them — but it
+            // must never carry a real value: a provider key baked into the
+            // release APK belongs to anyone who unzips it.
+            //
+            // Hardcoding empty literals here is what makes that a compiler-
+            // enforced invariant rather than a convention. A stray key in
+            // local.properties cannot reach the release variant, because this
+            // block never reads it. The live-API tests then report as *skipped*
+            // via their existing `assumeTrue(...isNotBlank())` guards, instead
+            // of silently passing with no key and no coverage.
+            buildConfigField("String", "APIFY_API_KEY", "\"\"")
+            buildConfigField("String", "GROQ_API_KEY", "\"\"")
+            buildConfigField("String", "GEMINI_API_KEY", "\"\"")
+            buildConfigField("String", "HUNTER_API_KEY", "\"\"")
+            // Not a credential, but release still never talks to third-party
+            // production endpoints from a test run.
+            buildConfigField("boolean", "RUN_LIVE_API_TESTS", "false")
         }
         debug {
             isMinifyEnabled = false
@@ -214,6 +238,26 @@ android {
     }
 
     testOptions {
+        // Run the instrumented suite against the *release* variant, so R8 and
+        // resource shrinking are genuinely exercised.
+        //
+        // A green `connectedDebugAndroidTest` proves nothing about the build
+        // that ships: debug sets `isMinifyEnabled = false`, so every prior run
+        // tested unshrunk bytecode. R8 removes classes by whole-file analysis,
+        // and the classic casualties here are exactly what this app leans on —
+        // ~220 `@Serializable` types, Hilt-generated components, Room DAO impls
+        // and Retrofit interfaces. Those break at *runtime* with
+        // SerializationException / ClassNotFoundException, long after every
+        // compile-time check has passed. Compiling release in CI proves R8 does
+        // not error; only running the shrunken APK proves the app still works.
+        //
+        // Release is signed, so the androidTest APK must be signed with the
+        // same key — `signingConfigs["release"]` is what makes that automatic.
+        // Without a keystore this task cannot install anything, which is why
+        // the emulator workflow provisions one before it runs.
+        defaultConfig {
+            testBuildType = "release"
+        }
         unitTests {
             // AGP 9.x JVM unit tests throw "Method ... not mocked" when code touches
             // android.util.Log / Build.* (e.g. DownloadManager/UploadManager init blocks).
@@ -310,8 +354,16 @@ dependencies {
     androidTestImplementation(libs.androidx.runner)
     // Real-API integration tests (Phase 4 STEP 3) — kotlinx-coroutines-test for runTest.
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    // Was `debugImplementation`, which is the wrong scope twice over: it merged
+    // the Compose test host activity into the *shipped* debug APK, and it is not
+    // on the androidTest classpath for any other variant — so with
+    // `testBuildType = "release"` a Compose UI test would have had no host
+    // activity to bind to. This artifact exists to serve instrumented tests, so
+    // `androidTestImplementation` is the correct scope.
+    androidTestImplementation(libs.androidx.compose.ui.test.manifest)
 
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Preview tooling genuinely is a debug-only concern for the app itself, so
+    // this one stays where it is.
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     ksp(libs.androidx.room.compiler)

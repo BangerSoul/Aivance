@@ -210,11 +210,20 @@ jobs:
           # failure in one module still reports the other four instead of
           # stopping at the first.
           #
+          # `--max-workers=2` because the 4 GB emulator is already resident when
+          # Gradle starts, and `gradle.properties` sets both `parallel=true` and
+          # `-Xmx4096m`. Each extra worker forks another JVM for D8/dexing, and
+          # under that pressure `:navigation:packageDebugAndroidTest` died with
+          # a bare `PackageAndroidArtifact$IncrementalSplitterRunnable` and no
+          # message at all. Bounding the workers is cheaper than shrinking the
+          # emulator. `--stacktrace` is there because that failure printed
+          # nothing useful: without it the next occurrence is just as opaque.
+          #
           # Each `script` line runs as its own `sh -c`, so no `\`
           # line continuations here — they would be split into broken fragments.
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-          script: ./gradlew :app:connectedReleaseAndroidTest :core:data:connectedDebugAndroidTest :core:database:connectedDebugAndroidTest :feature:dashboard:connectedDebugAndroidTest :navigation:connectedDebugAndroidTest -Paivance.disableAbiSplits=true --no-daemon --continue
+          script: ./gradlew :app:connectedReleaseAndroidTest :core:data:connectedDebugAndroidTest :core:database:connectedDebugAndroidTest :feature:dashboard:connectedDebugAndroidTest :navigation:connectedDebugAndroidTest -Paivance.disableAbiSplits=true --no-daemon --continue --max-workers=2 --stacktrace
 
       # The emulator action's teardown step (`adb … emu kill`) also fails when
       # the emulator never came up, and it is the last line in the log. That

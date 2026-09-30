@@ -54,6 +54,12 @@
 #     androidx.test:runner -> AndroidJUnitRunner.onCreate()
 #     NoSuchMethodError: No static method beginSection(...) in class Trace;
 #
+#   kotlinx.coroutines.DelayWithTimeoutDiagnostics
+#     androidx.test:monitor -> ScanningTestLoader -> Class.forName(...) while
+#     building a runner for PlayIntegrityInstrumentedTest
+#     NoClassDefFoundError: Failed resolution of:
+#         Lkotlinx/coroutines/DelayWithTimeoutDiagnostics;
+#
 # The second is the sharper lesson: it is a `by lazy {}` the *harness* owns,
 # not the app's. No amount of reading this project's source would have surfaced
 # it -- only running the release variant on a device did.
@@ -66,15 +72,20 @@
 # the methods, turning a load failure into a link failure. `-keepnames` is the
 # wrong tool for a cross-APK link surface.
 #
+# The fourth is `-keepnames` failing at its other job. The coroutines class was
+# not renamed, it was shrunk out of the APK entirely, because nothing the app
+# itself does reaches it -- only the tests do.
+#
 # Triage rule for anything new that fails this way: keep the whole linked
 # closure, not the one class in the stack trace. Optimizing stays allowed --
 # R8 still does real work here, it just may not rename or remove something the
 # harness calls.
 #
 # Tier 1 -- classes the harness is OBSERVED to link, by name and by member.
-# Both entries here are backed by an actual CI crash, quoted above.
+# Every entry here is backed by an actual CI crash, quoted above.
 -keep,allowoptimization class kotlin.** { *; }
 -keep,allowoptimization class androidx.tracing.** { *; }
+-keep,allowoptimization class kotlinx.coroutines.** { *; }
 
 # Tier 2 -- name-only insurance for the rest of the harness's likely link
 # surface. `-keepnames` (i.e. `-keep,allowshrinking`) cannot make R8 retain a
@@ -96,7 +107,6 @@
 -keepnames class androidx.annotation.**
 -keepnames class androidx.core.**
 -keepnames class androidx.lifecycle.**
--keepnames class kotlinx.coroutines.**
 -keepnames class com.google.common.**
 -keepnames class com.google.gson.**
 -keepnames class org.junit.**

@@ -8,13 +8,15 @@
 # mismatch. R8 obfuscates and shrinks classes in the app APK; the harness links
 # classes AND members out of that same dependency closure by their original
 # names and signatures; the two APKs then disagree and the instrumentation
-# process dies before any test runs. Three distinct symbols hit it --
+# process dies before any test runs. Four distinct symbols hit it --
 # `androidx.tracing.Trace` (from `androidx.test:runner`'s
 # `AndroidJUnitRunner.onCreate`), `kotlin.LazyKt` (from `androidx.test:monitor`'s
-# `TestDirCalculator`) and `androidx.tracing.Trace.beginSection` (same runner,
-# once the class itself resolved but R8 had inlined the method away). All are
-# fixed on the app side, in `proguard-rules.pro`, under "Instrumented-test
-# bridge". These rules are the hardening around that, and each earns its place:
+# `TestDirCalculator`), `androidx.tracing.Trace.beginSection` (same runner,
+# once the class itself resolved but R8 had inlined the method away) and
+# `kotlinx.coroutines.DelayWithTimeoutDiagnostics` (shrunk out entirely; only
+# the tests reach it). All are fixed on the app side, in `proguard-rules.pro`,
+# under "Instrumented-test bridge". These rules are the hardening around that,
+# and each earns its place:
 #
 # -dontobfuscate  A crashed harness is the artifact you actually need to read, and
 #                 an obfuscated stack trace is close to worthless. Keeping names
@@ -29,9 +31,24 @@
 #                 identities the runner reflects over.
 # -dontnote/-dontwarn  This binary is not distributed, so its R8 notes and
 #                 warnings are noise in an otherwise readable CI log.
+# -keep com.bangersoul.aivance.**
+#                 The test classes THEMSELVES were still losing members to R8
+#                 despite the -dont* flags above. JUnit calls
+#                 Class.getDeclaredMethods() on the test class, which resolves
+#                 every signature, and ProviderIntegrationTest's anonymous
+#                 `object : JobCache` -- compiled to
+#                 ProviderIntegrationTest$jobCache$1 -- was not in the APK. It
+#                 surfaced as `NoClassDefFoundError:
+#                 ...ProviderIntegrationTest$jobCache$1` from
+#                 MethodSorter.getDeclaredMethods: a failure in a test class's
+#                 own nested type, with no app code involved at all. An
+#                 explicit keep makes that deterministic instead of leaving it
+#                 to whatever the global flags happen to imply for synthetic
+#                 and anonymous classes. Test-only APK, so this costs nothing.
 
+-dontobfuscate
 -dontshrink
 -dontoptimize
--dontobfuscate
 -dontnote
 -dontwarn
+-keep class com.bangersoul.aivance.** { *; }

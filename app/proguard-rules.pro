@@ -29,6 +29,25 @@
 -keep,allowobfuscation interface com.bangersoul.aivance.**.api.** { *; }
 -keep,allowobfuscation interface com.bangersoul.aivance.**.*Api { *; }
 
+# Keep androidx.tracing names stable.
+#
+# `androidx.tracing:tracing` reaches the *app* through Compose UI, and R8
+# obfuscates it in the release APK. The instrumentation harness, however, resolves
+# it by its original name: `androidx.test:runner`'s AndroidJUnitRunner calls
+# `androidx.tracing.Trace` from onCreate. With the app obfuscated and the harness
+# not, the two APKs disagree about what the class is called and the release
+# instrumented run dies before a single test executes:
+#
+#   java.lang.NoClassDefFoundError: Failed resolution of: Landroidx/tracing/Trace;
+#       at androidx.test.runner.AndroidJUnitRunner.onCreate(AndroidJUnitRunner.java:307)
+#   Caused by: java.lang.ClassNotFoundException: androidx.tracing.Trace
+#
+# This is a name-identity problem, not a size problem, so `allowshrinking` is
+# deliberately NOT used: letting R8 drop the class entirely is fine, but if it
+# keeps it, it must keep the *name* the harness looks for.
+-keepnames class androidx.tracing.**
+-keep class androidx.tracing.Trace { *; }
+
 # OkHttp and Retrofit ship their own consumer rules; only suppress the
 # optional-JVM-class warnings (okio/java9). App Retrofit interfaces are kept
 # separately above so R8 can shrink the libraries themselves.

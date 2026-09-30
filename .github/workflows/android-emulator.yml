@@ -1,0 +1,112 @@
+name: Android Emulator & Instrumented Tests
+
+# Replaces the previous "Docker Emulator & Web Browser RDP Testing" workflow,
+# which never produced a green run. It booted a `budtmo/docker-android:emulator_11.0`
+# container and then waited in an unbounded `until adb shell getprop sys.boot_completed`
+# loop: if the container never came up (or came up without KVM), the loop spun until
+# the job hit its own 45-minute timeout. That produced 13 consecutive non-green runs
+# across every branch, which made an unrelated emulator outage look like a repo-wide
+# regression. `reactivecircus/android-emulator-runner` boots the emulator directly on
+# the runner, fails with real diagnostics instead of hanging, and needs no container.
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+    inputs:
+      api_level:
+        description: 'Emulator API level'
+        type: string
+        default: '35'
+
+env:
+  JAVA_VERSION: "17"
+
+concurrency:
+  group: android-emulator-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Category: Instrumented (androidTest) coverage ────────────────────────────
+  emulator-instrumented-tests:
+    name: 🤖 Emulator & Instrumented Tests
+    runs-on: ubuntu-latest
+    # Boot plus a full connectedAndroidTest sweep fits in ~25 min. The previous
+    # 45 was only ever reached by the hang described above.
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # Fail fast and legibly when the runner has no nested virtualisation.
+      # Without this the symptom is a 35-minute timeout with no explanation.
+      - name: Verify KVM acceleration is available
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "::error::/dev/kvm is not present on this runner — hardware-accelerated" \
+                 "emulation is unavailable, so instrumented tests cannot run." \
+                 "GitHub-hosted Linux runners expose KVM; a self-hosted or larger" \
+                 "runner may not."
+            exit 1
+          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --subsystem-match=misc
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      # `api_level` is a workflow_dispatch input; for push/pull_request events
+      # github.event.inputs is empty, so the expression falls back to 35.
+      - name: Run instrumented tests on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ github.event.inputs.api_level || '35' }}
+          arch: x86_64
+          profile: google_apis
+          # The app ships per-ABI splits, so the x86_64 slice is the one the
+          # emulator can install. Disable them for the connected run to avoid
+          # the universal-APK/split mismatch the old Docker job hit.
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: |
+            ./gradlew :app:assembleDebug -Paivance.disableAbiSplits=true --no-daemon
+            adb install -r app/build/outputs/apk/debug/app-universal-debug.apk
+            adb shell am start -n com.bangersoul.aivance.debug/com.bangersoul.aivance.MainActivity
+            # `--continue` so one module's failure still reports the rest.
+            ./gradlew connectedDebugAndroidTest --no-daemon --continue
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-test-reports
+          path: |
+            **/build/reports/androidTests/
+            **/build/outputs/androidTest-results/
+          retention-days: 14
+
+      # Interactive debugging is opt-in and only offered on manual runs, so it
+      # never blocks a PR. The old workflow's tmate step was gated the same way
+      # but only ever ran after a boot that never completed, so it was dead code.
+      - name: Open an interactive shell
+        if: github.event_name == 'workflow_dispatch'
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true

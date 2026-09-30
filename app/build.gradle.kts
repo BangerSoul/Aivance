@@ -71,8 +71,11 @@ fun readSigningCredentials(): SigningCredentials? {
         )
     }
     return SigningCredentials(
-        // storeFile is commonly written relative to the repository root.
-        storeFilePath = File(path).let { if (it.isAbsolute) it else rootProject.file(path).path },
+        // `storeFile` is commonly written relative to the repository root;
+        // `Project.file` resolves that and passes absolute paths through
+        // unchanged. (`File(path)` is not used here — in a Gradle Kotlin DSL
+        // script the bare name `File` does not resolve to `java.io.File`.)
+        storeFilePath = rootProject.file(path).absolutePath,
         storePassword = props.getProperty("storePassword").orEmpty(),
         keyAlias = props.getProperty("keyAlias").orEmpty(),
         keyPassword = props.getProperty("keyPassword").orEmpty(),

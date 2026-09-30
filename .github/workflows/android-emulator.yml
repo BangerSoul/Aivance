@@ -33,9 +33,11 @@ jobs:
   emulator-instrumented-tests:
     name: 🤖 Emulator & Instrumented Tests
     runs-on: ubuntu-latest
-    # Boot plus a full connectedAndroidTest sweep fits in ~25 min. The previous
-    # 45 was only ever reached by the hang described above.
-    timeout-minutes: 40
+    # Boot + R8 + the full connectedAndroidTest sweep. The release-variant app
+    # under test adds ~6 min of minification and runs slower shrunk than debug
+    # did, so this is comfortably more headroom than the debug-only run needed.
+    # (The previous 45 was only ever reached by the boot hang described above.)
+    timeout-minutes: 60
 
     steps:
       - name: Checkout Source Code
@@ -72,6 +74,73 @@ jobs:
       - name: Create local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
+      # `testBuildType = "release"` (app/build.gradle.kts) means the app under
+      # test and its androidTest APK are both release builds. Android refuses to
+      # instrument a non-debuggable target unless both APKs carry the *same*
+      # signature, so a keystore has to exist before the run starts — an
+      # unsigned release APK cannot be installed at all.
+      #
+      # The real repository secrets are used whenever they are present. Until the
+      # owner adds them, a throwaway key is generated per run: it lives for one
+      # job, signs nothing that leaves the runner, and is replaced automatically
+      # the moment the real secrets land. The hardcoded password below is not a
+      # leak — a key that is regenerated every run and never published has
+      # nothing to protect, and inventing a "real" CI secret here would be the
+      # actual risk.
+      - name: Provision a release signing key for the instrumented run
+        env:
+          STORE_BASE64: ${{ secrets.AIVANCE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # A partial secret set is treated as absent on purpose — app/build.gradle.kts
+          # refuses to apply a half-configured signing config, so falling back here
+          # keeps that invariant — but it must not fail *silently*. Someone who added
+          # three of the four and saw a green run would reasonably assume CI was
+          # signing with their real key.
+          present=0
+          for v in "$STORE_BASE64" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD"; do
+            [ -n "$v" ] && present=$((present + 1))
+          done
+          if [ "$present" -ne 0 ] && [ "$present" -ne 4 ]; then
+            echo "::warning::Only $present of 4 release signing secrets are set."
+            echo "::warning::Falling back to a throwaway key, so this run is NOT"
+            echo "::warning::signed with the repository keystore. Set all four of"
+            echo "::warning::AIVANCE_KEYSTORE_BASE64 / _STORE_PASSWORD / _KEY_ALIAS /"
+            echo "::warning::_KEY_PASSWORD to use the real one."
+          fi
+          if [ "$present" -eq 4 ]; then
+            echo "Using the repository release keystore from secrets."
+            printf '%s' "$STORE_BASE64" | base64 --decode > keystore.jks
+            store_pass="$STORE_PASSWORD"
+            key_alias="$KEY_ALIAS"
+            key_pass="$KEY_PASSWORD"
+          else
+            echo "::notice::Release signing secrets are not configured yet —"
+            echo "::notice::generating a throwaway key valid for this run only."
+            echo "::notice::It signs nothing published and cannot build a Play"
+            echo "::notice::artifact, so R8/runtime coverage is unaffected."
+            store_pass=aivance-ci
+            key_alias=aivance-ci
+            key_pass=aivance-ci
+            keytool -genkeypair -v -keystore keystore.jks -storetype JKS \
+              -keyalg RSA -keysize 2048 -validity 2 -alias "$key_alias" \
+              -storepass "$store_pass" -keypass "$key_pass" \
+              -dname "CN=Aivance CI, OU=CI, O=Aivance, C=US"
+          fi
+          # Catches a truncated keystore or a wrong alias here, instead of
+          # surfacing as an opaque AGP install failure much later.
+          keytool -list -keystore keystore.jks -storepass "$store_pass" \
+            -alias "$key_alias" > /dev/null
+          {
+            echo "AIVANCE_STORE_FILE=$PWD/keystore.jks"
+            echo "AIVANCE_STORE_PASSWORD=$store_pass"
+            echo "AIVANCE_KEY_ALIAS=$key_alias"
+            echo "AIVANCE_KEY_PASSWORD=$key_pass"
+          } >> "$GITHUB_ENV"
+
       # `api_level` is a workflow_dispatch input; for push/pull_request events
       # github.event.inputs is empty, so the expression falls back to 35.
       #
@@ -94,13 +163,22 @@ jobs:
           # The app ships per-ABI splits, so the x86_64 slice is the one the
           # emulator can install. Disable them for the connected run to avoid
           # the universal-APK/split mismatch the old Docker job hit.
-          # `useRegisteredAppId` builds the debug variant under the release
-          # application id instead of `….debug`. It has to be passed to
-          # `connectedDebugAndroidTest` itself: that task builds its own copy of
-          # the app APK with default flags, so setting it on a separate
-          # `assembleDebug` invocation would not affect the app under test, and
-          # ExampleInstrumentedTest asserts the package name is
-          # `com.bangersoul.aivance`.
+          # `useRegisteredAppId` is no longer passed: it only ever affected the
+          # *debug* buildType's `applicationIdSuffix`, and `:app` now tests the
+          # release variant, whose application id is `com.bangersoul.aivance`
+          # with no suffix at all. ExampleInstrumentedTest asserts exactly that,
+          # so the release run is the better-behaved one — it also happens to be
+          # the id registered in google-services.json and in Play Console.
+          #
+          # Only `:app` moves to the release variant. Library modules keep their
+          # debug androidTest tasks, and that is deliberate rather than an
+          # oversight: R8 only ever runs in the application module, so a
+          # library's "release" variant is not shrunk and switching it would buy
+          # no extra minification coverage while adding a second failure mode.
+          # The `:app` release run is what matters — it minifies and executes
+          # the app *and* every library's code in one shrunken process, which is
+          # exactly the surface where a stripped serializer or Hilt component
+          # would surface.
           #
           # The task list is explicit rather than a bare `connectedDebugAndroidTest`.
           # AGP registers that task for *every* Android module, and the ~20
@@ -123,15 +201,20 @@ jobs:
           # does not exist (the ABI split block sets `isUniversalApk = false`),
           # and `am start` exits 0 even when the app dies immediately after, so
           # it could only ever produce false confidence.
-          # `connectedDebugAndroidTest` builds, installs and launches the app
-          # itself, and a Hilt/Compose init crash fails the instrumentation
-          # rather than passing quietly.
+          # `connectedReleaseAndroidTest` builds, installs and launches the app
+          # itself, and a Hilt/Compose/Room init crash fails the instrumentation
+          # rather than passing quietly. Against the release variant that
+          # includes everything R8 did to the bytecode first.
+          #
+          # The keystore comes from the step above. `--continue` is kept so a
+          # failure in one module still reports the other four instead of
+          # stopping at the first.
           #
           # Each `script` line runs as its own `sh -c`, so no `\`
           # line continuations here — they would be split into broken fragments.
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
-          script: ./gradlew :app:connectedDebugAndroidTest :core:data:connectedDebugAndroidTest :core:database:connectedDebugAndroidTest :feature:dashboard:connectedDebugAndroidTest :navigation:connectedDebugAndroidTest -Paivance.disableAbiSplits=true -Paivance.useRegisteredAppId=true --no-daemon --continue
+          script: ./gradlew :app:connectedReleaseAndroidTest :core:data:connectedDebugAndroidTest :core:database:connectedDebugAndroidTest :feature:dashboard:connectedDebugAndroidTest :navigation:connectedDebugAndroidTest -Paivance.disableAbiSplits=true --no-daemon --continue
 
       # The emulator action's teardown step (`adb … emu kill`) also fails when
       # the emulator never came up, and it is the last line in the log. That

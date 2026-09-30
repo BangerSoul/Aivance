@@ -67,20 +67,40 @@
 # wrong tool for a cross-APK link surface.
 #
 # Triage rule for anything new that fails this way: keep the whole linked
-# closure, not the one class in the stack trace, and do not reach for
-# `-keepnames`. Optimizing stays allowed -- R8 still does real work here, it
-# just may not rename or remove something the harness calls.
+# closure, not the one class in the stack trace. Optimizing stays allowed --
+# R8 still does real work here, it just may not rename or remove something the
+# harness calls.
+#
+# Tier 1 -- classes the harness is OBSERVED to link, by name and by member.
+# Both entries here are backed by an actual CI crash, quoted above.
 -keep,allowoptimization class kotlin.** { *; }
 -keep,allowoptimization class androidx.tracing.** { *; }
--keep,allowoptimization class androidx.test.** { *; }
--keep,allowoptimization class androidx.annotation.** { *; }
--keep,allowoptimization class androidx.core.** { *; }
--keep,allowoptimization class androidx.lifecycle.** { *; }
--keep,allowoptimization class kotlinx.coroutines.** { *; }
--keep,allowoptimization class com.google.common.** { *; }
--keep,allowoptimization class com.google.gson.** { *; }
--keep,allowoptimization class org.junit.** { *; }
--keep,allowoptimization class org.hamcrest.** { *; }
+
+# Tier 2 -- name-only insurance for the rest of the harness's likely link
+# surface. `-keepnames` (i.e. `-keep,allowshrinking`) cannot make R8 retain a
+# class the app does not already use, so this is zero-cost against APK size.
+#
+# Deliberately NOT `-keep`: promoting these to a full keep is what broke
+# `minifyReleaseWithR8` in the next CI round. Retaining all of androidx.core /
+# lifecycle / kotlinx.coroutines pulled Apache POI's XSLF->SVG rendering path
+# back into the app, which then referenced org.apache.batik.* and java.awt.* --
+# neither of which exists on Android -- and R8 failed the whole build with
+# "Missing classes detected while running R8". Broad keeps do not fail loudly
+# in the harness; they fail in the shrinker, on unrelated third-party code.
+#
+# If a future run needs a member of one of these preserved, promote that ONE
+# package to Tier 1 and add `-dontwarn` entries for whatever the wider
+# retention drags in. Tier 2 is insurance against the class-name failure mode
+# only, which is the one actually seen twice.
+-keepnames class androidx.test.**
+-keepnames class androidx.annotation.**
+-keepnames class androidx.core.**
+-keepnames class androidx.lifecycle.**
+-keepnames class kotlinx.coroutines.**
+-keepnames class com.google.common.**
+-keepnames class com.google.gson.**
+-keepnames class org.junit.**
+-keepnames class org.hamcrest.**
 
 # OkHttp and Retrofit ship their own consumer rules; only suppress the
 # optional-JVM-class warnings (okio/java9). App Retrofit interfaces are kept

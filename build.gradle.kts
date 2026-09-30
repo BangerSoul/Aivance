@@ -8,5 +8,5 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.room) apply false
     alias(libs.plugins.google.services) apply false
-    id("androidx.baselineprofile") version "1.3.3" apply false
+    id("androidx.baselineprofile") version "1.4.1" apply false
 }

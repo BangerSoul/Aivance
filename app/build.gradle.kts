@@ -19,6 +19,88 @@ val localApiProperties = Properties().apply {
 }
 fun integrationApiKey(name: String): String = localApiProperties.getProperty(name, "").trim()
 
+// ── Release signing ───────────────────────────────────────────────────────────
+// Credentials are resolved in this order, most specific first:
+//   1. Environment variables  — AIVANCE_STORE_FILE / _STORE_PASSWORD / _KEY_ALIAS /
+//      _KEY_PASSWORD. This is what CI uses, so the keystore material lives in
+//      repository/environment secrets and never touches the working tree.
+//   2. keystore.properties    — the standard Android convention, for local
+//      release builds. Gitignored (see .gitignore).
+// A keystore alone is never enough: a partially-populated config is reported
+// rather than silently half-applied, because a half-configured release build
+// produces a signed-looking artifact that nothing can update.
+data class SigningCredentials(
+    val storeFilePath: String,
+    val storePassword: String,
+    val keyAlias: String,
+    val keyPassword: String,
+)
+
+fun readSigningCredentials(): SigningCredentials? {
+    val fromEnv = SigningCredentials(
+        storeFilePath = System.getenv("AIVANCE_STORE_FILE").orEmpty(),
+        storePassword = System.getenv("AIVANCE_STORE_PASSWORD").orEmpty(),
+        keyAlias = System.getenv("AIVANCE_KEY_ALIAS").orEmpty(),
+        keyPassword = System.getenv("AIVANCE_KEY_PASSWORD").orEmpty(),
+    )
+    if (fromEnv.let { it.storeFilePath.isNotEmpty() || it.storePassword.isNotEmpty() ||
+            it.keyAlias.isNotEmpty() || it.keyPassword.isNotEmpty() }) {
+        val missing = listOf(
+            "AIVANCE_STORE_FILE" to fromEnv.storeFilePath,
+            "AIVANCE_STORE_PASSWORD" to fromEnv.storePassword,
+            "AIVANCE_KEY_ALIAS" to fromEnv.keyAlias,
+            "AIVANCE_KEY_PASSWORD" to fromEnv.keyPassword,
+        ).filter { (_, value) -> value.isEmpty() }.map { (name, _) -> name }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Incomplete release signing configuration. Missing: ${missing.joinToString(", ")}. " +
+                    "Set all four, or unset all four to fall back to keystore.properties."
+            )
+        }
+        return fromEnv
+    }
+
+    val propsFile = rootProject.file("keystore.properties")
+    if (!propsFile.exists()) return null
+    val props = Properties().apply { propsFile.inputStream().use { load(it) } }
+    val path = props.getProperty("storeFile").orEmpty()
+    if (path.isEmpty()) {
+        throw GradleException(
+            "keystore.properties exists but has no storeFile entry. " +
+                "Expected storeFile / storePassword / keyAlias / keyPassword."
+        )
+    }
+    return SigningCredentials(
+        // storeFile is commonly written relative to the repository root.
+        storeFilePath = File(path).let { if (it.isAbsolute) it else rootProject.file(path).path },
+        storePassword = props.getProperty("storePassword").orEmpty(),
+        keyAlias = props.getProperty("keyAlias").orEmpty(),
+        keyPassword = props.getProperty("keyPassword").orEmpty(),
+    )
+}
+
+val signingCredentials = readSigningCredentials()
+val signingStoreFile = signingCredentials?.let { rootProject.file(it.storeFilePath) }
+val signingConfigured = signingCredentials != null && signingStoreFile?.exists() == true
+// `assembleRelease` on a machine with no keystore is a legitimate way to
+// exercise R8 (that is what the PR CI gate does), so an unsigned release build
+// is allowed by default. The release workflow passes
+// `-Paivance.requireSigning=true`, which turns the silent unsigned output into
+// a hard failure — a release must never be produced unsigned by accident.
+val requireSigning = providers.gradleProperty("aivance.requireSigning").orNull == "true"
+if (requireSigning && !signingConfigured) {
+    val detail = if (signingStoreFile == null) {
+        "no AIVANCE_* environment variables and no keystore.properties at the repository root"
+    } else {
+        "keystore file not found at ${signingStoreFile.path}"
+    }
+    throw GradleException(
+        "aivance.requireSigning=true but the release build cannot be signed ($detail). " +
+            "Set AIVANCE_STORE_FILE, AIVANCE_STORE_PASSWORD, AIVANCE_KEY_ALIAS and " +
+            "AIVANCE_KEY_PASSWORD, or provide keystore.properties at the repository root."
+    )
+}
+
 android {
     namespace = "com.bangersoul.aivance"
     compileSdk = 37
@@ -34,25 +116,25 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            val keystoreFile = file("../keystore.jks")
-            val storePwd = System.getenv("AIVANCE_STORE_PASSWORD")
-            val keyAl = System.getenv("AIVANCE_KEY_ALIAS")
-            val keyPwd = System.getenv("AIVANCE_KEY_PASSWORD")
-            if (keystoreFile.exists() && storePwd != null && keyAl != null && keyPwd != null) {
-                storeFile = keystoreFile
-                storePassword = storePwd
-                keyAlias = keyAl
-                keyPassword = keyPwd
+        if (signingConfigured) {
+            create("release") {
+                val credentials = requireNotNull(signingCredentials) {
+                    "signingConfigured was true but no credentials were resolved"
+                }
+                storeFile = requireNotNull(signingStoreFile)
+                storePassword = credentials.storePassword
+                keyAlias = credentials.keyAlias
+                keyPassword = credentials.keyPassword
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release")?.takeIf {
-                it.storeFile?.exists() == true
-            }
+            // Null when no keystore is configured, which yields an unsigned
+            // release build. `-Paivance.requireSigning=true` (used by the
+            // release workflow) fails the build before we ever get here.
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -240,6 +240,15 @@ jobs:
       - name: Build Debug APKs (per-ABI splits)
         run: ./gradlew :app:assembleDebug --no-daemon
 
+      # Every release build in this repository is gated on the release signing
+      # secrets being present. When they are not, the release steps below are
+      # skipped — which is why R8/minify had never been compiled anywhere until
+      # this step was added. An unsigned `assembleRelease` needs no secrets and
+      # catches R8 rule regressions, missing classes and resource-shrinker
+      # failures on every PR instead of on release day.
+      - name: Compile Release Variant (R8 gate, unsigned)
+        run: ./gradlew :app:assembleRelease -Paivance.disableAbiSplits=true --no-daemon
+
       - name: Check Keystore Configuration
         id: check-keystore
         run: |
@@ -248,22 +257,28 @@ jobs:
             echo "${{ secrets.AIVANCE_KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
           else
             echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::notice::AIVANCE_KEYSTORE_BASE64 is not set — the signed release" \
+                 "APK/AAB steps are skipped and only the unsigned R8 gate runs."
           fi
 
       # Splits and a bundle cannot coexist in one build (AGP issue 402800800),
       # so the signed per-ABI APKs and the Play AAB are built separately.
+      # `aivance.requireSigning` makes a misconfigured keystore a hard failure
+      # rather than a silently unsigned artifact.
       - name: Build Signed Release APKs (per-ABI splits)
         if: steps.check-keystore.outputs.exists == 'true'
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: ./gradlew :app:assembleRelease -Paivance.requireSigning=true --no-daemon
         env:
+          AIVANCE_STORE_FILE: keystore.jks
           AIVANCE_STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
           AIVANCE_KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
           AIVANCE_KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}
 
       - name: Build Signed Release AAB
         if: steps.check-keystore.outputs.exists == 'true'
-        run: ./gradlew :app:bundleRelease -Paivance.disableAbiSplits=true --no-daemon
+        run: ./gradlew :app:bundleRelease -Paivance.disableAbiSplits=true -Paivance.requireSigning=true --no-daemon
         env:
+          AIVANCE_STORE_FILE: keystore.jks
           AIVANCE_STORE_PASSWORD: ${{ secrets.AIVANCE_STORE_PASSWORD }}
           AIVANCE_KEY_ALIAS: ${{ secrets.AIVANCE_KEY_ALIAS }}
           AIVANCE_KEY_PASSWORD: ${{ secrets.AIVANCE_KEY_PASSWORD }}

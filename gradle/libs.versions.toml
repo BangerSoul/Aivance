@@ -23,12 +23,17 @@ adaptiveNavigation3 = "1.3.+"
 adaptiveNavigationSuite = "1.3.+"
 lifecycleViewmodelNavigation3 = "2.11.0"
 room = "2.8.4"
-kotlinxCoroutinesTest = "1.10.2"
+kotlinxCoroutinesTest = "1.11.0"
 core = "1.6.1"
 runner = "1.6.2"
 coil = "3.5.0"
 retrofit = "3.0.0"
-kotlinxCoroutinesAndroid = "1.10.2"
+kotlinxCoroutinesAndroid = "1.11.0"
+# Keep the whole kotlinx.coroutines family on one version. `kotlinx-coroutines-android`
+# also backs `kotlinx-coroutines-play-services` (see [libraries] below), so bumping it
+# moves three artifacts at once. Gradle picks the highest version on the classpath, so a
+# mixed 1.11.0/1.10.2 resolution silently downgraded the Android dispatcher and test
+# scheduler back to 1.10.2.
 kotlinxCoroutinesCore = "1.11.0"
 accompanistPermissions = "0.37.3"
 playServicesLocation = "21.3.0"

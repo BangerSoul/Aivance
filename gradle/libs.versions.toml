@@ -12,7 +12,7 @@ kotlin = "2.4.10"
 # Compose BOM floor: 2026.06.01 is the minimum. feature/resume's ResumeEngineScreen
 # uses AnimatedContent(contentKey = ...), which requires Compose 1.7+. Do not lower
 # this without re-checking that call site.
-composeBom = "2026.06.01"
+composeBom = "2026.09.00"
 ksp = "2.3.10"
 kotlinxSerializationJson = "1.11.0"
 navigation3Ui = "1.0.1"
